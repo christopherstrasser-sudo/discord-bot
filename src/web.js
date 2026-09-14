@@ -2,13 +2,15 @@ const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
+const { ChannelType } = require('discord.js');
 const config = require('./config');
 const { client } = require('./bot');
+const { getGuildSettings, updateGuildSettings } = require('./store');
 
 const DISCORD_API = 'https://discord.com/api/v10';
 const MANAGE_GUILD = 1n << 5n;
 const ADMINISTRATOR = 1n << 3n;
-const BASIC_BOT_PERMISSIONS = 84992n; // View Channels, Send Messages, Embed Links, Read Message History
+const BOT_PERMISSIONS = 268561488n;
 
 function canManageGuild(guild) {
   if (guild.owner) return true;
@@ -20,6 +22,11 @@ function canManageGuild(guild) {
 function avatarUrl(user) {
   if (!user.avatar) return null;
   return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`;
+}
+
+function guildIconUrl(guild) {
+  if (!guild.icon) return null;
+  return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`;
 }
 
 async function discordRequest(pathname, accessToken) {
@@ -58,13 +65,142 @@ async function exchangeCode(code) {
   return response.json();
 }
 
+function requireAuth(req, res, next) {
+  if (!req.session.user) return res.status(401).json({ error: 'not_authenticated' });
+  next();
+}
+
+function sessionGuild(req, guildId) {
+  return (req.session.guilds || []).find(guild => guild.id === guildId) || null;
+}
+
+function requireGuildAccess(req, res, next) {
+  const guild = sessionGuild(req, req.params.guildId);
+  if (!guild) return res.status(403).json({ error: 'guild_access_denied' });
+  req.dashboardGuild = guild;
+  next();
+}
+
+function sanitizeSettingsPatch(body, discordGuild) {
+  const current = getGuildSettings(discordGuild.id);
+  const patch = {};
+
+  if (body?.welcome && typeof body.welcome === 'object') {
+    const enabled = Boolean(body.welcome.enabled);
+    const channelId = String(body.welcome.channelId || '').trim();
+    const message = String(body.welcome.message ?? current.welcome.message).trim().slice(0, 1800);
+
+    if (enabled && !channelId) throw new Error('Für Welcome muss ein Kanal ausgewählt sein.');
+    if (enabled && !message) throw new Error('Die Welcome-Nachricht darf nicht leer sein.');
+
+    if (channelId) {
+      const channel = discordGuild.channels.cache.get(channelId);
+      const allowed = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+      if (!allowed) throw new Error('Der ausgewählte Welcome-Kanal ist ungültig.');
+    }
+
+    patch.welcome = { enabled, channelId, message };
+  }
+
+  if (body?.autorole && typeof body.autorole === 'object') {
+    const enabled = Boolean(body.autorole.enabled);
+    const roleId = String(body.autorole.roleId || '').trim();
+
+    if (enabled && !roleId) throw new Error('Für Auto-Role muss eine Rolle ausgewählt sein.');
+
+    if (roleId) {
+      const role = discordGuild.roles.cache.get(roleId);
+      const me = discordGuild.members.me;
+      const manageable = role && !role.managed && role.id !== discordGuild.id && me && role.position < me.roles.highest.position;
+      if (!manageable) throw new Error('Diese Rolle kann der Bot nicht vergeben. Prüfe die Rollen-Hierarchie.');
+    }
+
+    patch.autorole = { enabled, roleId };
+  }
+
+  if (body?.logging && typeof body.logging === 'object') {
+    const enabled = Boolean(body.logging.enabled);
+    const channelId = String(body.logging.channelId || '').trim();
+
+    if (enabled && !channelId) throw new Error('Für Logging muss ein Kanal ausgewählt sein.');
+
+    if (channelId) {
+      const channel = discordGuild.channels.cache.get(channelId);
+      const allowed = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+      if (!allowed) throw new Error('Der ausgewählte Log-Kanal ist ungültig.');
+    }
+
+    patch.logging = { enabled, channelId };
+  }
+
+  if (body?.customCommands && typeof body.customCommands === 'object') {
+    patch.customCommands = { enabled: Boolean(body.customCommands.enabled) };
+  }
+
+  return patch;
+}
+
+function dashboardPayload(sessionGuildData) {
+  const discordGuild = client.guilds.cache.get(sessionGuildData.id);
+  const botInstalled = Boolean(discordGuild);
+
+  if (!discordGuild) {
+    return {
+      guild: {
+        ...sessionGuildData,
+        iconUrl: guildIconUrl(sessionGuildData),
+        botInstalled: false
+      },
+      settings: getGuildSettings(sessionGuildData.id),
+      channels: [],
+      roles: []
+    };
+  }
+
+  const channels = discordGuild.channels.cache
+    .filter(channel => [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type))
+    .map(channel => ({
+      id: channel.id,
+      name: channel.name,
+      parent: channel.parent?.name || null,
+      position: channel.rawPosition
+    }))
+    .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, 'de'));
+
+  const me = discordGuild.members.me;
+  const highestBotRole = me?.roles.highest.position ?? 0;
+  const roles = discordGuild.roles.cache
+    .filter(role => role.id !== discordGuild.id && !role.managed && role.position < highestBotRole)
+    .map(role => ({
+      id: role.id,
+      name: role.name,
+      color: role.hexColor,
+      position: role.position
+    }))
+    .sort((a, b) => b.position - a.position);
+
+  return {
+    guild: {
+      id: discordGuild.id,
+      name: discordGuild.name,
+      iconUrl: discordGuild.iconURL({ size: 128 }) || guildIconUrl(sessionGuildData),
+      memberCount: discordGuild.memberCount,
+      owner: Boolean(sessionGuildData.owner),
+      botInstalled
+    },
+    settings: getGuildSettings(discordGuild.id),
+    channels,
+    roles
+  };
+}
+
 function createWebApp() {
   const app = express();
   const isHttps = config.publicBaseUrl.startsWith('https://');
 
   if (isHttps) app.set('trust proxy', 1);
 
-  app.use(express.json());
+  app.use(express.json({ limit: '64kb' }));
   app.use(session({
     name: 'raku.sid',
     secret: config.sessionSecret,
@@ -152,26 +288,47 @@ function createWebApp() {
     res.json({ authenticated: Boolean(req.session.user), user: req.session.user || null });
   });
 
-  app.get('/api/guilds', (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not_authenticated' });
-
+  app.get('/api/guilds', requireAuth, (req, res) => {
     const guilds = (req.session.guilds || []).map(guild => {
       const botInstalled = client.guilds.cache.has(guild.id);
       const invite = new URL('https://discord.com/oauth2/authorize');
       invite.searchParams.set('client_id', config.discord.clientId);
       invite.searchParams.set('scope', 'bot applications.commands');
-      invite.searchParams.set('permissions', BASIC_BOT_PERMISSIONS.toString());
+      invite.searchParams.set('permissions', BOT_PERMISSIONS.toString());
       invite.searchParams.set('guild_id', guild.id);
       invite.searchParams.set('disable_guild_select', 'true');
 
       return {
         ...guild,
+        iconUrl: guildIconUrl(guild),
         botInstalled,
+        manageUrl: botInstalled ? `/guild/${guild.id}` : null,
         inviteUrl: botInstalled ? null : invite.toString()
       };
     });
 
     res.json({ guilds });
+  });
+
+  app.get('/api/guilds/:guildId/dashboard', requireAuth, requireGuildAccess, (req, res) => {
+    res.json(dashboardPayload(req.dashboardGuild));
+  });
+
+  app.patch('/api/guilds/:guildId/settings', requireAuth, requireGuildAccess, (req, res) => {
+    const discordGuild = client.guilds.cache.get(req.params.guildId);
+    if (!discordGuild) return res.status(409).json({ error: 'bot_not_installed' });
+
+    try {
+      const patch = sanitizeSettingsPatch(req.body, discordGuild);
+      const settings = updateGuildSettings(discordGuild.id, patch, req.session.user.id);
+      res.json({ ok: true, settings });
+    } catch (error) {
+      res.status(400).json({ error: 'invalid_settings', message: error.message });
+    }
+  });
+
+  app.get('/guild/:guildId', (_req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
   });
 
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -182,7 +339,7 @@ function createWebApp() {
 async function startWeb() {
   const app = createWebApp();
   return new Promise(resolve => {
-    const server = app.listen(config.port, () => {
+    const server = app.listen(config.port, '0.0.0.0', () => {
       console.log(`[WEB] Dashboard: ${config.publicBaseUrl}`);
       console.log(`[WEB] Discord callback: ${config.discord.redirectUri}`);
       resolve(server);
