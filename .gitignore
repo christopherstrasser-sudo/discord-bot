@@ -1,6 +1,3 @@
-# Local bridge state
-.bridge-state/
-
 # Secrets / local config
 .env
 .env.*
