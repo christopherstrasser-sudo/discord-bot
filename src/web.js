@@ -11,6 +11,8 @@ const DISCORD_API = 'https://discord.com/api/v10';
 const MANAGE_GUILD = 1n << 5n;
 const ADMINISTRATOR = 1n << 3n;
 const BOT_PERMISSIONS = 268561488n;
+const TEST_MESSAGE_COOLDOWN_MS = 5000;
+const testMessageCooldowns = new Map();
 
 function canManageGuild(guild) {
   if (guild.owner) return true;
@@ -339,6 +341,51 @@ function createWebApp() {
 
   app.get('/api/guilds/:guildId/dashboard', requireAuth, requireGuildAccess, (req, res) => {
     res.json(dashboardPayload(req.dashboardGuild));
+  });
+
+  app.post('/api/guilds/:guildId/test-message', requireAuth, requireGuildAccess, async (req, res) => {
+    const discordGuild = client.guilds.cache.get(req.params.guildId);
+    if (!discordGuild) return res.status(409).json({ error: 'bot_not_installed', message: 'Der Bot ist auf diesem Server nicht verbunden.' });
+
+    const channelId = String(req.body?.channelId || '').trim();
+    if (!channelId) return res.status(400).json({ error: 'channel_required', message: 'Bitte wähle zuerst einen Kanal aus.' });
+
+    const channel = discordGuild.channels.cache.get(channelId) ||
+      await discordGuild.channels.fetch(channelId).catch(() => null);
+    const me = discordGuild.members.me || await discordGuild.members.fetchMe().catch(() => null);
+    const allowedType = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+
+    if (!allowedType || !botCanSend(channel, me) || typeof channel.send !== 'function') {
+      return res.status(400).json({
+        error: 'channel_not_writable',
+        message: 'Der Bot kann in diesem Kanal nicht schreiben.'
+      });
+    }
+
+    const cooldownKey = `${req.session.user.id}:${discordGuild.id}`;
+    const now = Date.now();
+    const lastSentAt = testMessageCooldowns.get(cooldownKey) || 0;
+    const remaining = TEST_MESSAGE_COOLDOWN_MS - (now - lastSentAt);
+
+    if (remaining > 0) {
+      return res.status(429).json({
+        error: 'test_message_cooldown',
+        message: `Bitte warte noch ${Math.ceil(remaining / 1000)} Sekunde(n).`
+      });
+    }
+
+    try {
+      const message = await channel.send({
+        content: '✅ **RAKU Bot Test erfolgreich**\nVerbindung und Schreibrechte für diesen Kanal funktionieren.',
+        allowedMentions: { parse: [] }
+      });
+      testMessageCooldowns.set(cooldownKey, now);
+      console.log(`[TEST] Test message sent to #${channel.name} in ${discordGuild.name} by dashboard user ${req.session.user.id}`);
+      res.json({ ok: true, channelId: channel.id, channelName: channel.name, messageId: message.id });
+    } catch (error) {
+      console.warn(`[TEST] Could not send test message in ${discordGuild.name}: ${error.message}`);
+      res.status(500).json({ error: 'send_failed', message: 'Die Testnachricht konnte nicht gesendet werden.' });
+    }
   });
 
   app.patch('/api/guilds/:guildId/settings', requireAuth, requireGuildAccess, (req, res) => {
