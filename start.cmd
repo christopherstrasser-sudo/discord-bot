@@ -33,6 +33,12 @@ if not exist ".env" (
   exit /b 0
 )
 
+findstr /B /C:"PUBLIC_BASE_URL=http://localhost:3000" ".env" >nul 2>&1
+if not errorlevel 1 (
+  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$p='.env'; $c=[IO.File]::ReadAllText($p); $c=$c.Replace('PUBLIC_BASE_URL=http://localhost:3000','PUBLIC_BASE_URL=http://31.70.115.79:3000'); [IO.File]::WriteAllText($p,$c,(New-Object Text.UTF8Encoding($false)))" >nul 2>&1
+  echo [INFO] Updated PUBLIC_BASE_URL to http://31.70.115.79:3000
+)
+
 if not exist "node_modules\" (
   echo [INFO] Installing dependencies...
   call npm install
