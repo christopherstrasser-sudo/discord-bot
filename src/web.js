@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
-const { ChannelType } = require('discord.js');
+const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const config = require('./config');
 const { client } = require('./bot');
 const { getGuildSettings, updateGuildSettings } = require('./store');
@@ -27,6 +27,15 @@ function avatarUrl(user) {
 function guildIconUrl(guild) {
   if (!guild.icon) return null;
   return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`;
+}
+
+function botCanSend(channel, me) {
+  if (!me || !channel) return false;
+  const permissions = channel.permissionsFor(me);
+  return Boolean(
+    permissions?.has(PermissionFlagsBits.ViewChannel) &&
+    permissions?.has(PermissionFlagsBits.SendMessages)
+  );
 }
 
 async function discordRequest(pathname, accessToken) {
@@ -84,6 +93,7 @@ function requireGuildAccess(req, res, next) {
 function sanitizeSettingsPatch(body, discordGuild) {
   const current = getGuildSettings(discordGuild.id);
   const patch = {};
+  const me = discordGuild.members.me;
 
   if (body?.welcome && typeof body.welcome === 'object') {
     const enabled = Boolean(body.welcome.enabled);
@@ -95,8 +105,10 @@ function sanitizeSettingsPatch(body, discordGuild) {
 
     if (channelId) {
       const channel = discordGuild.channels.cache.get(channelId);
-      const allowed = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
-      if (!allowed) throw new Error('Der ausgewählte Welcome-Kanal ist ungültig.');
+      const allowedType = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+      if (!allowedType || !botCanSend(channel, me)) {
+        throw new Error('Der Bot kann in diesem Welcome-Kanal nicht schreiben. Prüfe die Kanalrechte.');
+      }
     }
 
     patch.welcome = { enabled, channelId, message };
@@ -107,10 +119,12 @@ function sanitizeSettingsPatch(body, discordGuild) {
     const roleId = String(body.autorole.roleId || '').trim();
 
     if (enabled && !roleId) throw new Error('Für Auto-Role muss eine Rolle ausgewählt sein.');
+    if (enabled && !me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      throw new Error('Dem Bot fehlt die Berechtigung „Rollen verwalten“.');
+    }
 
     if (roleId) {
       const role = discordGuild.roles.cache.get(roleId);
-      const me = discordGuild.members.me;
       const manageable = role && !role.managed && role.id !== discordGuild.id && me && role.position < me.roles.highest.position;
       if (!manageable) throw new Error('Diese Rolle kann der Bot nicht vergeben. Prüfe die Rollen-Hierarchie.');
     }
@@ -126,8 +140,10 @@ function sanitizeSettingsPatch(body, discordGuild) {
 
     if (channelId) {
       const channel = discordGuild.channels.cache.get(channelId);
-      const allowed = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
-      if (!allowed) throw new Error('Der ausgewählte Log-Kanal ist ungültig.');
+      const allowedType = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+      if (!allowedType || !botCanSend(channel, me)) {
+        throw new Error('Der Bot kann in diesem Log-Kanal nicht schreiben. Prüfe die Kanalrechte.');
+      }
     }
 
     patch.logging = { enabled, channelId };
@@ -157,8 +173,13 @@ function dashboardPayload(sessionGuildData) {
     };
   }
 
+  const me = discordGuild.members.me;
+
   const channels = discordGuild.channels.cache
-    .filter(channel => [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type))
+    .filter(channel =>
+      [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type) &&
+      botCanSend(channel, me)
+    )
     .map(channel => ({
       id: channel.id,
       name: channel.name,
@@ -167,17 +188,19 @@ function dashboardPayload(sessionGuildData) {
     }))
     .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, 'de'));
 
-  const me = discordGuild.members.me;
+  const canManageRoles = Boolean(me?.permissions.has(PermissionFlagsBits.ManageRoles));
   const highestBotRole = me?.roles.highest.position ?? 0;
-  const roles = discordGuild.roles.cache
-    .filter(role => role.id !== discordGuild.id && !role.managed && role.position < highestBotRole)
-    .map(role => ({
-      id: role.id,
-      name: role.name,
-      color: role.hexColor,
-      position: role.position
-    }))
-    .sort((a, b) => b.position - a.position);
+  const roles = canManageRoles
+    ? discordGuild.roles.cache
+        .filter(role => role.id !== discordGuild.id && !role.managed && role.position < highestBotRole)
+        .map(role => ({
+          id: role.id,
+          name: role.name,
+          color: role.hexColor,
+          position: role.position
+        }))
+        .sort((a, b) => b.position - a.position)
+    : [];
 
   return {
     guild: {
@@ -187,6 +210,10 @@ function dashboardPayload(sessionGuildData) {
       memberCount: discordGuild.memberCount,
       owner: Boolean(sessionGuildData.owner),
       botInstalled
+    },
+    capabilities: {
+      canManageRoles,
+      writableChannels: channels.length
     },
     settings: getGuildSettings(discordGuild.id),
     channels,

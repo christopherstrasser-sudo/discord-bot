@@ -4,7 +4,7 @@ Multi-user Discord bot with a web dashboard for per-server configuration.
 
 ## Current milestone
 
-Version `0.1.0` contains the first working foundation:
+Version `0.2.0` contains:
 
 - Discord bot connection via `discord.js`
 - Express web dashboard
@@ -12,6 +12,11 @@ Version `0.1.0` contains the first working foundation:
 - Only guilds manageable by the logged-in user are shown
 - Bot installation link per guild
 - Detection whether the bot is already installed on a guild
+- Persistent per-guild settings
+- Welcome module
+- Auto-Role module
+- Server logging configuration foundation
+- Custom Commands module foundation
 - Windows start wrapper
 
 ## Requirements
@@ -21,13 +26,35 @@ Version `0.1.0` contains the first working foundation:
 
 ## Discord application setup
 
-In the Discord Developer Portal configure the OAuth2 redirect URL:
+OAuth2 redirect URL:
 
 ```text
-http://localhost:3000/auth/discord/callback
+http://31.70.115.79:3000/auth/discord/callback
 ```
 
-For a public installation replace `PUBLIC_BASE_URL` in `.env` with the public HTTPS URL and add the matching callback URL in Discord.
+For the website login use the scopes:
+
+```text
+identify
+guilds
+```
+
+For server installation use:
+
+```text
+bot
+applications.commands
+```
+
+### Required Gateway Intent
+
+The Welcome and Auto-Role modules react to new members joining a server. Therefore the Discord application must have this privileged intent enabled:
+
+```text
+Developer Portal -> Bot -> Privileged Gateway Intents -> Server Members Intent = ON
+```
+
+The bot requests `Guilds` and `GuildMembers` at runtime. If Server Members Intent is disabled in the Developer Portal, Discord will reject the gateway connection after the next restart.
 
 ## First start on Windows
 
@@ -37,31 +64,36 @@ The Dev Bridge keeps the repository in:
 C:\Discord-Bot
 ```
 
-Then run:
+Run:
 
 ```text
 C:\Discord-Bot\start.cmd
 ```
 
-On first start the script creates `.env` and opens it in Notepad. Fill in:
+The local `.env` contains the Discord credentials and is intentionally ignored by Git.
 
-```env
-DISCORD_CLIENT_ID=
-DISCORD_CLIENT_SECRET=
-DISCORD_BOT_TOKEN=
-SESSION_SECRET=
-```
-
-Then run `start.cmd` again. Dependencies are installed automatically on the first real start.
-
-Dashboard default URL:
+Dashboard:
 
 ```text
-http://localhost:3000
+http://31.70.115.79:3000
 ```
 
 Health endpoint:
 
 ```text
-http://localhost:3000/health
+http://31.70.115.79:3000/health
 ```
+
+## Welcome placeholders
+
+The Welcome message currently supports:
+
+```text
+{user}
+{username}
+{displayName}
+{server}
+{memberCount}
+```
+
+`{user}` creates a safe mention of the joining member. Other mentions from custom text are not automatically expanded.
