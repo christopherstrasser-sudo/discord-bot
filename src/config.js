@@ -10,7 +10,7 @@ function required(name) {
 
 const config = {
   port: Number(process.env.PORT || 3000),
-  publicBaseUrl: (process.env.PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  publicBaseUrl: (process.env.PUBLIC_BASE_URL || 'http://31.70.115.79:3000').replace(/\/$/, ''),
   discord: {
     clientId: required('DISCORD_CLIENT_ID'),
     clientSecret: required('DISCORD_CLIENT_SECRET'),
