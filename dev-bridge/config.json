@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/christopherstrasser-sudo/discord-bot.git",
+  "branch": "main",
+  "targetPath": "C:\\Discord-Bot",
+  "pollSeconds": 15
+}
