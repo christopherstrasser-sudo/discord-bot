@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAKU Discord Bot</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">RAKU SYSTEMS</div>
+        <h1>Discord Bot</h1>
+      </div>
+      <div id="userArea"></div>
+    </header>
+
+    <section id="loggedOut" class="hero hidden">
+      <div class="hero-copy">
+        <span class="badge">Multi-Server Dashboard</span>
+        <h2>Dein Discord.<br>Deine Regeln.</h2>
+        <p>Melde dich mit Discord an, wähle einen Server und konfiguriere den Bot bequem im Browser.</p>
+        <a class="button primary" href="/auth/discord">Mit Discord anmelden</a>
+      </div>
+      <div class="hero-card">
+        <div class="status-dot"></div>
+        <span>Bot & Dashboard bereit</span>
+      </div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div class="section-heading">
+        <div>
+          <span class="badge">Dashboard</span>
+          <h2>Deine Server</h2>
+          <p>Du siehst nur Server, die du verwalten darfst.</p>
+        </div>
+      </div>
+      <div id="guildGrid" class="guild-grid"></div>
+      <div id="emptyState" class="empty hidden">Keine verwaltbaren Discord-Server gefunden.</div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
