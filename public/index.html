@@ -3,51 +3,90 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RAKU Discord Bot</title>
-  <link rel="stylesheet" href="/styles.css">
+  <meta name="color-scheme" content="dark">
+  <title>RAKU Discord Control</title>
+  <link rel="stylesheet" href="/styles.css?v=030">
 </head>
 <body>
-  <main class="shell">
+  <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="/">
-        <div class="eyebrow">RAKU SYSTEMS</div>
-        <h1>Discord Bot</h1>
+      <a class="brand" href="/" aria-label="RAKU Discord Control">
+        <div class="brand-mark">R</div>
+        <div class="brand-copy">
+          <span>RAKU SYSTEMS</span>
+          <strong>Discord Control</strong>
+        </div>
       </a>
-      <div id="userArea"></div>
+
+      <div id="globalStatus" class="global-status" aria-live="polite">
+        <i class="status-light"></i>
+        <span>System wird geprüft</span>
+      </div>
+
+      <div id="userArea" class="user-area"></div>
     </header>
 
-    <section id="loggedOut" class="hero hidden">
-      <div class="hero-copy">
-        <span class="badge">Multi-Server Dashboard</span>
-        <h2>Dein Discord.<br>Deine Regeln.</h2>
-        <p>Melde dich mit Discord an, wähle einen Server und konfiguriere den Bot bequem im Browser.</p>
-        <a class="button primary" href="/auth/discord">Mit Discord anmelden</a>
-      </div>
-      <div class="hero-card">
-        <div class="status-dot"></div>
-        <span>Bot & Dashboard bereit</span>
-      </div>
-    </section>
-
-    <section id="serverList" class="hidden page-section">
-      <div class="section-heading">
-        <div>
-          <span class="badge">Dashboard</span>
-          <h2>Deine Server</h2>
-          <p>Du siehst nur Server, die du verwalten darfst.</p>
+    <main class="content-shell">
+      <section id="loggedOut" class="login-view hidden">
+        <div class="login-panel">
+          <div class="product-pill"><span></span> Multi-Server Control Center</div>
+          <h1>Ein Dashboard.<br>Jeder Discord-Server.</h1>
+          <p>Bot installieren, Module konfigurieren und Server zentral verwalten. Schnell, sauber und ohne Discord-IDs per Hand zu kopieren.</p>
+          <div class="login-actions">
+            <a class="button primary large" href="/auth/discord">Mit Discord anmelden</a>
+            <span>OAuth · nur verwaltbare Server</span>
+          </div>
         </div>
-      </div>
-      <div id="guildGrid" class="guild-grid"></div>
-      <div id="emptyState" class="empty hidden">Keine verwaltbaren Discord-Server gefunden.</div>
-    </section>
 
-    <section id="guildDashboard" class="hidden guild-dashboard page-section">
-      <div id="guildDashboardContent"></div>
-    </section>
-  </main>
+        <div class="login-status-card">
+          <div class="status-card-head">
+            <span class="mini-label">SYSTEMSTATUS</span>
+            <span class="live-badge"><i></i> LIVE</span>
+          </div>
+          <div class="status-row"><span>Dashboard</span><strong>Bereit</strong></div>
+          <div class="status-row"><span>Discord OAuth</span><strong>Bereit</strong></div>
+          <div class="status-row"><span>Multi-Server</span><strong>Aktiv</strong></div>
+          <div class="status-foot">RAKU Discord Control · v0.3</div>
+        </div>
+      </section>
 
-  <div id="toastHost" class="toast-host"></div>
-  <script src="/app.js"></script>
-  <script src="/test-message.js"></script>
+      <section id="serverList" class="hidden server-view">
+        <div class="page-title-row">
+          <div>
+            <span class="section-kicker">CONTROL CENTER</span>
+            <h1>Deine Server</h1>
+            <p>Alle Discord-Server, die du verwalten darfst, an einem Ort.</p>
+          </div>
+          <div id="serverStats" class="summary-strip"></div>
+        </div>
+
+        <div class="server-toolbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input id="guildSearch" type="search" placeholder="Server suchen …" autocomplete="off">
+          </label>
+          <div id="guildFilters" class="filter-group">
+            <button class="filter-button active" data-filter="all">Alle</button>
+            <button class="filter-button" data-filter="installed">Bot aktiv</button>
+            <button class="filter-button" data-filter="missing">Bot fehlt</button>
+          </div>
+        </div>
+
+        <div id="guildGrid" class="guild-grid"></div>
+        <div id="emptyState" class="empty hidden">
+          <strong>Keine passenden Server gefunden.</strong>
+          <span>Ändere die Suche oder den Filter.</span>
+        </div>
+      </section>
+
+      <section id="guildDashboard" class="hidden guild-dashboard">
+        <div id="guildDashboardContent"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+  <script src="/app.js?v=030"></script>
+  <script src="/test-message.js?v=030"></script>
 </body>
 </html>
