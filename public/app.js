@@ -140,7 +140,7 @@ function moduleCard({ id, icon, title, description, enabled, body, state = 'Bere
 }
 
 function renderGuildDashboardContent(data) {
-  const { guild, settings, channels, roles } = data;
+  const { guild, settings, channels, roles, capabilities = {} } = data;
   const welcomeOptions = channelOptions(channels, settings.welcome.channelId);
   const logOptions = channelOptions(channels, settings.logging.channelId);
   const autoRoleOptions = roleOptions(roles, settings.autorole.roleId);
@@ -156,10 +156,11 @@ function renderGuildDashboardContent(data) {
         <label class="field">
           <span>Kanal</span>
           <select id="welcomeChannel">${welcomeOptions}</select>
+          <small>${channels.length ? 'Es werden nur Kanäle angezeigt, in denen der Bot schreiben kann.' : 'Der Bot hat aktuell keinen beschreibbaren Textkanal.'}</small>
         </label>
         <div class="field hint-field">
           <span>Variablen</span>
-          <div class="variable-list"><code>{user}</code><code>{server}</code></div>
+          <div class="variable-list"><code>{user}</code><code>{username}</code><code>{displayName}</code><code>{server}</code><code>{memberCount}</code></div>
         </div>
       </div>
       <label class="field">
@@ -178,7 +179,9 @@ function renderGuildDashboardContent(data) {
       <label class="field">
         <span>Rolle für neue Mitglieder</span>
         <select id="autoroleRole">${autoRoleOptions}</select>
-        <small>Es werden nur Rollen angezeigt, die unter der Bot-Rolle liegen und vom Bot vergeben werden können.</small>
+        <small>${capabilities.canManageRoles === false
+          ? 'Dem Bot fehlt aktuell die Berechtigung „Rollen verwalten“. '
+          : 'Es werden nur Rollen angezeigt, die unter der Bot-Rolle liegen und vom Bot vergeben werden können.'}</small>
       </label>`
   });
 
