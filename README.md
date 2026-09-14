@@ -4,7 +4,7 @@ Multi-user Discord bot with a web dashboard for per-server configuration.
 
 ## Current milestone
 
-Version `0.2.0` contains:
+Version `0.3.0` contains the working multi-server foundation and the redesigned Discord-inspired control center:
 
 - Discord bot connection via `discord.js`
 - Express web dashboard
@@ -12,51 +12,33 @@ Version `0.2.0` contains:
 - Only guilds manageable by the logged-in user are shown
 - Bot installation link per guild
 - Detection whether the bot is already installed on a guild
-- Persistent per-guild settings
-- Welcome module
-- Auto-Role module
-- Server logging configuration foundation
-- Custom Commands module foundation
+- Per-server settings for Welcome, Auto-Role, Logging and Custom Commands
+- Live Welcome preview and clickable message variables
+- Writable-channel and manageable-role capability checks
+- Test-message tool per guild
 - Windows start wrapper
 
 ## Requirements
 
 - Node.js 20+
 - A Discord application with a bot user
+- `SERVER MEMBERS INTENT` enabled in Discord Developer Portal for Welcome / Auto-Role
 
 ## Discord application setup
 
-OAuth2 redirect URL:
+OAuth2 redirect URL for the current server deployment:
 
 ```text
 http://31.70.115.79:3000/auth/discord/callback
 ```
 
-For the website login use the scopes:
+The same base URL must be configured in `.env`:
 
-```text
-identify
-guilds
+```env
+PUBLIC_BASE_URL=http://31.70.115.79:3000
 ```
 
-For server installation use:
-
-```text
-bot
-applications.commands
-```
-
-### Required Gateway Intent
-
-The Welcome and Auto-Role modules react to new members joining a server. Therefore the Discord application must have this privileged intent enabled:
-
-```text
-Developer Portal -> Bot -> Privileged Gateway Intents -> Server Members Intent = ON
-```
-
-The bot requests `Guilds` and `GuildMembers` at runtime. If Server Members Intent is disabled in the Developer Portal, Discord will reject the gateway connection after the next restart.
-
-## First start on Windows
+## Windows start
 
 The Dev Bridge keeps the repository in:
 
@@ -64,13 +46,20 @@ The Dev Bridge keeps the repository in:
 C:\Discord-Bot
 ```
 
-Run:
+Start with:
 
 ```text
 C:\Discord-Bot\start.cmd
 ```
 
-The local `.env` contains the Discord credentials and is intentionally ignored by Git.
+Required local `.env` values:
+
+```env
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+DISCORD_BOT_TOKEN=
+SESSION_SECRET=
+```
 
 Dashboard:
 
@@ -83,17 +72,3 @@ Health endpoint:
 ```text
 http://31.70.115.79:3000/health
 ```
-
-## Welcome placeholders
-
-The Welcome message currently supports:
-
-```text
-{user}
-{username}
-{displayName}
-{server}
-{memberCount}
-```
-
-`{user}` creates a safe mention of the joining member. Other mentions from custom text are not automatically expanded.
