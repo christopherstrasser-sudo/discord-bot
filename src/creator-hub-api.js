@@ -54,19 +54,45 @@ function validTime(value, fallback) {
   return raw;
 }
 
+function normalizeYouTubeSource(value) {
+  let source = str(value, 200);
+  if (!source) return '';
+
+  if (/^(?:https?:\/\/)?(?:www\.)?youtube\.com\//i.test(source)) {
+    try {
+      const url = new URL(/^https?:\/\//i.test(source) ? source : `https://${source}`);
+      const path = decodeURIComponent(url.pathname || '');
+      const channelMatch = path.match(/^\/channel\/(UC[A-Za-z0-9_-]{20,40})(?:\/|$)/i);
+      if (channelMatch) return channelMatch[1];
+      const handleMatch = path.match(/^\/@([^/?#]+)(?:\/|$)/u);
+      if (handleMatch) source = `@${handleMatch[1]}`;
+      else throw new Error('unsupported_path');
+    } catch {
+      throw new Error('YouTube: Bitte @Handle oder eine youtube.com/@handle URL eintragen.');
+    }
+  }
+
+  if (/^UC[A-Za-z0-9_-]{20,40}$/.test(source)) return source;
+  if (!source.startsWith('@')) source = `@${source}`;
+
+  const handle = source.slice(1).trim();
+  if (!handle || handle.length > 100 || /[\s/?#]/u.test(handle)) {
+    throw new Error('YouTube: Bitte einen gültigen @Handle eintragen, z. B. @rakulein.');
+  }
+  return `@${handle}`;
+}
+
 function normalizeSource(platform, value) {
+  if (platform === 'youtube') return normalizeYouTubeSource(value);
   const source = str(value, 100).replace(platform === 'tiktok' ? /^@/ : /$^/, '').trim();
   if (!source) return '';
   if (platform === 'twitch' && !/^[A-Za-z0-9_]{3,25}$/.test(source)) {
     throw new Error('Twitch: Bitte den Kanalnamen ohne URL eintragen.');
   }
-  if (platform === 'youtube' && !/^UC[A-Za-z0-9_-]{20,40}$/.test(source)) {
-    throw new Error('YouTube: Bitte eine Channel-ID eintragen, die mit UC beginnt.');
-  }
   if (platform === 'tiktok' && !/^[A-Za-z0-9._]{2,30}$/.test(source)) {
     throw new Error('TikTok: Bitte den @Handle ohne URL eintragen.');
   }
-  return platform === 'youtube' ? source : source.toLowerCase();
+  return source.toLowerCase();
 }
 
 function sanitizeRule(raw, index) {
