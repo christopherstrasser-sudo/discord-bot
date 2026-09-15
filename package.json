@@ -1,6 +1,6 @@
 {
   "name": "raku-discord-bot",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "private": true,
   "description": "Multi-user Discord bot with web dashboard",
   "main": "src/index.js",
@@ -15,6 +15,7 @@
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "express-session": "^1.18.1"
+    "express-session": "^1.18.1",
+    "piratetok-live-js": "^0.2.0"
   }
 }
