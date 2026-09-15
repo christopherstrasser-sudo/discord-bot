@@ -56,6 +56,7 @@ function validTime(value, fallback) {
 
 function normalizeSource(platform, value) {
   const source = str(value, 100).replace(platform === 'tiktok' ? /^@/ : /$^/, '').trim();
+  if (!source) return '';
   if (platform === 'twitch' && !/^[A-Za-z0-9_]{3,25}$/.test(source)) {
     throw new Error('Twitch: Bitte den Kanalnamen ohne URL eintragen.');
   }
@@ -79,7 +80,7 @@ function sanitizeRule(raw, index) {
 
   return {
     id: safeId(raw?.id),
-    enabled: raw?.enabled !== false,
+    enabled: raw?.enabled === true,
     name: str(raw?.name, 80) || `Creator Regel ${index + 1}`,
     platform,
     source: normalizeSource(platform, raw?.source),
@@ -106,14 +107,19 @@ function sanitizeRule(raw, index) {
   };
 }
 
-function validateRuleAgainstGuild(rule, guild) {
-  if (!rule.channelId) throw new Error(`${rule.name}: Zielkanal fehlt.`);
-  const channel = guild.channels.cache.get(rule.channelId);
+function validateRuleAgainstGuild(rule, guild, requireComplete = false) {
   const me = guild.members.me;
-  const perms = channel?.permissionsFor?.(me);
-  const validChannel = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
-  if (!validChannel || !perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.SendMessages) || !perms?.has(PermissionFlagsBits.EmbedLinks)) {
-    throw new Error(`${rule.name}: Bot kann im Zielkanal nicht mit Embeds schreiben.`);
+  if (requireComplete || rule.enabled) {
+    if (!rule.source) throw new Error(`${rule.name}: Creator-Quelle fehlt.`);
+    if (!rule.channelId) throw new Error(`${rule.name}: Zielkanal fehlt.`);
+  }
+  if (rule.channelId) {
+    const channel = guild.channels.cache.get(rule.channelId);
+    const perms = channel?.permissionsFor?.(me);
+    const validChannel = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+    if (!validChannel || !perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.SendMessages) || !perms?.has(PermissionFlagsBits.EmbedLinks)) {
+      throw new Error(`${rule.name}: Bot kann im Zielkanal nicht mit Embeds schreiben.`);
+    }
   }
   if (rule.pingRoleId) {
     const role = guild.roles.cache.get(rule.pingRoleId);
@@ -132,7 +138,7 @@ function sanitizeConfig(input, guild) {
   for (const rule of rules) {
     if (ids.has(rule.id)) rule.id = safeId('', 'rule');
     ids.add(rule.id);
-    validateRuleAgainstGuild(rule, guild);
+    validateRuleAgainstGuild(rule, guild, false);
   }
   return {
     enabled: Boolean(input?.enabled),
@@ -217,6 +223,7 @@ function attachCreatorHubApi(app) {
       const config = getCreatorConfig(guild.id);
       const rule = config.rules.find(item => item.id === req.params.ruleId);
       if (!rule) throw new Error('Creator-Regel nicht gefunden.');
+      if (!rule.source) throw new Error('Trage zuerst eine Creator-Quelle ein und speichere sie.');
       const snapshot = await checkCreatorRule(rule);
       res.json({ ok: true, snapshot: publicSnapshot(snapshot), runtime: getRuntimeStatus() });
     } catch (error) {
@@ -230,7 +237,7 @@ function attachCreatorHubApi(app) {
       const config = getCreatorConfig(guild.id);
       const rule = config.rules.find(item => item.id === req.params.ruleId);
       if (!rule) throw new Error('Creator-Regel nicht gefunden.');
-      validateRuleAgainstGuild(rule, guild);
+      validateRuleAgainstGuild(rule, guild, true);
       const result = await sendCreatorTest(client, guild.id, rule);
       res.json({ ok: true, ...result, history: getCreatorHistory(guild.id, 50) });
     } catch (error) {
