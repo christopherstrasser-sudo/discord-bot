@@ -39,9 +39,13 @@ if not errorlevel 1 (
   echo [INFO] Updated PUBLIC_BASE_URL to http://31.70.115.79:3000
 )
 
-if not exist "node_modules\" (
-  echo [INFO] Installing dependencies...
-  call npm install
+set NEED_NPM_INSTALL=0
+if not exist "node_modules\" set NEED_NPM_INSTALL=1
+if not exist "node_modules\piratetok-live-js\package.json" set NEED_NPM_INSTALL=1
+
+if "%NEED_NPM_INSTALL%"=="1" (
+  echo [INFO] Installing/updating dependencies...
+  call npm install --no-audit --no-fund
   if errorlevel 1 (
     echo [WARN] npm install failed. Check the network connection and try again.
     pause
