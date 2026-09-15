@@ -32,7 +32,9 @@ function clampPollSeconds() {
 }
 
 function sourceOf(rule) {
-  return String(rule?.source || '').trim().replace(rule?.platform === 'tiktok' ? /^@/ : /$^/, '').toLowerCase();
+  const raw = String(rule?.source || '').trim();
+  if (rule?.platform === 'youtube') return raw;
+  return (rule?.platform === 'tiktok' ? raw.replace(/^@/, '') : raw).toLowerCase();
 }
 
 function sourceKey(rule) {
