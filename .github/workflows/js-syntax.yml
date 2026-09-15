@@ -34,8 +34,9 @@ jobs:
           SESSION_SECRET: ci-session-secret
           PUBLIC_BASE_URL: http://127.0.0.1:3000
         run: |
-          node -e "require('./src/creator-store'); require('./src/creator-providers'); require('./src/creator-tiktok-provider'); require('./src/tiktok-collector'); require('./src/creator-tiktok-provider-v097-patch'); require('./src/creator-runtime'); require('./src/creator-hub-api'); require('./src/ticket-store'); require('./src/ticket-studio-runtime'); require('./src/ticket-studio-api'); require('./src/startup-utils'); console.log('Critical modules loaded successfully')"
+          node -e "require('./src/creator-store'); require('./src/creator-providers'); require('./src/creator-tiktok-provider'); require('./src/tiktok-collector'); require('./src/tiktok-signature-engine'); require('./src/creator-tiktok-provider-v097-patch'); require('./src/creator-runtime'); require('./src/creator-hub-api'); require('./src/ticket-store'); require('./src/ticket-studio-runtime'); require('./src/ticket-studio-api'); require('./src/startup-utils'); console.log('Critical modules loaded successfully')"
           node -e "import('piratetok-live-js').then(m=>{if(typeof m.checkOnline!=='function'||typeof m.fetchRoomInfo!=='function'||typeof m.randomUa!=='function')throw new Error('PirateTok exports missing'); console.log('PirateTok exports verified')})"
           node -e "import('puppeteer-core').then(m=>{if(!m.default&&!m.launch)throw new Error('Puppeteer Core export missing'); console.log('Puppeteer Core verified')})"
+          node -e "const p=require('tiktok-signature/package.json'); if(p.version!=='4.3.6') throw new Error('Unexpected tiktok-signature version'); console.log('TikTok Signature package verified', p.version)"
       - name: Run automated tests
         run: node --test tests/*.test.js
