@@ -127,6 +127,9 @@ async function ensureEngine(deps) {
       engineHealth.ready = false;
       engineHealth.lastError = String(error?.message || error);
     });
+    // Der lokale Signer darf den Discord-Bot beim Beenden nicht festhalten.
+    // Läuft er weiter, kann der nächste Bot-Start dieselbe warme Guest-Session wiederverwenden.
+    child.unref();
 
     return waitUntilReady(child);
   })();
@@ -143,7 +146,8 @@ async function ensureEngine(deps) {
 
 function commonParams(extra = {}) {
   const params = new URLSearchParams({
-    WebIdLastTime: String(Math.floor(Date.now() / 1000)),
+    // Gleiche Fingerprint-Werte wie die lokale Signature Engine / deren getestete Beispiele.
+    WebIdLastTime: String(Date.now()),
     aid: '1988',
     app_language: 'en',
     app_name: 'tiktok_web',
@@ -166,7 +170,7 @@ function commonParams(extra = {}) {
     region: 'US',
     screen_height: '1080',
     screen_width: '1920',
-    tz_name: 'Europe/Berlin',
+    tz_name: 'America/New_York',
     webcast_language: 'en',
     ...extra
   });
