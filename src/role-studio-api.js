@@ -177,6 +177,75 @@ function validatePublishPanel(panel, guild, me) {
   }
 }
 
+function emojiCodePoints(value) {
+  return Array.from(String(value || ''))
+    .map(char => `U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`)
+    .join(' ');
+}
+
+function rejectedEmojiItemIndex(error, panel) {
+  const message = String(error?.message || '');
+  if (!message.includes('COMPONENT_INVALID_EMOJI')) return null;
+
+  if (panel.mode === 'buttons') {
+    const match = message.match(/components\[(\d+)\]\.components\[(\d+)\]\.emoji(?:\.name)?/i);
+    if (!match) return null;
+    return Number(match[1]) * 5 + Number(match[2]);
+  }
+
+  if (panel.mode === 'select') {
+    const match = message.match(/components\[(\d+)\]\.components\[(\d+)\]\.options\[(\d+)\]\.emoji(?:\.name)?/i);
+    if (!match) return null;
+    const optionIndex = Number(match[3]);
+    const itemIndex = panel.allowRemove !== false ? optionIndex - 1 : optionIndex;
+    return itemIndex >= 0 ? itemIndex : null;
+  }
+
+  return null;
+}
+
+function clearItemEmoji(panel, itemIndex) {
+  return {
+    ...panel,
+    items: panel.items.map((item, index) => index === itemIndex ? { ...item, emoji: '' } : item)
+  };
+}
+
+async function deliverComponentPanel(channel, panel, existingMessage = null) {
+  let safePanel = panel;
+  const warnings = [];
+
+  for (let attempt = 0; attempt <= panel.items.length; attempt += 1) {
+    const payload = buildPanelPayload(safePanel);
+
+    try {
+      if (existingMessage) {
+        await existingMessage.edit(payload);
+        return { message: existingMessage, panel: safePanel, warnings };
+      }
+
+      const message = await channel.send(payload);
+      return { message, panel: safePanel, warnings };
+    } catch (error) {
+      const itemIndex = rejectedEmojiItemIndex(error, safePanel);
+      const item = Number.isInteger(itemIndex) ? safePanel.items[itemIndex] : null;
+
+      if (!item?.emoji) throw error;
+
+      const rejected = item.emoji;
+      console.warn(
+        `[ROLE STUDIO] Discord rejected emoji ${JSON.stringify(rejected)} ` +
+        `(${emojiCodePoints(rejected)}) for "${item.label}" in ${channel.guild.name}; retrying without it.`
+      );
+
+      warnings.push(`Emoji ${rejected} bei „${item.label}“ wurde von Discord nicht akzeptiert und entfernt.`);
+      safePanel = clearItemEmoji(safePanel, itemIndex);
+    }
+  }
+
+  throw new Error('Das Rollen-Panel konnte wegen ungültiger Emojis nicht veröffentlicht werden.');
+}
+
 async function removePublishedMessage(guild, panel) {
   if (!panel?.messageId || !panel?.publishedChannelId) return;
   const oldChannel = guild.channels.cache.get(panel.publishedChannelId) ||
@@ -213,22 +282,30 @@ async function publishPanel(guild, panel) {
     if (!role) throw new Error(`Die Rolle „${item.label}“ kann der Bot nicht mehr verwalten.`);
   }
 
-  const payload = buildPanelPayload(panel);
   let message = null;
+  let publishedPanel = panel;
+  let warnings = [];
 
-  if (panel.mode !== 'reactions' && panel.publishedMode === panel.mode && panel.messageId && panel.publishedChannelId === panel.channelId) {
-    message = await channel.messages.fetch(panel.messageId).catch(() => null);
-    if (message) {
-      await message.edit(payload);
+  if (panel.mode !== 'reactions') {
+    let existingMessage = null;
+
+    if (panel.publishedMode === panel.mode && panel.messageId && panel.publishedChannelId === panel.channelId) {
+      existingMessage = await channel.messages.fetch(panel.messageId).catch(() => null);
     }
-  }
 
-  if (!message) {
+    if (!existingMessage && panel.messageId) {
+      await removePublishedMessage(guild, panel);
+    }
+
+    const delivered = await deliverComponentPanel(channel, panel, existingMessage);
+    message = delivered.message;
+    publishedPanel = delivered.panel;
+    warnings = delivered.warnings;
+  } else {
+    const payload = buildPanelPayload(panel);
     if (panel.messageId) await removePublishedMessage(guild, panel);
     message = await channel.send(payload);
-  }
 
-  if (panel.mode === 'reactions') {
     try {
       for (const item of panel.items) {
         await message.react(reactionToken(item.emoji));
@@ -240,11 +317,14 @@ async function publishPanel(guild, panel) {
   }
 
   return {
-    ...panel,
-    messageId: message.id,
-    publishedChannelId: channel.id,
-    publishedAt: new Date().toISOString(),
-    publishedMode: panel.mode
+    panel: {
+      ...publishedPanel,
+      messageId: message.id,
+      publishedChannelId: channel.id,
+      publishedAt: new Date().toISOString(),
+      publishedMode: panel.mode
+    },
+    warnings
   };
 }
 
@@ -294,7 +374,8 @@ function attachRoleStudioApi(app) {
       const index = panels.findIndex(panel => panel.id === req.params.panelId);
       if (index === -1) throw new Error('Dieses Rollen-Panel existiert nicht mehr.');
 
-      const published = await publishPanel(guild, panels[index]);
+      const result = await publishPanel(guild, panels[index]);
+      const published = result.panel;
       const nextPanels = panels.map((panel, panelIndex) => panelIndex === index ? published : panel);
       const next = updateGuildSettings(
         guild.id,
@@ -306,6 +387,7 @@ function attachRoleStudioApi(app) {
         ok: true,
         rolePanels: next.rolePanels,
         panel: published,
+        warnings: result.warnings,
         messageUrl: panelMessageUrl(guild.id, published)
       });
     } catch (error) {
