@@ -6,6 +6,7 @@ const { attachRoleStudioApi } = require('./role-studio-api');
 const { attachEmojiApi } = require('./emoji-api');
 const { attachTicketStudioApi } = require('./ticket-studio-api');
 const { attachTicketRuntime } = require('./ticket-studio-runtime');
+require('./creator-tiktok-provider-v097-patch');
 const { attachCreatorHubApi } = require('./creator-hub-api');
 const { startCreatorRuntime } = require('./creator-runtime');
 const { retryTransient, formatErrorDetails } = require('./startup-utils');
