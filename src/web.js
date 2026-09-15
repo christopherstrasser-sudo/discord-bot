@@ -92,6 +92,48 @@ function requireGuildAccess(req, res, next) {
   next();
 }
 
+function sanitizeCommandList(value) {
+  const commands = Array.isArray(value) ? value : [];
+  if (commands.length > 50) throw new Error('Es sind maximal 50 Custom Commands pro Server erlaubt.');
+
+  const seen = new Set();
+
+  return commands.map((item, index) => {
+    if (!item || typeof item !== 'object') {
+      throw new Error(`Command ${index + 1} ist ungültig.`);
+    }
+
+    let trigger = String(item.trigger || '').trim().toLowerCase();
+    if (trigger && !trigger.startsWith('!')) trigger = `!${trigger}`;
+
+    if (!/^![a-z0-9][a-z0-9_-]{0,31}$/.test(trigger)) {
+      throw new Error(`Command ${index + 1}: Verwende 1–32 Zeichen nach ! und nur a-z, 0-9, _ oder -.`);
+    }
+    if (seen.has(trigger)) throw new Error(`Der Command ${trigger} ist doppelt vorhanden.`);
+    seen.add(trigger);
+
+    const response = String(item.response || '').trim();
+    if (!response) throw new Error(`${trigger}: Die Antwort darf nicht leer sein.`);
+    if (response.length > 1800) throw new Error(`${trigger}: Die Antwort darf maximal 1800 Zeichen lang sein.`);
+
+    const cooldownSeconds = Number(item.cooldownSeconds ?? 0);
+    if (!Number.isInteger(cooldownSeconds) || cooldownSeconds < 0 || cooldownSeconds > 3600) {
+      throw new Error(`${trigger}: Cooldown muss zwischen 0 und 3600 Sekunden liegen.`);
+    }
+
+    const rawId = String(item.id || '').trim();
+    const id = /^[a-zA-Z0-9_-]{1,80}$/.test(rawId) ? rawId : crypto.randomUUID();
+
+    return {
+      id,
+      trigger,
+      response,
+      enabled: item.enabled !== false,
+      cooldownSeconds
+    };
+  });
+}
+
 function sanitizeSettingsPatch(body, discordGuild) {
   const current = getGuildSettings(discordGuild.id);
   const patch = {};
@@ -152,7 +194,14 @@ function sanitizeSettingsPatch(body, discordGuild) {
   }
 
   if (body?.customCommands && typeof body.customCommands === 'object') {
-    patch.customCommands = { enabled: Boolean(body.customCommands.enabled) };
+    const commands = body.customCommands.commands === undefined
+      ? (current.customCommands?.commands || [])
+      : sanitizeCommandList(body.customCommands.commands);
+
+    patch.customCommands = {
+      enabled: Boolean(body.customCommands.enabled),
+      commands
+    };
   }
 
   return patch;
@@ -229,7 +278,7 @@ function createWebApp() {
 
   if (isHttps) app.set('trust proxy', 1);
 
-  app.use(express.json({ limit: '64kb' }));
+  app.use(express.json({ limit: '256kb' }));
   app.use(session({
     name: 'raku.sid',
     secret: config.sessionSecret,
