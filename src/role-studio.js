@@ -15,6 +15,12 @@ const BUTTON_STYLES = {
   danger: ButtonStyle.Danger
 };
 
+function stripVariationSelectors(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[\uFE0E\uFE0F]/g, '');
+}
+
 function normalizeEmojiInput(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -32,20 +38,23 @@ function normalizeEmojiInput(value) {
     };
   }
 
-  const looksLikeUnicodeEmoji = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20E3]/u.test(raw);
+  const unicode = stripVariationSelectors(raw);
+  if (!unicode) return null;
+
+  const looksLikeUnicodeEmoji = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20E3]/u.test(unicode);
   if (!looksLikeUnicodeEmoji) return null;
 
   try {
     if (typeof Intl?.Segmenter === 'function') {
-      const segments = [...new Intl.Segmenter('und', { granularity: 'grapheme' }).segment(raw)];
+      const segments = [...new Intl.Segmenter('und', { granularity: 'grapheme' }).segment(unicode)];
       if (segments.length !== 1) return null;
     }
   } catch {}
 
   return {
-    raw,
+    raw: unicode,
     type: 'unicode',
-    component: { name: raw }
+    component: { name: unicode }
   };
 }
 
@@ -66,7 +75,7 @@ function emojiKeyFromConfig(value) {
 
 function emojiKeyFromReaction(reaction) {
   if (reaction?.emoji?.id) return `id:${reaction.emoji.id}`;
-  return reaction?.emoji?.name ? `name:${reaction.emoji.name}` : '';
+  return reaction?.emoji?.name ? `name:${stripVariationSelectors(reaction.emoji.name)}` : '';
 }
 
 function panelItems(panel) {
@@ -362,5 +371,6 @@ module.exports = {
   emojiKeyFromConfig,
   handleRoleInteraction,
   handleRoleReaction,
-  normalizeEmojiInput
+  normalizeEmojiInput,
+  stripVariationSelectors
 };

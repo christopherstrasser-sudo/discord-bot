@@ -33,9 +33,15 @@
     skinTonesLabel: 'Hauttöne'
   };
 
+  function normalizeEmoji(value) {
+    return String(value || '')
+      .normalize('NFC')
+      .replace(/[\uFE0E\uFE0F]/g, '');
+  }
+
   function setEmoji(value) {
     if (!activeInput) return;
-    activeInput.value = value || '';
+    activeInput.value = normalizeEmoji(value);
     activeInput.dispatchEvent(new Event('input', { bubbles: true }));
     activeInput.dispatchEvent(new Event('change', { bubbles: true }));
   }
@@ -48,7 +54,7 @@
   }
 
   function currentEmoji() {
-    return String(activeInput?.value || '').trim() || '—';
+    return normalizeEmoji(activeInput?.value || '').trim() || '—';
   }
 
   function buildShell() {
@@ -118,7 +124,7 @@
       host.innerHTML = '';
       picker = document.createElement('emoji-picker');
       picker.className = 'raku-emoji-picker';
-      picker.locale = 'de-x-raku-v074';
+      picker.locale = 'de-x-raku-v076';
       picker.dataSource = EMOJI_DATA_SOURCE;
       picker.i18n = i18n;
       picker.skinToneEmoji = '👍';
@@ -146,6 +152,13 @@
 
   async function openPicker(input) {
     activeInput = input;
+    const normalized = normalizeEmoji(input.value);
+    if (normalized !== input.value) {
+      input.value = normalized;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
     const shell = buildShell();
     shell.querySelector('[data-current-emoji]').textContent = currentEmoji();
     shell.classList.add('open');
