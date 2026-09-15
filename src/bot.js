@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 const config = require('./config');
 const { getGuildSettings } = require('./store');
+const { handleCustomCommand } = require('./custom-commands');
 const {
   logMemberJoin,
   logMemberLeave,
@@ -154,6 +155,7 @@ client.on(Events.GuildMemberAdd, async member => {
 
 client.on(Events.GuildMemberRemove, member => logMemberLeave(member));
 client.on(Events.GuildMemberUpdate, (oldMember, newMember) => logMemberUpdate(oldMember, newMember));
+client.on(Events.MessageCreate, message => handleCustomCommand(message));
 client.on(Events.MessageDelete, message => logMessageDelete(message));
 client.on(Events.MessageUpdate, (oldMessage, newMessage) => logMessageUpdate(oldMessage, newMessage));
 client.on(Events.GuildRoleCreate, role => logRoleCreate(role));
