@@ -2,21 +2,30 @@ const fs = require('fs');
 const path = require('path');
 
 const cacheDir = path.join(__dirname, '..', 'data');
-const cacheFile = path.join(cacheDir, 'emoji-data-de.json');
+const cacheFile = path.join(cacheDir, 'emoji-data-v1.8.0-de.json');
 const SOURCES = [
-  'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@1.8.0/de/emojibase/data.json',
-  'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@1.8.0/en/emojibase/data.json'
+  {
+    label: 'de/cldr',
+    url: 'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@1.8.0/de/cldr/data.json'
+  },
+  {
+    label: 'en/emojibase',
+    url: 'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@1.8.0/en/emojibase/data.json'
+  }
 ];
 
 let memoryCache = null;
 let pendingLoad = null;
 
 function validEmojiData(value) {
-  return Array.isArray(value) && value.length > 100 && value.some(item => item?.unicode);
+  return Array.isArray(value) &&
+    value.length > 100 &&
+    value.some(item => typeof item?.emoji === 'string' || typeof item?.unicode === 'string');
 }
 
 function readDiskCache() {
   if (memoryCache) return memoryCache;
+
   try {
     const parsed = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
     if (validEmojiData(parsed)) {
@@ -24,6 +33,7 @@ function readDiskCache() {
       return memoryCache;
     }
   } catch {}
+
   return null;
 }
 
@@ -48,23 +58,29 @@ async function fetchEmojiData() {
 
     for (const source of SOURCES) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
       try {
-        const response = await fetch(source, {
+        const response = await fetch(source.url, {
           signal: controller.signal,
-          headers: { 'User-Agent': 'RAKU-Discord-Bot/0.7.3' }
+          headers: { 'User-Agent': 'RAKU-Discord-Bot/0.7.4' }
         });
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const data = await response.json();
-        if (!validEmojiData(data)) throw new Error('Ungültige Emoji-Daten');
+        if (!validEmojiData(data)) {
+          const firstKeys = Array.isArray(data) && data[0] ? Object.keys(data[0]).slice(0, 8).join(', ') : 'n/a';
+          throw new Error(`Ungültige Emoji-Daten (erste Felder: ${firstKeys})`);
+        }
 
         memoryCache = data;
         writeDiskCache(data);
-        console.log(`[EMOJI] ${data.length} Emoji-Einträge gecacht.`);
+        console.log(`[EMOJI] ${data.length} Emoji-Einträge aus ${source.label} gecacht.`);
         return data;
       } catch (error) {
         lastError = error;
-        console.warn(`[EMOJI] Datenquelle fehlgeschlagen (${source}): ${error.message}`);
+        console.warn(`[EMOJI] Datenquelle fehlgeschlagen (${source.url}): ${error.message}`);
       } finally {
         clearTimeout(timeout);
       }

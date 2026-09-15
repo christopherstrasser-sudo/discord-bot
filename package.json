@@ -1,6 +1,6 @@
 {
   "name": "raku-discord-bot",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "private": true,
   "description": "Multi-user Discord bot with web dashboard",
   "main": "src/index.js",
