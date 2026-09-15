@@ -1,35 +1,53 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pickUpload, snapshotForTikTokRule } = require('../src/creator-tiktok-provider');
+const {
+  normalizeTikTokSource,
+  extractRehydrationJson,
+  parseProfileDocument,
+  pickLatestUploadFromItems,
+  snapshotForTikTokRule,
+  getTikTokProviderHealth
+} = require('../src/creator-tiktok-provider');
 
-test('normalizes latestUpload payloads', () => {
-  const result = pickUpload({
-    latestUpload: {
-      id: '7481234567890',
-      caption: 'Neues Video',
-      shareUrl: 'https://www.tiktok.com/@rakulein/video/7481234567890',
-      coverUrl: 'https://example.com/cover.jpg',
-      createTime: 1789470000,
-      viewCount: 321
-    }
-  }, 'rakulein');
+const fixture = `<!doctype html><html><body>
+<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">
+{"__DEFAULT_SCOPE__":{"webapp.user-detail":{"statusCode":0,"userInfo":{"user":{"uniqueId":"rakulein","nickname":"Rakulein","avatarLarger":"https://example.com/avatar.jpg"},"stats":{"videoCount":3}}},"webapp.user-post":{"itemList":[{"id":"700","desc":"Pinned old post","createTime":"1700000000","stats":{"playCount":10},"video":{"cover":"https://example.com/old.jpg"}},{"id":"999","desc":"Newest post","createTime":"1789470000","stats":{"playCount":321},"video":{"cover":"https://example.com/new.jpg"}},{"id":"800","desc":"Middle post","createTime":"1750000000","stats":{"playCount":22}}]}}}
+</script></body></html>`;
 
-  assert.equal(result.supported, true);
-  assert.equal(result.upload.id, '7481234567890');
-  assert.equal(result.upload.title, 'Neues Video');
-  assert.equal(result.upload.viewers, 321);
-  assert.match(result.upload.publishedAt, /^2026-/);
+test('normalizes TikTok handles and profile URLs', () => {
+  assert.equal(normalizeTikTokSource('@Rakulein'), 'rakulein');
+  assert.equal(normalizeTikTokSource('https://www.tiktok.com/@Rakulein'), 'rakulein');
+  assert.throws(() => normalizeTikTokSource('https://www.tiktok.com/video/123'), /@Handle/);
 });
 
-test('supports latestVideo alias and generated TikTok URL', () => {
-  const result = pickUpload({ latestVideo: { videoId: '123', description: 'Clip' } }, 'rakulein');
-  assert.equal(result.supported, true);
-  assert.equal(result.upload.url, 'https://www.tiktok.com/@rakulein/video/123');
+test('extracts TikTok rehydration JSON', () => {
+  const data = extractRehydrationJson(fixture);
+  assert.ok(data.__DEFAULT_SCOPE__['webapp.user-detail']);
 });
 
-test('distinguishes unsupported upload adapters from empty profiles', () => {
-  assert.deepEqual(pickUpload({}, 'rakulein'), { supported: false, upload: null });
-  assert.deepEqual(pickUpload({ capabilities: { upload: true }, latestUpload: null }, 'rakulein'), { supported: true, upload: null });
+test('selects newest upload by createTime instead of list position', () => {
+  const items = extractRehydrationJson(fixture).__DEFAULT_SCOPE__['webapp.user-post'].itemList;
+  const upload = pickLatestUploadFromItems(items, 'rakulein');
+  assert.equal(upload.id, '999');
+  assert.equal(upload.title, 'Newest post');
+  assert.equal(upload.viewers, 321);
+  assert.equal(upload.url, 'https://www.tiktok.com/@rakulein/video/999');
+  assert.match(upload.publishedAt, /^2026-/);
+});
+
+test('parses creator metadata and upload capability from public profile document', () => {
+  const profile = parseProfileDocument(fixture, 'rakulein');
+  assert.equal(profile.creator, 'Rakulein');
+  assert.equal(profile.avatar, 'https://example.com/avatar.jpg');
+  assert.equal(profile.uploadSupported, true);
+  assert.equal(profile.latestUpload.id, '999');
+});
+
+test('treats a zero-video profile as supported but empty', () => {
+  const html = `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">{"__DEFAULT_SCOPE__":{"webapp.user-detail":{"statusCode":0,"userInfo":{"user":{"uniqueId":"empty"},"stats":{"videoCount":0}}}}}</script>`;
+  const profile = parseProfileDocument(html, 'empty');
+  assert.equal(profile.uploadSupported, true);
+  assert.equal(profile.latestUpload, null);
 });
 
 test('selects upload snapshot for TikTok upload rules', () => {
@@ -49,20 +67,14 @@ test('selects upload snapshot for TikTok upload rules', () => {
       viewers: 42
     }
   });
-
   assert.equal(snapshot.id, '999');
   assert.equal(snapshot.title, 'Upload');
   assert.equal(snapshot.live, false);
   assert.equal(snapshot.viewers, 42);
 });
 
-test('returns an explicit capability error when upload detection is unavailable', () => {
-  const result = snapshotForTikTokRule({ event: 'upload' }, {
-    source: 'rakulein',
-    creator: 'Rakulein',
-    uploadSupported: false,
-    liveSupported: true,
-    live: false
-  });
-  assert.match(result.error, /keine Upload-Erkennung|noch keine Upload-Erkennung/);
+test('built-in TikTok provider is configured without external endpoint', () => {
+  const state = getTikTokProviderHealth();
+  assert.equal(state.configured, true);
+  assert.equal(state.mode, 'built-in');
 });
