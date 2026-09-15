@@ -8,6 +8,7 @@ const { attachTicketStudioApi } = require('./ticket-studio-api');
 const { attachTicketRuntime } = require('./ticket-studio-runtime');
 const { attachCreatorHubApi } = require('./creator-hub-api');
 const { startCreatorRuntime } = require('./creator-runtime');
+const { retryTransient, formatErrorDetails } = require('./startup-utils');
 
 function isDisallowedIntentError(error) {
   const message = String(error?.message || '');
@@ -31,6 +32,20 @@ function startDashboard() {
   });
 }
 
+async function startDiscordBot() {
+  return retryTransient(
+    () => startBot(),
+    {
+      attempts: 5,
+      delays: [2000, 4000, 8000, 12000],
+      onRetry: ({ details, nextAttempt, attempts, delayMs }) => {
+        console.log(`[BOT] Discord Login temporär fehlgeschlagen: ${details}`);
+        console.log(`[BOT] Neuer Versuch ${nextAttempt}/${attempts} in ${Math.round(delayMs / 1000)}s ...`);
+      }
+    }
+  );
+}
+
 async function main() {
   console.log('=========================================');
   console.log(' RAKU DISCORD BOT');
@@ -39,7 +54,7 @@ async function main() {
   attachTicketRuntime(client);
 
   try {
-    await startBot();
+    await startDiscordBot();
     startCreatorRuntime(client);
   } catch (error) {
     if (!isDisallowedIntentError(error)) throw error;
@@ -58,6 +73,6 @@ async function main() {
 }
 
 main().catch(error => {
-  console.log(`[STARTUP] Der Dienst konnte nicht gestartet werden: ${error.message}`);
+  console.log(`[STARTUP] Der Dienst konnte nicht gestartet werden: ${formatErrorDetails(error)}`);
   process.exitCode = 1;
 });
