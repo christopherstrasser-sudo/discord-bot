@@ -200,15 +200,36 @@ async function createTicket(interaction, panel, type, answers) {
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
     {
       id: interaction.user.id,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks]
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks
+      ]
     },
     {
       id: me.id,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks]
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks
+      ]
     },
     ...staffRoles.map(role => ({
       id: role.id,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks]
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks
+      ]
     }))
   ];
 
@@ -241,11 +262,25 @@ async function createTicket(interaction, panel, type, answers) {
 
   let ticket = updateTicketRecord(guild.id, provisional.id, { channelId: channel.id });
   const pingRoles = staffRoles.map(role => `<@&${role.id}>`).join(' ');
-  const control = await channel.send({
-    content: [interaction.user.toString(), pingRoles].filter(Boolean).join(' '),
-    ...ticketHeaderPayload(ticket, panel, type),
-    allowedMentions: { users: [interaction.user.id], roles: staffRoles.map(role => role.id) }
-  });
+  let control;
+  try {
+    control = await channel.send({
+      content: [interaction.user.toString(), pingRoles].filter(Boolean).join(' '),
+      ...ticketHeaderPayload(ticket, panel, type),
+      allowedMentions: {
+        users: [interaction.user.id],
+        roles: staffRoles.map(role => role.id)
+      }
+    });
+  } catch (error) {
+    updateTicketRecord(guild.id, ticket.id, {
+      status: 'failed',
+      closedAt: new Date().toISOString(),
+      failureReason: String(error.message || error).slice(0, 500)
+    });
+    await channel.delete(`RAKU Ticket ${ticket.id} setup failed`).catch(() => null);
+    throw new Error(`Ticket-Kanal konnte nicht initialisiert werden: ${error.message}`);
+  }
   ticket = updateTicketRecord(guild.id, ticket.id, { controlMessageId: control.id });
   return { ticket, channel };
 }
@@ -262,7 +297,7 @@ async function collectTranscript(channel, maxMessages = 1000) {
   }
   messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
   const lines = [
-    'RAKU Ticket Transcript',
+    `RAKU Ticket Transcript`,
     `Server: ${channel.guild.name} (${channel.guild.id})`,
     `Kanal: #${channel.name} (${channel.id})`,
     `Erstellt: ${new Date().toISOString()}`,
@@ -335,24 +370,29 @@ async function handleModalSubmit(interaction, panel, type) {
 async function handleClaim(interaction, ticket, panel, type) {
   if (!(await isStaff(interaction, panel))) throw new Error('Nur das Support-Team kann Tickets übernehmen.');
   let next;
-  if (!ticket.claimedBy) next = updateTicketRecord(interaction.guild.id, ticket.id, { claimedBy: interaction.user.id });
-  else if (ticket.claimedBy === interaction.user.id) next = updateTicketRecord(interaction.guild.id, ticket.id, { claimedBy: null });
-  else throw new Error('Dieses Ticket wurde bereits von einem anderen Teammitglied übernommen.');
-
+  if (!ticket.claimedBy) {
+    next = updateTicketRecord(interaction.guild.id, ticket.id, { claimedBy: interaction.user.id });
+  } else if (ticket.claimedBy === interaction.user.id) {
+    next = updateTicketRecord(interaction.guild.id, ticket.id, { claimedBy: null });
+  } else {
+    throw new Error('Dieses Ticket wurde bereits von einem anderen Teammitglied übernommen.');
+  }
   await updateTicketHeader(interaction.guild, next, panel, type);
   await interaction.reply({ content: next.claimedBy ? '✅ Ticket übernommen.' : '✅ Ticket freigegeben.', ephemeral: true });
 }
 
 async function handleClose(interaction, ticket, panel, type) {
   const staff = await isStaff(interaction, panel);
-  if (!staff && !(panel.userCanClose !== false && ticket.userId === interaction.user.id)) throw new Error('Du darfst dieses Ticket nicht schließen.');
+  if (!staff && !(panel.userCanClose !== false && ticket.userId === interaction.user.id)) {
+    throw new Error('Du darfst dieses Ticket nicht schließen.');
+  }
   if (ticket.status !== 'open') throw new Error('Dieses Ticket ist bereits geschlossen.');
 
   await interaction.deferReply({ ephemeral: true });
   const channel = interaction.channel;
   const transcript = await collectTranscript(channel);
   const transcriptPath = saveTranscript(interaction.guild.id, ticket.id, transcript);
-  const next = updateTicketRecord(interaction.guild.id, ticket.id, {
+  let next = updateTicketRecord(interaction.guild.id, ticket.id, {
     status: 'closed',
     closedAt: new Date().toISOString(),
     closedBy: interaction.user.id,
@@ -360,7 +400,9 @@ async function handleClose(interaction, ticket, panel, type) {
   });
 
   await channel.permissionOverwrites.edit(ticket.userId, { SendMessages: false }).catch(() => null);
-  if (panel.archiveCategoryId) await channel.setParent(panel.archiveCategoryId, { lockPermissions: false, reason: `RAKU Ticket ${ticket.id} archived` }).catch(() => null);
+  if (panel.archiveCategoryId) {
+    await channel.setParent(panel.archiveCategoryId, { lockPermissions: false, reason: `RAKU Ticket ${ticket.id} archived` }).catch(() => null);
+  }
   const closedName = `closed-${String(ticket.number).padStart(4, '0')}-${safeChannelPart(ticket.userTag)}`.slice(0, 100);
   await channel.setName(closedName, `RAKU Ticket ${ticket.id} closed`).catch(() => null);
   await sendTranscriptLog(interaction.guild, panel, next, transcriptPath);
@@ -419,7 +461,9 @@ async function handleTicketInteraction(interaction) {
 
 function attachTicketRuntime(client) {
   client.on(Events.InteractionCreate, interaction => {
-    handleTicketInteraction(interaction).catch(error => console.warn(`[TICKETS] Interaction failed: ${error.message}`));
+    handleTicketInteraction(interaction).catch(error => {
+      console.warn(`[TICKETS] Interaction failed: ${error.message}`);
+    });
   });
 }
 
