@@ -119,12 +119,16 @@ async function fetchTwitchStatuses(logins) {
 
     for (const login of unique) {
       const user = usersByLogin.get(login) || null;
+      if (!user) {
+        result.set(login, null);
+        continue;
+      }
       const stream = streamsByLogin.get(login) || null;
       result.set(login, {
         platform: 'twitch',
         source: login,
-        creator: stream?.user_name || user?.display_name || login,
-        exists: Boolean(user),
+        creator: stream?.user_name || user.display_name || login,
+        exists: true,
         live: Boolean(stream),
         id: stream?.id || '',
         eventKey: stream?.id ? `twitch:${login}:live:${stream.id}` : `twitch:${login}:offline`,
@@ -132,7 +136,7 @@ async function fetchTwitchStatuses(logins) {
         game: stream?.game_name || '',
         url: `https://www.twitch.tv/${login}`,
         thumbnail: stream?.thumbnail_url ? stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') : '',
-        avatar: user?.profile_image_url || '',
+        avatar: user.profile_image_url || '',
         startedAt: stream?.started_at || '',
         viewers: Number(stream?.viewer_count || 0)
       });
@@ -219,12 +223,13 @@ async function fetchTikTokStatus(username) {
   try {
     const data = await fetchJson(tiktokEndpoint(source));
     if (typeof data?.live !== 'boolean') throw new Error('TikTok Adapter liefert kein gültiges live-Feld.');
+    if (data.exists === false) throw new Error('TikTok Creator wurde nicht gefunden.');
     const liveId = String(data.liveId || data.roomId || data.id || '');
     const result = {
       platform: 'tiktok',
       source,
       creator: String(data.creator || data.displayName || source),
-      exists: data.exists !== false,
+      exists: true,
       live: Boolean(data.live),
       id: liveId,
       eventKey: data.live && liveId ? `tiktok:${source}:live:${liveId}` : `tiktok:${source}:offline`,
