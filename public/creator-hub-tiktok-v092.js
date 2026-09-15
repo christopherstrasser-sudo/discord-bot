@@ -5,8 +5,13 @@
   if (typeof C.providerCard === 'function') {
     const originalProviderCard = C.providerCard;
     C.providerCard = platform => {
-      const html = originalProviderCard(platform);
-      return platform === 'tiktok' ? html.replace('LIVE ADAPTER', 'LIVE + UPLOAD') : html;
+      let html = originalProviderCard(platform);
+      if (platform !== 'tiktok') return html;
+      html = html
+        .replace('LIVE ADAPTER', 'LOCAL LIVE + UPLOAD')
+        .replace('Kein zuverlässiger TikTok-Provider verbunden.', 'Lokaler TikTok-Provider wird direkt vom Bot betrieben.')
+        .replace('Wartet auf ersten Provider-Check.', 'Lokaler Provider bereit · keine API-Keys oder Cookies nötig.');
+      return html;
     };
   }
 
@@ -20,7 +25,7 @@
         .replace('placeholder="rakulein"', 'placeholder="@rakulein"')
         .replace(
           'Ohne @ oder URL. TikTok wird nur aktiv, wenn ein zuverlässiger Adapter verbunden ist.',
-          'Einfach @Handle oder eine tiktok.com/@handle URL einfügen. Live-Starts und neue Uploads können getrennt automatisiert werden.'
+          'Einfach @Handle oder eine tiktok.com/@handle URL einfügen. Der Bot erkennt Live-Starts und neue Uploads lokal.'
         );
     };
   }
