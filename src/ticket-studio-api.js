@@ -111,7 +111,10 @@ function sanitizePanel(raw, index, previous) {
     archiveCategoryId: str(raw?.archiveCategoryId, 32),
     logChannelId: str(raw?.logChannelId, 32),
     staffRoleIds,
-    maxOpenPerUser: Math.max(1, Math.min(Number(raw?.maxOpenPerUser || 1), 5)),
+    maxOpenPerUser: (() => {
+      const value = Number(raw?.maxOpenPerUser ?? 1);
+      return Number.isFinite(value) ? Math.max(1, Math.min(Math.floor(value), 5)) : 1;
+    })(),
     userCanClose: raw?.userCanClose !== false,
     title: str(raw?.title, 256) || 'Support Center',
     description: str(raw?.description, 3500) || 'Wähle unten den passenden Bereich für dein Anliegen.',
@@ -147,11 +150,21 @@ async function validatePanelForPublish(guild, panel) {
 
   const channel = guild.channels.cache.get(panel.channelId) || await guild.channels.fetch(panel.channelId).catch(() => null);
   if (!channel || !writable(channel, me) || !channel.send) throw new Error('Der Panel-Kanal ist nicht beschreibbar.');
+  const channelPermissions = channel.permissionsFor(me);
+  if (!channelPermissions?.has(PermissionFlagsBits.EmbedLinks)) throw new Error('Dem Bot fehlt im Panel-Kanal „Links einbetten“.');
   const category = guild.channels.cache.get(panel.categoryId) || await guild.channels.fetch(panel.categoryId).catch(() => null);
   if (!category || category.type !== ChannelType.GuildCategory) throw new Error('Die Ticket-Kategorie existiert nicht mehr.');
   if (panel.archiveCategoryId) {
     const archive = guild.channels.cache.get(panel.archiveCategoryId) || await guild.channels.fetch(panel.archiveCategoryId).catch(() => null);
     if (!archive || archive.type !== ChannelType.GuildCategory) throw new Error('Die Archiv-Kategorie existiert nicht mehr.');
+  }
+  if (panel.logChannelId) {
+    const logChannel = guild.channels.cache.get(panel.logChannelId) || await guild.channels.fetch(panel.logChannelId).catch(() => null);
+    if (!logChannel || !writable(logChannel, me) || !logChannel.send) throw new Error('Der Transcript-Log-Kanal ist nicht beschreibbar.');
+    const logPermissions = logChannel.permissionsFor(me);
+    if (!logPermissions?.has(PermissionFlagsBits.AttachFiles) || !logPermissions?.has(PermissionFlagsBits.EmbedLinks)) {
+      throw new Error('Für Transcript-Logs braucht der Bot „Dateien anhängen“ und „Links einbetten“.');
+    }
   }
   for (const roleId of panel.staffRoleIds) {
     if (!guild.roles.cache.has(roleId)) throw new Error('Mindestens eine Support-Rolle existiert nicht mehr.');
@@ -203,7 +216,9 @@ async function deliverPanelMessage(channel, panel, existingMessage = null) {
 async function publishPanel(guild, panel) {
   const { channel } = await validatePanelForPublish(guild, panel);
   let existingMessage = null;
-  if (panel.messageId && panel.publishedChannelId === panel.channelId) existingMessage = await channel.messages.fetch(panel.messageId).catch(() => null);
+  if (panel.messageId && panel.publishedChannelId === panel.channelId) {
+    existingMessage = await channel.messages.fetch(panel.messageId).catch(() => null);
+  }
   if (!existingMessage && panel.messageId) await removePublished(guild, panel);
   const delivered = await deliverPanelMessage(channel, panel, existingMessage);
   return {
