@@ -3,7 +3,9 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const DEFAULT_PORT = 31887;
-const DEVICE_STATE_FILE = path.join(process.cwd(), 'data', 'tiktok-collector', 'device.json');
+const STATE_DIR = path.join(process.cwd(), 'data', 'tiktok-collector');
+const DEVICE_STATE_FILE = path.join(STATE_DIR, 'device.json');
+const ENGINE_LOG_FILE = path.join(STATE_DIR, 'signature-engine.log');
 let child = null;
 let startupPromise = null;
 let engineHealth = { ready: false, pid: null, lastError: '', lastReadyAt: null };
@@ -33,7 +35,7 @@ function deviceId() {
     if (/^\d{18,20}$/.test(String(data.deviceId || ''))) return String(data.deviceId);
   } catch {}
   const id = randomDeviceId();
-  fs.mkdirSync(path.dirname(DEVICE_STATE_FILE), { recursive: true });
+  fs.mkdirSync(STATE_DIR, { recursive: true });
   const tmp = `${DEVICE_STATE_FILE}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify({ deviceId: id, createdAt: new Date().toISOString() }, null, 2));
   fs.renameSync(tmp, DEVICE_STATE_FILE);
@@ -79,16 +81,34 @@ function serverPath() {
   return path.join(packageRoot(), 'server.mjs');
 }
 
+function hardenLoopbackBindingText(text) {
+  const input = String(text || '');
+  if (input.includes('server.listen(PORT, "127.0.0.1", () => {')) return input;
+  const needle = 'server.listen(PORT, () => {';
+  if (!input.includes(needle)) {
+    throw new Error('TikTok Signature Engine: Server-Binding der gepinnten Version wurde unerwartet geändert.');
+  }
+  return input.replace(needle, 'server.listen(PORT, "127.0.0.1", () => {');
+}
+
+function hardenServerBinding(script) {
+  const original = fs.readFileSync(script, 'utf8');
+  const hardened = hardenLoopbackBindingText(original);
+  if (hardened !== original) fs.writeFileSync(script, hardened, 'utf8');
+}
+
 async function waitUntilReady(proc, timeoutMs = 75000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (proc && proc.exitCode !== null) throw new Error(`TikTok Signature Engine wurde beendet (Code ${proc.exitCode}).`);
+    if (proc && proc.exitCode !== null) {
+      throw new Error(`TikTok Signature Engine wurde beendet (Code ${proc.exitCode}). Siehe ${ENGINE_LOG_FILE}.`);
+    }
     const state = await readHealth(2500);
     if (state?.ready) return state;
     await new Promise(resolve => setTimeout(resolve, 750));
   }
   const state = await readHealth(2500);
-  throw new Error(`TikTok Signature Engine wurde nicht rechtzeitig bereit.${state?.initializing ? ' Initialisierung läuft noch.' : ''}`);
+  throw new Error(`TikTok Signature Engine wurde nicht rechtzeitig bereit.${state?.initializing ? ' Initialisierung läuft noch.' : ''} Siehe ${ENGINE_LOG_FILE}.`);
 }
 
 async function ensureEngine(deps) {
@@ -102,20 +122,29 @@ async function ensureEngine(deps) {
     const script = serverPath();
     if (!fs.existsSync(script)) throw new Error('tiktok-signature ist nicht vollständig installiert.');
 
-    child = spawn(process.execPath, [script], {
-      cwd: packageRoot(),
-      windowsHide: true,
-      detached: false,
-      stdio: 'ignore',
-      env: {
-        ...process.env,
-        PORT: String(port()),
-        PUPPETEER_EXECUTABLE_PATH: executablePath,
-        PUPPETEER_SKIP_DOWNLOAD: 'true',
-        MAX_GENERATIONS_BEFORE_REFRESH: optionalEnv('TIKTOK_SIGNATURE_MAX_GENERATIONS') || '350',
-        MAX_SESSION_AGE_MS: optionalEnv('TIKTOK_SIGNATURE_SESSION_MS') || String(45 * 60 * 1000)
-      }
-    });
+    // Gepinnte Dependency lokal härten: Sidecar darf niemals auf dem öffentlichen Interface lauschen.
+    hardenServerBinding(script);
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+    const logFd = fs.openSync(ENGINE_LOG_FILE, 'a');
+    try {
+      child = spawn(process.execPath, [script], {
+        cwd: packageRoot(),
+        windowsHide: true,
+        detached: false,
+        stdio: ['ignore', logFd, logFd],
+        env: {
+          ...process.env,
+          PORT: String(port()),
+          PUPPETEER_EXECUTABLE_PATH: executablePath,
+          PUPPETEER_SKIP_DOWNLOAD: 'true',
+          MAX_GENERATIONS_BEFORE_REFRESH: optionalEnv('TIKTOK_SIGNATURE_MAX_GENERATIONS') || '350',
+          MAX_SESSION_AGE_MS: optionalEnv('TIKTOK_SIGNATURE_SESSION_MS') || String(45 * 60 * 1000)
+        }
+      });
+    } finally {
+      fs.closeSync(logFd);
+    }
+
     engineHealth.pid = child.pid || null;
     child.on('exit', code => {
       engineHealth.ready = false;
@@ -241,20 +270,81 @@ function exactUserFromSearch(data, source) {
   const entries = Array.isArray(data?.user_list) ? data.user_list : (Array.isArray(data?.userList) ? data.userList : []);
   const normalized = String(source || '').toLowerCase();
   const users = entries.map(entry => entry?.user_info || entry?.userInfo || entry).filter(Boolean);
-  return users.find(user => String(user.uniqueId || user.unique_id || '').toLowerCase() === normalized) || users[0] || null;
+  return users.find(user => String(user.uniqueId || user.unique_id || '').toLowerCase() === normalized) || null;
+}
+
+async function publicProfileFallback(source, deps) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`https://www.tiktok.com/@${encodeURIComponent(source)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`Profil HTTP ${response.status}`);
+    const parsed = deps.parseProfileDocument(await response.text(), source);
+    if (!parsed.secUid) throw new Error('Profil enthält keine secUid.');
+    return {
+      secUid: parsed.secUid,
+      creator: String(parsed.creator || source),
+      avatar: String(parsed.avatar || '')
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function resolveUser(source, deps) {
-  const data = await fetchSigned(searchUrl(source), deps);
-  const user = exactUserFromSearch(data, source);
-  if (!user) throw new Error(`TikTok Creator @${source} wurde über die signierte Suche nicht gefunden.`);
-  const secUid = String(user.secUid || user.sec_uid || '').trim();
-  if (!secUid) throw new Error(`TikTok Suche lieferte für @${source} keine secUid.`);
-  return {
-    secUid,
-    creator: String(user.nickname || user.uniqueId || user.unique_id || source),
-    avatar: String(user.avatarLarger || user.avatar_larger?.url_list?.[0] || user.avatarThumb || user.avatar_thumb?.url_list?.[0] || '')
-  };
+  const errors = [];
+  const search = searchUrl(source);
+
+  try {
+    const data = await fetchSigned(search, deps);
+    const user = exactUserFromSearch(data, source);
+    if (user) {
+      const secUid = String(user.secUid || user.sec_uid || '').trim();
+      if (secUid) {
+        return {
+          secUid,
+          creator: String(user.nickname || user.uniqueId || user.unique_id || source),
+          avatar: String(user.avatarLarger || user.avatar_larger?.url_list?.[0] || user.avatarThumb || user.avatar_thumb?.url_list?.[0] || '')
+        };
+      }
+    }
+    errors.push('Signierte Suche lieferte keinen exakten Creator mit secUid.');
+  } catch (error) {
+    errors.push(`Signierte Suche: ${error?.message || error}`);
+  }
+
+  try {
+    const navigateTo = `https://www.tiktok.com/search/user?q=${encodeURIComponent(source)}`;
+    const data = await fetchSigned(search, deps, navigateTo);
+    const user = exactUserFromSearch(data, source);
+    const secUid = String(user?.secUid || user?.sec_uid || '').trim();
+    if (user && secUid) {
+      return {
+        secUid,
+        creator: String(user.nickname || user.uniqueId || user.unique_id || source),
+        avatar: String(user.avatarLarger || user.avatar_larger?.url_list?.[0] || user.avatarThumb || user.avatar_thumb?.url_list?.[0] || '')
+      };
+    }
+    errors.push('Search-Page-Intercept lieferte keinen exakten Creator mit secUid.');
+  } catch (error) {
+    errors.push(`Search-Page-Intercept: ${error?.message || error}`);
+  }
+
+  try {
+    return await publicProfileFallback(source, deps);
+  } catch (error) {
+    errors.push(`Profil-Fallback: ${error?.message || error}`);
+  }
+
+  throw new Error(`TikTok Creator @${source} konnte nicht zuverlässig aufgelöst werden. ${errors.join(' · ')}`);
 }
 
 async function fetchTikTokSignedUpload(source, deps) {
@@ -280,7 +370,7 @@ async function fetchTikTokSignedUpload(source, deps) {
 }
 
 function getSignatureEngineHealth() {
-  return { ...engineHealth, port: port(), baseUrl: baseUrl() };
+  return { ...engineHealth, port: port(), baseUrl: baseUrl(), logFile: ENGINE_LOG_FILE };
 }
 
 module.exports = {
@@ -292,5 +382,6 @@ module.exports = {
   searchUrl,
   videosUrl,
   deviceId,
-  port
+  port,
+  hardenLoopbackBindingText
 };
