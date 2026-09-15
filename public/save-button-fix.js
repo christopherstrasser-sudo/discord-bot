@@ -42,4 +42,28 @@
       markDirty();
     }
   };
+
+  function loadUxAsset(tag, attrs) {
+    return new Promise((resolve, reject) => {
+      const node = document.createElement(tag);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+      node.addEventListener('load', resolve, { once: true });
+      node.addEventListener('error', reject, { once: true });
+      document.head.appendChild(node);
+    });
+  }
+
+  window.addEventListener('load', async () => {
+    if (window.__rakuUxV2Loaded) return;
+    window.__rakuUxV2Loaded = true;
+    try {
+      await loadUxAsset('link', { rel: 'stylesheet', href: '/raku-ux-v2.css?v=0120' });
+      await loadUxAsset('script', { src: '/raku-ux-v2-guides.js?v=0120' });
+      await loadUxAsset('script', { src: '/raku-ux-v2-hints.js?v=0120' });
+      await loadUxAsset('script', { src: '/raku-ux-v2-login.js?v=0120' });
+      await loadUxAsset('script', { src: '/raku-ux-v2.js?v=0120' });
+    } catch (error) {
+      console.warn('[UX V2] Optional UI layer could not be loaded:', error);
+    }
+  }, { once: true });
 })();
