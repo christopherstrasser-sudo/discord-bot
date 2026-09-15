@@ -3,6 +3,7 @@ const { startBot } = require('./bot');
 const { createWebApp } = require('./web');
 const { attachCommandBuilderApi } = require('./command-builder-api');
 const { attachRoleStudioApi } = require('./role-studio-api');
+const { attachEmojiApi } = require('./emoji-api');
 
 function isDisallowedIntentError(error) {
   const message = String(error?.message || '');
@@ -13,6 +14,7 @@ function startDashboard() {
   const app = createWebApp();
   attachCommandBuilderApi(app);
   attachRoleStudioApi(app);
+  attachEmojiApi(app);
 
   return new Promise(resolve => {
     const server = app.listen(config.port, '0.0.0.0', () => {
