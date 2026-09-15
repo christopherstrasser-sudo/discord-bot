@@ -58,7 +58,7 @@ function buildPublishedPanelPayload(panel) {
   const embed = new EmbedBuilder()
     .setColor(/^#[0-9A-F]{6}$/i.test(panel.color || '') ? panel.color : '#5865F2')
     .setTitle(String(panel.title || 'Support Center').slice(0, 256))
-    .setDescription(String(panel.description || 'Wähle unten den passenden Bereich für dein Anliegen.').slice(0, 4096))
+    .setDescription(String(panel.description || 'Wähle unten den passenden Bereich für dein Anliegen.').slice(0, 1800))
     .setFooter({ text: 'RAKU Ticket Studio · private Support-Tickets' });
 
   const components = [];
@@ -195,6 +195,9 @@ async function createTicket(interaction, panel, type, answers) {
   const staffRoles = (panel.staffRoleIds || [])
     .map(id => guild.roles.cache.get(id))
     .filter(Boolean);
+  if (!staffRoles.length) {
+    throw new Error('Keine konfigurierte Support-Rolle ist mehr verfügbar.');
+  }
 
   const overwrites = [
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -392,7 +395,7 @@ async function handleClose(interaction, ticket, panel, type) {
   const channel = interaction.channel;
   const transcript = await collectTranscript(channel);
   const transcriptPath = saveTranscript(interaction.guild.id, ticket.id, transcript);
-  let next = updateTicketRecord(interaction.guild.id, ticket.id, {
+  const next = updateTicketRecord(interaction.guild.id, ticket.id, {
     status: 'closed',
     closedAt: new Date().toISOString(),
     closedBy: interaction.user.id,
