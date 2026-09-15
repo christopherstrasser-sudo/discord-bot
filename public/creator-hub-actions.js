@@ -14,6 +14,17 @@
 
   function bind(selector,event,fn,rerender=false){document.querySelector(selector)?.addEventListener(event,e=>{fn(e.target,e);C.mark();if(rerender)C.render()})}
   function updateRulePlatform(rule,platform){const d=C.defaults(platform);rule.platform=platform;rule.source='';rule.event=d.event;rule.color=d.color;rule.buttonLabel=d.buttonLabel;rule.message=d.message;rule.embedTitle=d.embedTitle;rule.embedDescription=d.embedDescription;rule.filterTitle='';rule.filterGame='';rule.enabled=false;S.check=null}
+  function updateRuleEvent(rule,event){
+    const previous=C.defaults(rule.platform,rule.event),next=C.defaults(rule.platform,event);
+    const replace={message:rule.message===previous.message,embedTitle:rule.embedTitle===previous.embedTitle,embedDescription:rule.embedDescription===previous.embedDescription,buttonLabel:rule.buttonLabel===previous.buttonLabel,color:rule.color===previous.color};
+    rule.event=event;
+    if(replace.message)rule.message=next.message;
+    if(replace.embedTitle)rule.embedTitle=next.embedTitle;
+    if(replace.embedDescription)rule.embedDescription=next.embedDescription;
+    if(replace.buttonLabel)rule.buttonLabel=next.buttonLabel;
+    if(replace.color)rule.color=next.color;
+    S.check=null;
+  }
 
   C.wire=()=>{
     document.querySelector('[data-cr-master]')?.addEventListener('change',e=>{S.cfg.enabled=e.target.checked;C.mark();C.render()});
@@ -25,7 +36,7 @@
     bind('[data-cr-name]','input',x=>rule.name=x.value);
     bind('[data-cr-enabled]','change',x=>rule.enabled=x.checked,true);
     bind('[data-cr-platform]','change',x=>updateRulePlatform(rule,x.value),true);
-    bind('[data-cr-event]','change',x=>{rule.event=x.value;S.check=null},true);
+    bind('[data-cr-event]','change',x=>updateRuleEvent(rule,x.value),true);
     bind('[data-cr-source]','input',x=>{rule.source=x.value;S.check=null});
     bind('[data-cr-display]','input',x=>rule.displayName=x.value,true);
     bind('[data-cr-channel]','change',x=>rule.channelId=x.value,true);
