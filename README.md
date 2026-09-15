@@ -4,7 +4,7 @@ Multi-user Discord bot with a web dashboard for per-server configuration.
 
 ## Current milestone
 
-Version `0.3.0` contains the working multi-server foundation and the redesigned Discord-inspired control center:
+Version `0.4.0` contains the working multi-server foundation, the RAKU Control Deck UI and the first complete server logging engine:
 
 - Discord bot connection via `discord.js`
 - Express web dashboard
@@ -16,13 +16,21 @@ Version `0.3.0` contains the working multi-server foundation and the redesigned 
 - Live Welcome preview and clickable message variables
 - Writable-channel and manageable-role capability checks
 - Test-message tool per guild
+- Welcome and Auto-Role execution on member join
+- Structured server logs for Join / Leave
+- Message Edit / Delete logs including message content when available
+- Member role, nickname and timeout changes
+- Role create / update / delete logs
+- Channel create / update / delete logs
+- Ban / Unban logs
 - Windows start wrapper
 
 ## Requirements
 
 - Node.js 20+
 - A Discord application with a bot user
-- `SERVER MEMBERS INTENT` enabled in Discord Developer Portal for Welcome / Auto-Role
+- `SERVER MEMBERS INTENT` enabled in Discord Developer Portal
+- `MESSAGE CONTENT INTENT` enabled in Discord Developer Portal for complete message edit/delete content
 
 ## Discord application setup
 
