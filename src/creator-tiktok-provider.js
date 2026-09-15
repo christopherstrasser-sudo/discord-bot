@@ -170,19 +170,24 @@ function parseProfileDocument(html, source) {
   const info = detail.userInfo || {};
   const user = info.user || {};
   const stats = info.stats || {};
+  const statsV2 = info.statsV2 || {};
   const itemList = findPostList(scope);
-  const videoCount = numberOf(stats.videoCount);
+  const videoCountRaw = stats.videoCount ?? statsV2.videoCount;
+  const videoCountKnown = videoCountRaw !== undefined && videoCountRaw !== null && String(videoCountRaw).trim() !== '';
+  const videoCount = videoCountKnown ? numberOf(videoCountRaw) : 0;
   const latestUpload = Array.isArray(itemList) ? pickLatestUploadFromItems(itemList, source) : null;
+  const knownEmpty = videoCountKnown && videoCount === 0;
 
   return {
     creator: String(user.nickname || user.uniqueId || source),
     avatar: String(user.avatarLarger || user.avatarMedium || user.avatarThumb || ''),
     secUid: String(user.secUid || ''),
     exists: statusCode === 0,
-    uploadSupported: Boolean(latestUpload) || videoCount === 0,
+    uploadSupported: Boolean(latestUpload) || knownEmpty,
     latestUpload,
     videoCount,
-    uploadSource: latestUpload ? 'ssr' : (videoCount === 0 ? 'empty' : '')
+    videoCountKnown,
+    uploadSource: latestUpload ? 'ssr' : (knownEmpty ? 'empty' : '')
   };
 }
 
@@ -204,6 +209,24 @@ function responseCookies(headers) {
 
 function cookieHeader(cookies) {
   return Object.entries(cookies || {}).filter(([, value]) => value).map(([key, value]) => `${key}=${value}`).join('; ');
+}
+
+function postItemsFromPayload(data) {
+  if (!data || typeof data !== 'object') return [];
+  const direct = [
+    data.itemList,
+    data.item_list,
+    data.items,
+    data.aweme_list,
+    data.data?.itemList,
+    data.data?.item_list,
+    data.data?.items,
+    data.data?.aweme_list
+  ];
+  for (const list of direct) {
+    if (Array.isArray(list) && list.some(looksLikePost)) return list;
+  }
+  return findPostList(data) || [];
 }
 
 async function anonymousSession(mod) {
@@ -283,12 +306,15 @@ async function fetchPostApi(source, profile, session) {
     const text = await response.text();
     let data;
     try { data = JSON.parse(text); }
-    catch { throw new Error('TikTok Post-API lieferte keine gültigen JSON-Daten.'); }
+    catch { throw new Error(`TikTok Post-API lieferte keine gültigen JSON-Daten (HTTP ${response.status}, ${text.length} Bytes).`); }
     const status = numberOf(data.statusCode ?? data.status_code);
     if (status !== 0) throw new Error(`TikTok Post-API Status ${status}.`);
-    const items = Array.isArray(data.itemList) ? data.itemList : [];
+    const items = postItemsFromPayload(data);
     const latest = pickLatestUploadFromItems(items, source);
-    if (!latest && profile.videoCount > 0) throw new Error('TikTok Post-API lieferte trotz vorhandener Videos keine Beiträge.');
+    if (!latest && profile.videoCountKnown && profile.videoCount === 0) {
+      return { latestUpload: null, supported: true, source: 'api-empty' };
+    }
+    if (!latest) throw new Error('TikTok Post-API lieferte keine verwertbaren Beiträge.');
     return { latestUpload: latest, supported: true, source: 'api' };
   } finally {
     clearTimeout(timer);
@@ -323,7 +349,16 @@ async function getBrowser() {
   if (!executablePath) throw new Error('Kein lokaler Edge/Chrome für den TikTok Browser-Fallback gefunden.');
   browserPromise = import('puppeteer-core').then(module => {
     const puppeteer = module.default || module;
-    const args = ['--disable-background-networking', '--disable-default-apps', '--disable-dev-shm-usage', '--disable-extensions', '--no-first-run', '--no-default-browser-check'];
+    const args = [
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-dev-shm-usage',
+      '--disable-extensions',
+      '--no-first-run',
+      '--no-default-browser-check',
+      `--lang=${language()}-${region()}`,
+      '--window-size=1280,900'
+    ];
     if (typeof process.getuid === 'function' && process.getuid() === 0) args.push('--no-sandbox');
     return puppeteer.launch({ executablePath, headless: true, args });
   }).then(browser => {
@@ -336,55 +371,154 @@ async function getBrowser() {
   return browserPromise;
 }
 
-async function fetchPostBrowser(source, profile) {
+function browserCookieList(session) {
+  return Object.entries(session?.cookies || {})
+    .filter(([, value]) => Boolean(value))
+    .map(([name, value]) => ({
+      name,
+      value: String(value),
+      url: 'https://www.tiktok.com/',
+      secure: true
+    }));
+}
+
+async function collectBrowserDomItems(page, source) {
+  return page.evaluate(handle => {
+    const result = [];
+    const seen = new Set();
+    const anchors = document.querySelectorAll('a[href*="/video/"], a[href*="/photo/"]');
+    for (const anchor of anchors) {
+      const href = anchor.href || anchor.getAttribute('href') || '';
+      const match = href.match(/\/\@([^/]+)\/(video|photo)\/(\d+)/i);
+      if (!match || match[1].toLowerCase() !== handle.toLowerCase() || seen.has(match[3])) continue;
+      seen.add(match[3]);
+      const card = anchor.closest('[data-e2e="user-post-item"]') || anchor.closest('[data-e2e*="post-item"]') || anchor.parentElement || anchor;
+      const image = card.querySelector?.('img');
+      result.push({
+        id: match[3],
+        desc: image?.alt || anchor.getAttribute('aria-label') || '',
+        video: { cover: image?.currentSrc || image?.src || '' },
+        imagePost: match[2].toLowerCase() === 'photo' ? { images: [{}] } : undefined,
+        author: { uniqueId: handle }
+      });
+    }
+    return result;
+  }, source);
+}
+
+async function browserGateDiagnostic(page) {
+  return page.evaluate(() => {
+    const text = String(document.body?.innerText || '').slice(0, 6000);
+    const url = String(location.href || '');
+    const pathname = String(location.pathname || '');
+    const title = String(document.title || '');
+    const linkCount = document.querySelectorAll('a[href*="/video/"], a[href*="/photo/"]').length;
+    let gate = '';
+    if (/captcha|verify|challenge/i.test(url) || /verify to continue|security verification|captcha|sicherheitsüberprüfung|verifiziere/i.test(text)) {
+      gate = 'TikTok zeigt eine Verifizierungs-/Captcha-Seite.';
+    } else if (/\/login(?:\/|$)/i.test(pathname) || /log in to tiktok|bei tiktok anmelden|anmelden bei tiktok/i.test(text)) {
+      gate = 'TikTok zeigt eine Login-Wand.';
+    } else if (/something went wrong|couldn.?t load|try again later|zu viele versuche|too many attempts/i.test(text)) {
+      gate = 'TikTok meldet einen temporären Seitenfehler.';
+    }
+    return { url, pathname, title, linkCount, gate };
+  });
+}
+
+async function fetchPostBrowser(source, profile, session) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   const captured = [];
+  let resolveFeed;
+  const feedSeen = new Promise(resolve => { resolveFeed = resolve; });
+
   page.on('response', async response => {
-    if (!response.url().includes('/api/post/item_list/')) return;
+    const url = response.url();
+    if (!url.includes('tiktok.com') || !/\/api\/(?:post|user)\/.*item_list/i.test(url)) return;
     try {
       const data = await response.json();
-      if (Array.isArray(data?.itemList)) captured.push(...data.itemList);
+      const items = postItemsFromPayload(data);
+      if (items.length) {
+        captured.push(...items);
+        resolveFeed?.(true);
+      }
     } catch {}
   });
 
   try {
     await page.setViewport({ width: 1280, height: 900 });
-    await page.goto(`https://www.tiktok.com/@${source}`, { waitUntil: 'domcontentloaded', timeout: Math.max(15_000, timeoutMs() * 2) });
-    await Promise.race([
-      page.waitForSelector('a[href*="/video/"], a[href*="/photo/"]', { timeout: 8_000 }).catch(() => null),
-      new Promise(resolve => setTimeout(resolve, 4_000))
-    ]);
-    await new Promise(resolve => setTimeout(resolve, 1_000));
+    const rawUa = await browser.userAgent().catch(() => '');
+    const browserUa = String(rawUa || session?.ua || '')
+      .replace(/HeadlessChrome\//g, 'Chrome/')
+      .replace(/HeadlessEdg\//g, 'Edg/');
+    if (browserUa) await page.setUserAgent(browserUa);
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': `${language()}-${region()},${language()};q=0.9,en;q=0.7`
+    });
+    await page.emulateTimezone(optionalEnv('CREATOR_DEFAULT_TIMEZONE') || 'Europe/Berlin').catch(() => {});
 
-    const apiLatest = pickLatestUploadFromItems(captured, source);
-    if (apiLatest) return { latestUpload: apiLatest, supported: true, source: 'browser-api' };
+    const cookies = browserCookieList(session);
+    if (cookies.length) await page.setCookie(...cookies).catch(() => {});
 
-    const items = await page.evaluate(handle => {
-      const result = [];
-      const seen = new Set();
-      for (const anchor of document.querySelectorAll('a[href*="/video/"], a[href*="/photo/"]')) {
-        const href = anchor.href || '';
-        const match = href.match(/\/\@([^/]+)\/(video|photo)\/(\d+)/i);
-        if (!match || match[1].toLowerCase() !== handle.toLowerCase() || seen.has(match[3])) continue;
-        seen.add(match[3]);
-        const card = anchor.closest('[data-e2e="user-post-item"]') || anchor.parentElement || anchor;
-        const image = card.querySelector?.('img');
-        result.push({
-          id: match[3],
-          desc: image?.alt || anchor.getAttribute('aria-label') || '',
-          video: { cover: image?.currentSrc || image?.src || '' },
-          imagePost: match[2].toLowerCase() === 'photo' ? { images: [{}] } : undefined,
-          author: { uniqueId: handle }
-        });
+    const target = `https://www.tiktok.com/@${source}?is_from_webapp=1&sender_device=pc`;
+    const response = await page.goto(target, {
+      waitUntil: 'domcontentloaded',
+      timeout: Math.max(20_000, timeoutMs() * 2)
+    });
+    if (response && [403, 429].includes(response.status())) {
+      throw new Error(`TikTok Browser-Profilzugriff blockiert (HTTP ${response.status()}).`);
+    }
+
+    await page.evaluate(() => {
+      const rx = /^(accept all|allow all|alle akzeptieren|zustimmen|akzeptieren)$/i;
+      for (const button of document.querySelectorAll('button')) {
+        const text = String(button.innerText || button.textContent || '').trim();
+        if (rx.test(text)) {
+          button.click();
+          break;
+        }
       }
-      return result;
-    }, source);
+    }).catch(() => {});
 
-    const latest = pickLatestUploadFromItems(items, source);
-    if (latest) return { latestUpload: latest, supported: true, source: 'browser-dom' };
-    if (profile.videoCount === 0) return { latestUpload: null, supported: true, source: 'browser-empty' };
-    throw new Error('TikTok Profil wurde geladen, aber die Videoliste blieb leer.');
+    await Promise.race([
+      feedSeen,
+      page.waitForSelector('a[href*="/video/"], a[href*="/photo/"]', { timeout: 7_000 }).catch(() => null),
+      new Promise(resolve => setTimeout(resolve, 5_000))
+    ]);
+
+    for (let round = 0; round < 4; round += 1) {
+      const apiLatest = pickLatestUploadFromItems(captured, source);
+      if (apiLatest) return { latestUpload: apiLatest, supported: true, source: 'browser-api' };
+
+      const domItems = await collectBrowserDomItems(page, source).catch(() => []);
+      const domLatest = pickLatestUploadFromItems(domItems, source);
+      if (domLatest) return { latestUpload: domLatest, supported: true, source: 'browser-dom' };
+
+      await page.evaluate(() => window.scrollBy(0, Math.max(window.innerHeight || 900, 900))).catch(() => {});
+      await new Promise(resolve => setTimeout(resolve, 900));
+    }
+
+    const renderedHtml = await page.content().catch(() => '');
+    if (renderedHtml) {
+      try {
+        const renderedProfile = parseProfileDocument(renderedHtml, source);
+        if (renderedProfile.latestUpload) {
+          return { latestUpload: renderedProfile.latestUpload, supported: true, source: 'browser-ssr' };
+        }
+      } catch {}
+    }
+
+    if (profile.videoCountKnown && profile.videoCount === 0) {
+      return { latestUpload: null, supported: true, source: 'browser-empty' };
+    }
+
+    const diagnostic = await browserGateDiagnostic(page).catch(() => ({ pathname: '', title: '', linkCount: 0, gate: '' }));
+    if (diagnostic.gate) throw new Error(diagnostic.gate);
+
+    const place = diagnostic.pathname || '/';
+    throw new Error(
+      `TikTok Browser-Fallback fand keinen Feed (XHR-Posts ${captured.length}, Video-Links ${diagnostic.linkCount || 0}, Seite ${place}).`
+    );
   } finally {
     await page.close().catch(() => {});
   }
@@ -423,24 +557,25 @@ async function fetchProfile(source, mod) {
     clearTimeout(timer);
   }
 
-  if (!profile.uploadSupported && profile.videoCount > 0) {
-    const errors = [];
+  if (!profile.uploadSupported) {
+    let apiError = '';
     try {
       const api = await fetchPostApi(source, profile, session);
-      profile = { ...profile, uploadSupported: api.supported, latestUpload: api.latestUpload, uploadSource: api.source };
+      profile = { ...profile, uploadSupported: api.supported, latestUpload: api.latestUpload, uploadSource: api.source, uploadError: '' };
     } catch (error) {
-      errors.push(`API: ${error.message}`);
+      apiError = String(error?.message || error);
       try {
-        const browser = await fetchPostBrowser(source, profile);
-        profile = { ...profile, uploadSupported: browser.supported, latestUpload: browser.latestUpload, uploadSource: browser.source };
+        const browser = await fetchPostBrowser(source, profile, session);
+        profile = { ...profile, uploadSupported: browser.supported, latestUpload: browser.latestUpload, uploadSource: browser.source, uploadError: '' };
       } catch (browserError) {
-        errors.push(`Browser: ${browserError.message}`);
-        profile.uploadError = errors.join(' · ');
+        const browserMessage = String(browserError?.message || browserError);
+        profile.uploadError = [`Browser: ${browserMessage}`, apiError ? `API: ${apiError}` : ''].filter(Boolean).join(' · ');
       }
     }
   }
 
-  profileCache.set(source, { value: profile, expiresAt: Date.now() + PROFILE_CACHE_MS });
+  const cacheMs = profile.uploadSupported ? PROFILE_CACHE_MS : 15_000;
+  profileCache.set(source, { value: profile, expiresAt: Date.now() + cacheMs });
   return profile;
 }
 
@@ -572,5 +707,6 @@ module.exports = {
   pickLatestUploadFromItems,
   findPostList,
   tikTokTimeFromId,
-  findBrowserExecutable
+  findBrowserExecutable,
+  postItemsFromPayload
 };
