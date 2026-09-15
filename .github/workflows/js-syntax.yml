@@ -35,5 +35,6 @@ jobs:
           PUBLIC_BASE_URL: http://127.0.0.1:3000
         run: |
           node -e "require('./src/creator-store'); require('./src/creator-providers'); require('./src/creator-tiktok-provider'); require('./src/creator-runtime'); require('./src/creator-hub-api'); require('./src/ticket-store'); require('./src/ticket-studio-runtime'); require('./src/ticket-studio-api'); console.log('Critical modules loaded successfully')"
+          node -e "import('piratetok-live-js').then(m=>{if(typeof m.checkOnline!=='function'||typeof m.fetchRoomInfo!=='function'||typeof m.randomUa!=='function')throw new Error('PirateTok exports missing'); console.log('PirateTok exports verified')})"
       - name: Run Creator Hub tests
         run: node --test tests/creator-tiktok-provider.test.js
