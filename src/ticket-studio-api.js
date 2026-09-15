@@ -19,7 +19,7 @@ function access(req, res, next) {
 
 function safeId(value, prefix) {
   const raw = String(value || '').trim();
-  return /^[A-Za-z0-9_-]{1,48}$/.test(raw) ? raw : `${prefix}_${crypto.randomUUID()}`;
+  return /^[A-Za-z0-9_-]{1,28}$/.test(raw) ? raw : `${prefix}_${crypto.randomBytes(8).toString('hex')}`;
 }
 
 function str(value, max) {
@@ -117,7 +117,7 @@ function sanitizePanel(raw, index, previous) {
     })(),
     userCanClose: raw?.userCanClose !== false,
     title: str(raw?.title, 256) || 'Support Center',
-    description: str(raw?.description, 3500) || 'Wähle unten den passenden Bereich für dein Anliegen.',
+    description: str(raw?.description, 1800) || 'Wähle unten den passenden Bereich für dein Anliegen.',
     color: /^#[0-9A-F]{6}$/i.test(String(raw?.color || '')) ? String(raw.color).toUpperCase() : '#5865F2',
     types: typesRaw.map(sanitizeType),
     messageId: previous?.messageId || '',
@@ -240,6 +240,12 @@ function attachTicketStudioApi(app) {
     try {
       const current = getTicketConfig(guild.id);
       const config = sanitizeConfig(req.body || {}, current);
+      const nextPanelIds = new Set(config.panels.map(panel => panel.id));
+      const removedPanelIds = new Set((current.panels || []).filter(panel => !nextPanelIds.has(panel.id)).map(panel => panel.id));
+      if (removedPanelIds.size) {
+        const blocked = listGuildTickets(guild.id).some(ticket => ticket.status === 'open' && removedPanelIds.has(ticket.panelId));
+        if (blocked) throw new Error('Ein entferntes Ticket-Panel hat noch offene Tickets. Schließe diese zuerst.');
+      }
       const saved = setTicketConfig(guild.id, config, req.session.user.id);
       res.json({ ok: true, config: saved, meta: metaForGuild(guild) });
     } catch (error) {
