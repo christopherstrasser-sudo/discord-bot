@@ -15,27 +15,53 @@ const BUTTON_STYLES = {
   danger: ButtonStyle.Danger
 };
 
-function customEmojiData(value) {
+function normalizeEmojiInput(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
 
   const custom = raw.match(/^<(a?):([A-Za-z0-9_]+):(\d{15,22})>$/);
   if (custom) {
     return {
-      animated: custom[1] === 'a',
-      name: custom[2],
-      id: custom[3]
+      raw,
+      type: 'custom',
+      component: {
+        animated: custom[1] === 'a',
+        name: custom[2],
+        id: custom[3]
+      }
     };
   }
 
-  return { name: raw };
+  const looksLikeUnicodeEmoji = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20E3]/u.test(raw);
+  if (!looksLikeUnicodeEmoji) return null;
+
+  try {
+    if (typeof Intl?.Segmenter === 'function') {
+      const segments = [...new Intl.Segmenter('und', { granularity: 'grapheme' }).segment(raw)];
+      if (segments.length !== 1) return null;
+    }
+  } catch {}
+
+  return {
+    raw,
+    type: 'unicode',
+    component: { name: raw }
+  };
+}
+
+function customEmojiData(value) {
+  return normalizeEmojiInput(value)?.component || null;
+}
+
+function builderEmoji(value) {
+  return normalizeEmojiInput(value)?.raw || null;
 }
 
 function emojiKeyFromConfig(value) {
-  const raw = String(value || '').trim();
-  const custom = raw.match(/^<a?:[A-Za-z0-9_]+:(\d{15,22})>$/);
-  if (custom) return `id:${custom[1]}`;
-  return raw ? `name:${raw}` : '';
+  const normalized = normalizeEmojiInput(value);
+  if (!normalized) return '';
+  if (normalized.type === 'custom') return `id:${normalized.component.id}`;
+  return `name:${normalized.raw}`;
 }
 
 function emojiKeyFromReaction(reaction) {
@@ -83,7 +109,7 @@ function buildPanelPayload(panel) {
           .setLabel(String(item.label || 'Rolle').slice(0, 80))
           .setStyle(BUTTON_STYLES[item.style] || ButtonStyle.Secondary);
 
-        const emoji = customEmojiData(item.emoji);
+        const emoji = builderEmoji(item.emoji);
         if (emoji) button.setEmoji(emoji);
         return button;
       });
@@ -113,8 +139,7 @@ function buildPanelPayload(panel) {
     if (panel.allowRemove !== false) {
       options.unshift({
         label: panel.selectionMode === 'single' ? 'Auswahl entfernen' : 'Alle Panel-Rollen entfernen',
-        value: '__clear__',
-        emoji: { name: '✕' }
+        value: '__clear__'
       });
     }
 
@@ -336,5 +361,6 @@ module.exports = {
   customEmojiData,
   emojiKeyFromConfig,
   handleRoleInteraction,
-  handleRoleReaction
+  handleRoleReaction,
+  normalizeEmojiInput
 };
