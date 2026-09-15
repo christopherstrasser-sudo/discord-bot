@@ -10,7 +10,9 @@ const health = {
 
 let pirateTokPromise = null;
 const profileCache = new Map();
+let anonymousSessionCache = { ua: '', cookie: '', expiresAt: 0 };
 const PROFILE_CACHE_MS = 60_000;
+const SESSION_CACHE_MS = 10 * 60_000;
 
 function nowIso() {
   return new Date().toISOString();
@@ -132,27 +134,57 @@ function parseProfileDocument(html, source) {
   };
 }
 
+async function anonymousSession(mod) {
+  if (anonymousSessionCache.expiresAt > Date.now() && anonymousSessionCache.ua) return anonymousSessionCache;
+  const ua = typeof mod.randomUa === 'function'
+    ? mod.randomUa()
+    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36';
+  let cookie = '';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs());
+  try {
+    const response = await fetch('https://www.tiktok.com/', {
+      headers: { 'User-Agent': ua, Accept: 'text/html,*/*;q=0.8' },
+      redirect: 'manual',
+      signal: controller.signal
+    });
+    const setCookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
+    const raw = [...setCookies, response.headers.get('set-cookie') || ''].join('; ');
+    const match = raw.match(/(?:^|[;,]\s*)ttwid=([^;]+)/i);
+    if (match?.[1]) cookie = `ttwid=${match[1]}`;
+  } catch {
+    // TikTok profile pages can still work without ttwid; keep the anonymous fallback usable.
+  } finally {
+    clearTimeout(timer);
+  }
+  anonymousSessionCache = { ua, cookie, expiresAt: Date.now() + SESSION_CACHE_MS };
+  return anonymousSessionCache;
+}
+
 async function fetchProfile(source, mod) {
   const cached = profileCache.get(source);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
+  const session = await anonymousSession(mod);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs());
   try {
-    const ua = typeof mod.randomUa === 'function'
-      ? mod.randomUa()
-      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36';
+    const headers = {
+      'User-Agent': session.ua,
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': `${language()}-${region()},${language()};q=0.9,en;q=0.7`,
+      Referer: 'https://www.tiktok.com/'
+    };
+    if (session.cookie) headers.Cookie = session.cookie;
     const response = await fetch(`https://www.tiktok.com/@${encodeURIComponent(source)}`, {
-      headers: {
-        'User-Agent': ua,
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': `${language()}-${region()},${language()};q=0.9,en;q=0.7`,
-        Referer: 'https://www.tiktok.com/'
-      },
+      headers,
       redirect: 'follow',
       signal: controller.signal
     });
-    if (response.status === 403 || response.status === 429) throw new Error(`TikTok Profilzugriff blockiert (HTTP ${response.status}).`);
+    if (response.status === 403 || response.status === 429) {
+      anonymousSessionCache.expiresAt = 0;
+      throw new Error(`TikTok Profilzugriff blockiert (HTTP ${response.status}).`);
+    }
     if (!response.ok) throw new Error(`TikTok Profil antwortet mit HTTP ${response.status}.`);
     const value = parseProfileDocument(await response.text(), source);
     profileCache.set(source, { value, expiresAt: Date.now() + PROFILE_CACHE_MS });
