@@ -118,13 +118,13 @@
       host.innerHTML = '';
       picker = document.createElement('emoji-picker');
       picker.className = 'raku-emoji-picker';
-      picker.locale = 'de-x-raku';
+      picker.locale = 'de-x-raku-v074';
       picker.dataSource = EMOJI_DATA_SOURCE;
       picker.i18n = i18n;
       picker.skinToneEmoji = '👍';
       picker.emojiVersion = 16;
       picker.addEventListener('emoji-click', event => {
-        const unicode = event.detail?.unicode || event.detail?.emoji?.unicode || '';
+        const unicode = event.detail?.unicode || event.detail?.emoji?.unicode || event.detail?.emoji?.emoji || '';
         if (!unicode) return;
         setEmoji(unicode);
         closePicker();
