@@ -1,18 +1,23 @@
 const health = {
-  configured: false,
+  configured: true,
   ok: false,
   lastCheckedAt: null,
   lastSuccessAt: null,
   lastError: '',
+  mode: 'built-in',
   capabilities: { live: null, upload: null }
 };
 
-function optionalEnv(name) {
-  return String(process.env[name] || '').trim();
-}
+let pirateTokPromise = null;
+const profileCache = new Map();
+const PROFILE_CACHE_MS = 60_000;
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function optionalEnv(name) {
+  return String(process.env[name] || '').trim();
 }
 
 function setHealth(patch = {}) {
@@ -20,125 +25,223 @@ function setHealth(patch = {}) {
 }
 
 function getTikTokProviderHealth() {
-  return JSON.parse(JSON.stringify({
-    ...health,
-    configured: Boolean(optionalEnv('TIKTOK_STATUS_ENDPOINT'))
-  }));
+  return JSON.parse(JSON.stringify({ ...health, configured: true, mode: 'built-in' }));
 }
 
-function endpointFor(username) {
-  const template = optionalEnv('TIKTOK_STATUS_ENDPOINT');
-  if (!template) throw new Error('TikTok Provider ist nicht verbunden.');
-  if (template.includes('{username}')) return template.replaceAll('{username}', encodeURIComponent(username));
-  const url = new URL(template);
-  url.searchParams.set('username', username);
-  return url.toString();
+function normalizeTikTokSource(value) {
+  let source = String(value || '').trim();
+  if (!source) throw new Error('TikTok @Handle fehlt.');
+  if (/^(?:https?:\/\/)?(?:www\.)?tiktok\.com\//i.test(source)) {
+    const url = new URL(/^https?:\/\//i.test(source) ? source : `https://${source}`);
+    const match = decodeURIComponent(url.pathname || '').match(/^\/@([^/?#]+)(?:\/|$)/u);
+    if (!match) throw new Error('TikTok: Bitte @Handle oder eine tiktok.com/@handle URL eintragen.');
+    source = match[1];
+  }
+  source = source.replace(/^@/, '').trim().toLowerCase();
+  if (!/^[a-z0-9._]{2,30}$/i.test(source)) throw new Error('TikTok: Ungültiger @Handle.');
+  return source;
 }
 
-async function fetchJson(url, timeoutMs = 12000) {
+async function loadPirateTok() {
+  if (!pirateTokPromise) pirateTokPromise = import('piratetok-live-js');
+  return pirateTokPromise;
+}
+
+function timeoutMs() {
+  const raw = Number(optionalEnv('TIKTOK_TIMEOUT_MS') || 12_000);
+  return Number.isFinite(raw) ? Math.max(5_000, Math.min(Math.floor(raw), 30_000)) : 12_000;
+}
+
+function language() {
+  return (optionalEnv('TIKTOK_LANGUAGE') || 'de').slice(0, 2).toLowerCase();
+}
+
+function region() {
+  return (optionalEnv('TIKTOK_REGION') || 'DE').slice(0, 2).toUpperCase();
+}
+
+function extractRehydrationJson(html) {
+  const text = String(html || '');
+  const match = text.match(/<script[^>]+id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!match?.[1]) throw new Error('TikTok Profil enthält keine auswertbaren Profildaten.');
+  try { return JSON.parse(match[1]); }
+  catch { throw new Error('TikTok Profildaten konnten nicht gelesen werden.'); }
+}
+
+function numberOf(value) {
+  const n = Number(value || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function imageOf(video) {
+  return String(video?.dynamicCover || video?.cover || video?.originCover || video?.coverUrl || '').trim();
+}
+
+function findPostList(scope) {
+  const direct = [
+    scope?.['webapp.user-post']?.itemList,
+    scope?.['webapp.user-post']?.items,
+    scope?.['webapp.user-post-list']?.itemList,
+    scope?.['webapp.user-detail']?.userPost?.itemList,
+    scope?.['webapp.user-detail']?.userPost?.items
+  ];
+  for (const list of direct) if (Array.isArray(list)) return list;
+  return null;
+}
+
+function pickLatestUploadFromItems(items, source) {
+  const usable = (Array.isArray(items) ? items : [])
+    .filter(item => item && typeof item === 'object' && String(item.id || '').trim())
+    .sort((a, b) => numberOf(b.createTime) - numberOf(a.createTime));
+  const item = usable[0];
+  if (!item) return null;
+  const id = String(item.id).trim();
+  return {
+    id,
+    title: String(item.desc || item.description || item.title || 'Neues TikTok').trim(),
+    url: `https://www.tiktok.com/@${source}/video/${id}`,
+    thumbnail: imageOf(item.video || item),
+    publishedAt: item.createTime ? new Date(numberOf(item.createTime) * 1000).toISOString() : '',
+    viewers: numberOf(item.stats?.playCount ?? item.statsV2?.playCount ?? item.playCount)
+  };
+}
+
+function parseProfileDocument(html, source) {
+  const blob = extractRehydrationJson(html);
+  const scope = blob?.__DEFAULT_SCOPE__ || {};
+  const detail = scope['webapp.user-detail'] || {};
+  const statusCode = numberOf(detail.statusCode);
+  if ([10221, 10223].includes(statusCode)) throw new Error('TikTok Creator wurde nicht gefunden.');
+  if (statusCode === 10222) throw new Error('TikTok Profil ist privat.');
+
+  const info = detail.userInfo || {};
+  const user = info.user || {};
+  const stats = info.stats || {};
+  const itemList = findPostList(scope);
+  const videoCount = numberOf(stats.videoCount);
+  const uploadSupported = Array.isArray(itemList) || videoCount === 0;
+  const latestUpload = Array.isArray(itemList) ? pickLatestUploadFromItems(itemList, source) : null;
+
+  return {
+    creator: String(user.nickname || user.uniqueId || source),
+    avatar: String(user.avatarLarger || user.avatarMedium || user.avatarThumb || ''),
+    exists: statusCode === 0,
+    uploadSupported,
+    latestUpload,
+    videoCount
+  };
+}
+
+async function fetchProfile(source, mod) {
+  const cached = profileCache.get(source);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeoutMs());
   try {
-    const response = await fetch(url, {
+    const ua = typeof mod.randomUa === 'function'
+      ? mod.randomUa()
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36';
+    const response = await fetch(`https://www.tiktok.com/@${encodeURIComponent(source)}`, {
       headers: {
-        'User-Agent': 'RAKU-Creator-Hub/0.9.2',
-        Accept: 'application/json'
+        'User-Agent': ua,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': `${language()}-${region()},${language()};q=0.9,en;q=0.7`,
+        Referer: 'https://www.tiktok.com/'
       },
+      redirect: 'follow',
       signal: controller.signal
     });
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, 240)}` : ''}`);
-    }
-    return response.json();
+    if (response.status === 403 || response.status === 429) throw new Error(`TikTok Profilzugriff blockiert (HTTP ${response.status}).`);
+    if (!response.ok) throw new Error(`TikTok Profil antwortet mit HTTP ${response.status}.`);
+    const value = parseProfileDocument(await response.text(), source);
+    profileCache.set(source, { value, expiresAt: Date.now() + PROFILE_CACHE_MS });
+    return value;
   } finally {
     clearTimeout(timer);
   }
 }
 
-function isoTime(value) {
-  if (value === null || value === undefined || value === '') return '';
-  if (typeof value === 'number' || /^\d+$/.test(String(value))) {
-    const raw = Number(value);
-    const millis = raw > 10_000_000_000 ? raw : raw * 1000;
-    const date = new Date(millis);
-    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+async function fetchLive(source, mod) {
+  try {
+    const result = await mod.checkOnline(source, timeoutMs(), language(), region());
+    const roomId = String(result?.roomId || '').trim();
+    if (!roomId) return { supported: true, live: false, roomId: '', title: '', viewers: 0 };
+    let info = null;
+    try { info = await mod.fetchRoomInfo(roomId, timeoutMs(), '', language(), region()); }
+    catch (error) {
+      if (!['AgeRestrictedError'].includes(error?.name)) throw error;
+    }
+    return {
+      supported: true,
+      live: true,
+      roomId,
+      title: String(info?.title || ''),
+      viewers: numberOf(info?.viewers)
+    };
+  } catch (error) {
+    if (error?.name === 'HostNotOnlineError') return { supported: true, live: false, roomId: '', title: '', viewers: 0 };
+    if (error?.name === 'UserNotFoundError') throw new Error('TikTok Creator wurde nicht gefunden.');
+    return { supported: false, live: false, roomId: '', title: '', viewers: 0, error: String(error?.message || error) };
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
-}
-
-function pickUpload(data, source) {
-  const hasNested = Object.prototype.hasOwnProperty.call(data || {}, 'latestUpload') ||
-    Object.prototype.hasOwnProperty.call(data || {}, 'latestVideo');
-  const advertised = data?.capabilities?.upload === true;
-  const supported = hasNested || advertised;
-  const raw = data?.latestUpload ?? data?.latestVideo ?? null;
-  if (!raw || typeof raw !== 'object') return { supported, upload: null };
-
-  const id = String(raw.id || raw.videoId || raw.awemeId || '').trim();
-  const title = String(raw.title || raw.description || raw.caption || '').trim();
-  const url = String(raw.url || raw.shareUrl || raw.share_url || (id ? `https://www.tiktok.com/@${source}/video/${id}` : '')).trim();
-  const thumbnail = String(raw.thumbnail || raw.cover || raw.coverUrl || raw.cover_url || '').trim();
-  const publishedAt = isoTime(raw.publishedAt || raw.createTime || raw.create_time || raw.createdAt || raw.created_at);
-
-  return {
-    supported,
-    upload: id ? {
-      id,
-      title,
-      url,
-      thumbnail,
-      publishedAt,
-      viewers: Number(raw.views || raw.viewCount || raw.view_count || 0)
-    } : null
-  };
 }
 
 async function fetchTikTokSnapshot(username) {
-  const source = String(username || '').trim().replace(/^@/, '').toLowerCase();
-  if (!source) throw new Error('TikTok @Handle fehlt.');
-
+  const source = normalizeTikTokSource(username);
+  const errors = [];
   try {
-    const data = await fetchJson(endpointFor(source));
-    if (data?.exists === false) throw new Error('TikTok Creator wurde nicht gefunden.');
+    const mod = await loadPirateTok();
+    const [profileResult, liveResult] = await Promise.allSettled([
+      fetchProfile(source, mod),
+      fetchLive(source, mod)
+    ]);
 
-    const liveSupported = typeof data?.live === 'boolean' || data?.capabilities?.live === true;
-    const { supported: uploadSupported, upload } = pickUpload(data, source);
-    if (!liveSupported && !uploadSupported) {
-      throw new Error('TikTok Adapter unterstützt weder Live-Status noch Upload-Erkennung.');
-    }
+    let profile = null;
+    let live = { supported: false, live: false, roomId: '', title: '', viewers: 0 };
+    if (profileResult.status === 'fulfilled') profile = profileResult.value;
+    else errors.push(`Uploads: ${profileResult.reason?.message || profileResult.reason}`);
+    if (liveResult.status === 'fulfilled') live = liveResult.value;
+    else errors.push(`Live: ${liveResult.reason?.message || liveResult.reason}`);
+    if (live.error) errors.push(`Live: ${live.error}`);
 
-    const liveId = String(data.liveId || data.roomId || data.id || '').trim();
+    const uploadSupported = Boolean(profile?.uploadSupported);
+    const liveSupported = Boolean(live.supported);
+    if (!uploadSupported && !liveSupported) throw new Error(errors.join(' · ') || 'TikTok Provider ist momentan nicht erreichbar.');
+
     const snapshot = {
       platform: 'tiktok',
       source,
-      creator: String(data.creator || data.displayName || source),
-      avatar: String(data.avatar || ''),
+      creator: String(profile?.creator || source),
+      avatar: String(profile?.avatar || ''),
       exists: true,
       liveSupported,
       uploadSupported,
-      live: liveSupported ? Boolean(data.live) : false,
-      id: liveId,
-      eventKey: data.live && liveId ? `tiktok:${source}:live:${liveId}` : `tiktok:${source}:offline`,
-      title: String(data.title || ''),
+      live: Boolean(live.live),
+      id: String(live.roomId || ''),
+      eventKey: live.live && live.roomId ? `tiktok:${source}:live:${live.roomId}` : `tiktok:${source}:offline`,
+      title: String(live.title || ''),
       game: '',
-      url: String(data.url || `https://www.tiktok.com/@${source}/live`),
-      thumbnail: String(data.thumbnail || ''),
-      startedAt: String(data.startedAt || ''),
-      viewers: Number(data.viewers || 0),
-      latestUpload: upload
+      url: `https://www.tiktok.com/@${source}/live`,
+      thumbnail: '',
+      startedAt: '',
+      viewers: numberOf(live.viewers),
+      latestUpload: profile?.latestUpload || null
     };
 
+    const fullyHealthy = liveSupported && uploadSupported;
     setHealth({
-      ok: true,
+      ok: fullyHealthy,
       lastSuccessAt: nowIso(),
-      lastError: '',
+      lastError: fullyHealthy ? '' : errors.join(' · ').slice(0, 500),
       capabilities: { live: liveSupported, upload: uploadSupported }
     });
     return snapshot;
   } catch (error) {
-    setHealth({ ok: false, lastError: String(error?.message || error || 'Unbekannter Fehler').slice(0, 500) });
+    setHealth({
+      ok: false,
+      lastError: String(error?.message || error || 'Unbekannter Fehler').slice(0, 500),
+      capabilities: { live: false, upload: false }
+    });
     throw error;
   }
 }
@@ -146,14 +249,10 @@ async function fetchTikTokSnapshot(username) {
 function snapshotForTikTokRule(rule, snapshot) {
   if (!snapshot || snapshot.error) return snapshot;
   if (rule?.event !== 'upload') {
-    if (!snapshot.liveSupported) return { error: 'TikTok Adapter unterstützt keine Live-Erkennung.' };
+    if (!snapshot.liveSupported) return { error: 'TikTok Live-Erkennung ist momentan nicht verfügbar.' };
     return snapshot;
   }
-
-  if (!snapshot.uploadSupported) {
-    return { error: 'TikTok Adapter unterstützt noch keine Upload-Erkennung.' };
-  }
-
+  if (!snapshot.uploadSupported) return { error: 'TikTok Upload-Erkennung ist momentan nicht verfügbar.' };
   const upload = snapshot.latestUpload;
   return {
     platform: 'tiktok',
@@ -170,7 +269,7 @@ function snapshotForTikTokRule(rule, snapshot) {
     thumbnail: upload?.thumbnail || '',
     publishedAt: upload?.publishedAt || '',
     startedAt: upload?.publishedAt || '',
-    viewers: Number(upload?.viewers || 0)
+    viewers: numberOf(upload?.viewers)
   };
 }
 
@@ -178,5 +277,8 @@ module.exports = {
   fetchTikTokSnapshot,
   snapshotForTikTokRule,
   getTikTokProviderHealth,
-  pickUpload
+  normalizeTikTokSource,
+  extractRehydrationJson,
+  parseProfileDocument,
+  pickLatestUploadFromItems
 };
