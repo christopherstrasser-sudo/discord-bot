@@ -42,6 +42,7 @@ if not errorlevel 1 (
 set NEED_NPM_INSTALL=0
 if not exist "node_modules\" set NEED_NPM_INSTALL=1
 if not exist "node_modules\piratetok-live-js\package.json" set NEED_NPM_INSTALL=1
+if not exist "node_modules\puppeteer-core\package.json" set NEED_NPM_INSTALL=1
 
 if "%NEED_NPM_INSTALL%"=="1" (
   echo [INFO] Installing/updating dependencies...
