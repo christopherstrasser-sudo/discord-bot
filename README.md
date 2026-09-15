@@ -4,7 +4,7 @@ Multi-user Discord bot with a web dashboard for per-server configuration.
 
 ## Current milestone
 
-Version `0.4.0` contains the working multi-server foundation, the RAKU Control Deck UI and the first complete server logging engine:
+Version `0.5.0` contains the working multi-server foundation, the RAKU Control Deck UI, server logging and the first complete Custom Commands module:
 
 - Discord bot connection via `discord.js`
 - Express web dashboard
@@ -23,14 +23,26 @@ Version `0.4.0` contains the working multi-server foundation, the RAKU Control D
 - Role create / update / delete logs
 - Channel create / update / delete logs
 - Ban / Unban logs
+- Custom Command editor with up to 50 commands per server
+- Per-command enable/disable, cooldown, duplicate/delete and response variables
+- Runtime execution for `!commands` with per-user cooldowns
 - Windows start wrapper
+
+## Custom Command variables
+
+- `{user}` - mentions the user
+- `{username}` - Discord username
+- `{displayName}` - server display name
+- `{server}` - server name
+- `{channel}` - current channel
+- `{args}` - everything entered after the command
 
 ## Requirements
 
 - Node.js 20+
 - A Discord application with a bot user
 - `SERVER MEMBERS INTENT` enabled in Discord Developer Portal
-- `MESSAGE CONTENT INTENT` enabled in Discord Developer Portal for complete message edit/delete content
+- `MESSAGE CONTENT INTENT` enabled in Discord Developer Portal for message logs and Custom Commands
 
 ## Discord application setup
 
