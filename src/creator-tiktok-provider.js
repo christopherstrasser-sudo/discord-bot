@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 const health = {
   configured: true,
   ok: false,
@@ -9,8 +12,9 @@ const health = {
 };
 
 let pirateTokPromise = null;
+let browserPromise = null;
 const profileCache = new Map();
-let anonymousSessionCache = { ua: '', cookie: '', expiresAt: 0 };
+let anonymousSessionCache = { ua: '', cookies: {}, expiresAt: 0 };
 const PROFILE_CACHE_MS = 60_000;
 const SESSION_CACHE_MS = 10 * 60_000;
 
@@ -75,8 +79,17 @@ function numberOf(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function imageOf(video) {
-  return String(video?.dynamicCover || video?.cover || video?.originCover || video?.coverUrl || '').trim();
+function imageOf(item) {
+  const video = item?.video || item || {};
+  const image = item?.imagePost?.images?.[0]?.imageURL?.urlList?.[0];
+  return String(image || video.dynamicCover || video.cover || video.originCover || video.coverUrl || '').trim();
+}
+
+function looksLikePost(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+  const id = String(item.id || '').trim();
+  if (!/^\d{8,25}$/.test(id)) return false;
+  return Boolean(item.createTime || item.video || item.imagePost || item.stats || item.statsV2 || item.desc);
 }
 
 function findPostList(scope) {
@@ -84,26 +97,64 @@ function findPostList(scope) {
     scope?.['webapp.user-post']?.itemList,
     scope?.['webapp.user-post']?.items,
     scope?.['webapp.user-post-list']?.itemList,
+    scope?.['webapp.video-list']?.itemList,
     scope?.['webapp.user-detail']?.userPost?.itemList,
     scope?.['webapp.user-detail']?.userPost?.items
   ];
   for (const list of direct) if (Array.isArray(list)) return list;
-  return null;
+
+  const seen = new Set();
+  let best = null;
+  let bestScore = 0;
+  function walk(value, depth = 0) {
+    if (!value || typeof value !== 'object' || depth > 9 || seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      const posts = value.filter(looksLikePost);
+      const score = posts.length * 10 + (posts.some(item => item.author || item.video) ? 5 : 0);
+      if (posts.length && score > bestScore) {
+        best = posts;
+        bestScore = score;
+      }
+      for (const item of value) walk(item, depth + 1);
+      return;
+    }
+    for (const child of Object.values(value)) walk(child, depth + 1);
+  }
+  walk(scope);
+  return best;
+}
+
+function tikTokTimeFromId(id) {
+  try {
+    const seconds = Number(BigInt(String(id)) >> 32n);
+    const min = Date.UTC(2015, 0, 1) / 1000;
+    const max = Date.now() / 1000 + 366 * 86400;
+    return seconds >= min && seconds <= max ? seconds : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function pickLatestUploadFromItems(items, source) {
-  const usable = (Array.isArray(items) ? items : [])
-    .filter(item => item && typeof item === 'object' && String(item.id || '').trim())
-    .sort((a, b) => numberOf(b.createTime) - numberOf(a.createTime));
+  const filtered = (Array.isArray(items) ? items : []).filter(item => {
+    if (!looksLikePost(item)) return false;
+    const author = String(item.author?.uniqueId || item.authorUniqueId || '').trim().toLowerCase();
+    return !author || author === String(source).toLowerCase();
+  });
+  const usable = filtered
+    .map(item => ({ ...item, __time: numberOf(item.createTime) || tikTokTimeFromId(item.id) }))
+    .sort((a, b) => b.__time - a.__time || (BigInt(String(b.id)) > BigInt(String(a.id)) ? 1 : -1));
   const item = usable[0];
   if (!item) return null;
   const id = String(item.id).trim();
+  const type = item.imagePost?.images?.length ? 'photo' : 'video';
   return {
     id,
     title: String(item.desc || item.description || item.title || 'Neues TikTok').trim(),
-    url: `https://www.tiktok.com/@${source}/video/${id}`,
-    thumbnail: imageOf(item.video || item),
-    publishedAt: item.createTime ? new Date(numberOf(item.createTime) * 1000).toISOString() : '',
+    url: `https://www.tiktok.com/@${source}/${type}/${id}`,
+    thumbnail: imageOf(item),
+    publishedAt: item.__time ? new Date(item.__time * 1000).toISOString() : '',
     viewers: numberOf(item.stats?.playCount ?? item.statsV2?.playCount ?? item.playCount)
   };
 }
@@ -121,17 +172,38 @@ function parseProfileDocument(html, source) {
   const stats = info.stats || {};
   const itemList = findPostList(scope);
   const videoCount = numberOf(stats.videoCount);
-  const uploadSupported = Array.isArray(itemList) || videoCount === 0;
   const latestUpload = Array.isArray(itemList) ? pickLatestUploadFromItems(itemList, source) : null;
 
   return {
     creator: String(user.nickname || user.uniqueId || source),
     avatar: String(user.avatarLarger || user.avatarMedium || user.avatarThumb || ''),
+    secUid: String(user.secUid || ''),
     exists: statusCode === 0,
-    uploadSupported,
+    uploadSupported: Boolean(latestUpload) || videoCount === 0,
     latestUpload,
-    videoCount
+    videoCount,
+    uploadSource: latestUpload ? 'ssr' : (videoCount === 0 ? 'empty' : '')
   };
+}
+
+function responseCookies(headers) {
+  const values = typeof headers?.getSetCookie === 'function'
+    ? headers.getSetCookie()
+    : [headers?.get?.('set-cookie') || ''];
+  const result = {};
+  for (const line of values || []) {
+    for (const match of String(line).matchAll(/(?:^|,\s*)([A-Za-z0-9_]+)=([^;,]*)/g)) {
+      const name = match[1];
+      if (['ttwid', 'msToken', 'tt_csrf_token', 'passport_csrf_token', 'tt_chain_token'].includes(name)) {
+        result[name] = match[2];
+      }
+    }
+  }
+  return result;
+}
+
+function cookieHeader(cookies) {
+  return Object.entries(cookies || {}).filter(([, value]) => value).map(([key, value]) => `${key}=${value}`).join('; ');
 }
 
 async function anonymousSession(mod) {
@@ -139,26 +211,183 @@ async function anonymousSession(mod) {
   const ua = typeof mod.randomUa === 'function'
     ? mod.randomUa()
     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36';
-  let cookie = '';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs());
+  let cookies = {};
   try {
     const response = await fetch('https://www.tiktok.com/', {
       headers: { 'User-Agent': ua, Accept: 'text/html,*/*;q=0.8' },
       redirect: 'manual',
       signal: controller.signal
     });
-    const setCookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
-    const raw = [...setCookies, response.headers.get('set-cookie') || ''].join('; ');
-    const match = raw.match(/(?:^|[;,]\s*)ttwid=([^;]+)/i);
-    if (match?.[1]) cookie = `ttwid=${match[1]}`;
+    cookies = responseCookies(response.headers);
   } catch {
-    // TikTok profile pages can still work without ttwid; keep the anonymous fallback usable.
+    // Public profile fetch may still work without bootstrap cookies.
   } finally {
     clearTimeout(timer);
   }
-  anonymousSessionCache = { ua, cookie, expiresAt: Date.now() + SESSION_CACHE_MS };
+  anonymousSessionCache = { ua, cookies, expiresAt: Date.now() + SESSION_CACHE_MS };
   return anonymousSessionCache;
+}
+
+function mergeSessionCookies(session, headers) {
+  session.cookies = { ...(session.cookies || {}), ...responseCookies(headers) };
+  anonymousSessionCache.cookies = session.cookies;
+}
+
+async function fetchPostApi(source, profile, session) {
+  if (!profile.secUid) throw new Error('TikTok Profil liefert keine secUid für den Upload-Abruf.');
+  const url = new URL('https://www.tiktok.com/api/post/item_list/');
+  const params = {
+    aid: '1988',
+    app_name: 'tiktok_web',
+    app_language: language(),
+    browser_language: `${language()}-${region()}`,
+    browser_name: 'Mozilla',
+    browser_online: 'true',
+    browser_platform: 'Win32',
+    channel: 'tiktok_web',
+    cookie_enabled: 'true',
+    count: '12',
+    cursor: '0',
+    device_platform: 'web_pc',
+    focus_state: 'true',
+    from_page: 'user',
+    is_fullscreen: 'false',
+    is_page_visible: 'true',
+    priority_region: region(),
+    region: region(),
+    screen_height: '1080',
+    screen_width: '1920',
+    secUid: profile.secUid,
+    user_is_login: 'false'
+  };
+  if (session.cookies?.msToken) params.msToken = session.cookies.msToken;
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs());
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': session.ua,
+        Accept: 'application/json, text/plain, */*',
+        'Accept-Language': `${language()}-${region()},${language()};q=0.9,en;q=0.7`,
+        Referer: `https://www.tiktok.com/@${source}`,
+        Cookie: cookieHeader(session.cookies)
+      },
+      signal: controller.signal
+    });
+    mergeSessionCookies(session, response.headers);
+    if (!response.ok) throw new Error(`TikTok Post-API HTTP ${response.status}.`);
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch { throw new Error('TikTok Post-API lieferte keine gültigen JSON-Daten.'); }
+    const status = numberOf(data.statusCode ?? data.status_code);
+    if (status !== 0) throw new Error(`TikTok Post-API Status ${status}.`);
+    const items = Array.isArray(data.itemList) ? data.itemList : [];
+    const latest = pickLatestUploadFromItems(items, source);
+    if (!latest && profile.videoCount > 0) throw new Error('TikTok Post-API lieferte trotz vorhandener Videos keine Beiträge.');
+    return { latestUpload: latest, supported: true, source: 'api' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function browserCandidates() {
+  const candidates = [optionalEnv('TIKTOK_BROWSER_PATH')];
+  if (process.platform === 'win32') {
+    for (const root of [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]) {
+      if (!root) continue;
+      candidates.push(
+        path.join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        path.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe')
+      );
+    }
+  } else if (process.platform === 'darwin') {
+    candidates.push('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge');
+  } else {
+    candidates.push('/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge');
+  }
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+function findBrowserExecutable() {
+  return browserCandidates().find(candidate => fs.existsSync(candidate)) || '';
+}
+
+async function getBrowser() {
+  if (browserPromise) return browserPromise;
+  const executablePath = findBrowserExecutable();
+  if (!executablePath) throw new Error('Kein lokaler Edge/Chrome für den TikTok Browser-Fallback gefunden.');
+  browserPromise = import('puppeteer-core').then(module => {
+    const puppeteer = module.default || module;
+    const args = ['--disable-background-networking', '--disable-default-apps', '--disable-dev-shm-usage', '--disable-extensions', '--no-first-run', '--no-default-browser-check'];
+    if (typeof process.getuid === 'function' && process.getuid() === 0) args.push('--no-sandbox');
+    return puppeteer.launch({ executablePath, headless: true, args });
+  }).then(browser => {
+    browser.on('disconnected', () => { browserPromise = null; });
+    return browser;
+  }).catch(error => {
+    browserPromise = null;
+    throw error;
+  });
+  return browserPromise;
+}
+
+async function fetchPostBrowser(source, profile) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  const captured = [];
+  page.on('response', async response => {
+    if (!response.url().includes('/api/post/item_list/')) return;
+    try {
+      const data = await response.json();
+      if (Array.isArray(data?.itemList)) captured.push(...data.itemList);
+    } catch {}
+  });
+
+  try {
+    await page.setViewport({ width: 1280, height: 900 });
+    await page.goto(`https://www.tiktok.com/@${source}`, { waitUntil: 'domcontentloaded', timeout: Math.max(15_000, timeoutMs() * 2) });
+    await Promise.race([
+      page.waitForSelector('a[href*="/video/"], a[href*="/photo/"]', { timeout: 8_000 }).catch(() => null),
+      new Promise(resolve => setTimeout(resolve, 4_000))
+    ]);
+    await new Promise(resolve => setTimeout(resolve, 1_000));
+
+    const apiLatest = pickLatestUploadFromItems(captured, source);
+    if (apiLatest) return { latestUpload: apiLatest, supported: true, source: 'browser-api' };
+
+    const items = await page.evaluate(handle => {
+      const result = [];
+      const seen = new Set();
+      for (const anchor of document.querySelectorAll('a[href*="/video/"], a[href*="/photo/"]')) {
+        const href = anchor.href || '';
+        const match = href.match(/\/\@([^/]+)\/(video|photo)\/(\d+)/i);
+        if (!match || match[1].toLowerCase() !== handle.toLowerCase() || seen.has(match[3])) continue;
+        seen.add(match[3]);
+        const card = anchor.closest('[data-e2e="user-post-item"]') || anchor.parentElement || anchor;
+        const image = card.querySelector?.('img');
+        result.push({
+          id: match[3],
+          desc: image?.alt || anchor.getAttribute('aria-label') || '',
+          video: { cover: image?.currentSrc || image?.src || '' },
+          imagePost: match[2].toLowerCase() === 'photo' ? { images: [{}] } : undefined,
+          author: { uniqueId: handle }
+        });
+      }
+      return result;
+    }, source);
+
+    const latest = pickLatestUploadFromItems(items, source);
+    if (latest) return { latestUpload: latest, supported: true, source: 'browser-dom' };
+    if (profile.videoCount === 0) return { latestUpload: null, supported: true, source: 'browser-empty' };
+    throw new Error('TikTok Profil wurde geladen, aber die Videoliste blieb leer.');
+  } finally {
+    await page.close().catch(() => {});
+  }
 }
 
 async function fetchProfile(source, mod) {
@@ -168,6 +397,7 @@ async function fetchProfile(source, mod) {
   const session = await anonymousSession(mod);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs());
+  let profile;
   try {
     const headers = {
       'User-Agent': session.ua,
@@ -175,23 +405,43 @@ async function fetchProfile(source, mod) {
       'Accept-Language': `${language()}-${region()},${language()};q=0.9,en;q=0.7`,
       Referer: 'https://www.tiktok.com/'
     };
-    if (session.cookie) headers.Cookie = session.cookie;
+    const cookies = cookieHeader(session.cookies);
+    if (cookies) headers.Cookie = cookies;
     const response = await fetch(`https://www.tiktok.com/@${encodeURIComponent(source)}`, {
       headers,
       redirect: 'follow',
       signal: controller.signal
     });
+    mergeSessionCookies(session, response.headers);
     if (response.status === 403 || response.status === 429) {
       anonymousSessionCache.expiresAt = 0;
       throw new Error(`TikTok Profilzugriff blockiert (HTTP ${response.status}).`);
     }
     if (!response.ok) throw new Error(`TikTok Profil antwortet mit HTTP ${response.status}.`);
-    const value = parseProfileDocument(await response.text(), source);
-    profileCache.set(source, { value, expiresAt: Date.now() + PROFILE_CACHE_MS });
-    return value;
+    profile = parseProfileDocument(await response.text(), source);
   } finally {
     clearTimeout(timer);
   }
+
+  if (!profile.uploadSupported && profile.videoCount > 0) {
+    const errors = [];
+    try {
+      const api = await fetchPostApi(source, profile, session);
+      profile = { ...profile, uploadSupported: api.supported, latestUpload: api.latestUpload, uploadSource: api.source };
+    } catch (error) {
+      errors.push(`API: ${error.message}`);
+      try {
+        const browser = await fetchPostBrowser(source, profile);
+        profile = { ...profile, uploadSupported: browser.supported, latestUpload: browser.latestUpload, uploadSource: browser.source };
+      } catch (browserError) {
+        errors.push(`Browser: ${browserError.message}`);
+        profile.uploadError = errors.join(' · ');
+      }
+    }
+  }
+
+  profileCache.set(source, { value: profile, expiresAt: Date.now() + PROFILE_CACHE_MS });
+  return profile;
 }
 
 async function fetchLive(source, mod) {
@@ -230,8 +480,10 @@ async function fetchTikTokSnapshot(username) {
 
     let profile = null;
     let live = { supported: false, live: false, roomId: '', title: '', viewers: 0 };
-    if (profileResult.status === 'fulfilled') profile = profileResult.value;
-    else errors.push(`Uploads: ${profileResult.reason?.message || profileResult.reason}`);
+    if (profileResult.status === 'fulfilled') {
+      profile = profileResult.value;
+      if (profile.uploadError) errors.push(`Uploads: ${profile.uploadError}`);
+    } else errors.push(`Uploads: ${profileResult.reason?.message || profileResult.reason}`);
     if (liveResult.status === 'fulfilled') live = liveResult.value;
     else errors.push(`Live: ${liveResult.reason?.message || liveResult.reason}`);
     if (live.error) errors.push(`Live: ${live.error}`);
@@ -248,6 +500,8 @@ async function fetchTikTokSnapshot(username) {
       exists: true,
       liveSupported,
       uploadSupported,
+      uploadError: String(profile?.uploadError || ''),
+      uploadSource: String(profile?.uploadSource || ''),
       live: Boolean(live.live),
       id: String(live.roomId || ''),
       eventKey: live.live && live.roomId ? `tiktok:${source}:live:${live.roomId}` : `tiktok:${source}:offline`,
@@ -284,7 +538,10 @@ function snapshotForTikTokRule(rule, snapshot) {
     if (!snapshot.liveSupported) return { error: 'TikTok Live-Erkennung ist momentan nicht verfügbar.' };
     return snapshot;
   }
-  if (!snapshot.uploadSupported) return { error: 'TikTok Upload-Erkennung ist momentan nicht verfügbar.' };
+  if (!snapshot.uploadSupported) {
+    const detail = snapshot.uploadError ? ` ${snapshot.uploadError}` : '';
+    return { error: `TikTok Upload-Erkennung ist momentan nicht verfügbar.${detail}`.slice(0, 900) };
+  }
   const upload = snapshot.latestUpload;
   return {
     platform: 'tiktok',
@@ -312,5 +569,8 @@ module.exports = {
   normalizeTikTokSource,
   extractRehydrationJson,
   parseProfileDocument,
-  pickLatestUploadFromItems
+  pickLatestUploadFromItems,
+  findPostList,
+  tikTokTimeFromId,
+  findBrowserExecutable
 };
