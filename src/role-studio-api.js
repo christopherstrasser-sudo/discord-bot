@@ -141,7 +141,8 @@ async function sanitizePanel(input, guild, me, previous) {
     items,
     messageId: previous?.messageId || '',
     publishedChannelId: previous?.publishedChannelId || '',
-    publishedAt: previous?.publishedAt || ''
+    publishedAt: previous?.publishedAt || '',
+    publishedMode: previous?.publishedMode || ''
   };
 }
 
@@ -215,7 +216,7 @@ async function publishPanel(guild, panel) {
   const payload = buildPanelPayload(panel);
   let message = null;
 
-  if (panel.mode !== 'reactions' && panel.messageId && panel.publishedChannelId === panel.channelId) {
+  if (panel.mode !== 'reactions' && panel.publishedMode === panel.mode && panel.messageId && panel.publishedChannelId === panel.channelId) {
     message = await channel.messages.fetch(panel.messageId).catch(() => null);
     if (message) {
       await message.edit(payload);
@@ -242,7 +243,8 @@ async function publishPanel(guild, panel) {
     ...panel,
     messageId: message.id,
     publishedChannelId: channel.id,
-    publishedAt: new Date().toISOString()
+    publishedAt: new Date().toISOString(),
+    publishedMode: panel.mode
   };
 }
 
@@ -327,7 +329,8 @@ function attachRoleStudioApi(app) {
         ...panels[index],
         messageId: '',
         publishedChannelId: '',
-        publishedAt: ''
+        publishedAt: '',
+        publishedMode: ''
       };
       const nextPanels = panels.map((panel, panelIndex) => panelIndex === index ? cleared : panel);
       const next = updateGuildSettings(
