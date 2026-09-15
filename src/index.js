@@ -6,8 +6,8 @@ const { attachRoleStudioApi } = require('./role-studio-api');
 const { attachEmojiApi } = require('./emoji-api');
 const { attachTicketStudioApi } = require('./ticket-studio-api');
 const { attachTicketRuntime } = require('./ticket-studio-runtime');
-const { attachCreatorHubApi } = require('./creator-hub-api');
-const { startCreatorRuntime } = require('./creator-runtime');
+const { attachCreatorHubApi } = require('./creator-hub-api-v092');
+const { startCreatorRuntime } = require('./creator-runtime-v092');
 
 function isDisallowedIntentError(error) {
   const message = String(error?.message || '');
