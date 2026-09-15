@@ -19,5 +19,8 @@
     "piratetok-live-js": "0.1.5",
     "puppeteer-core": "^24.0.0",
     "tiktok-signature": "4.3.6"
+  },
+  "overrides": {
+    "@types/node": "26.5.1"
   }
 }
