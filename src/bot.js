@@ -2,15 +2,34 @@ const {
   Client,
   Events,
   GatewayIntentBits,
+  Partials,
   PermissionFlagsBits
 } = require('discord.js');
 const config = require('./config');
 const { getGuildSettings } = require('./store');
+const {
+  logMemberJoin,
+  logMemberLeave,
+  logMessageDelete,
+  logMessageUpdate,
+  logRoleCreate,
+  logRoleDelete,
+  logRoleUpdate,
+  logChannelCreate,
+  logChannelDelete,
+  logChannelUpdate
+} = require('./logger');
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
+  partials: [
+    Partials.Message,
+    Partials.Channel
   ]
 });
 
@@ -126,7 +145,18 @@ client.on(Events.GuildMemberAdd, async member => {
 
   await applyAutoRole(member, settings);
   await sendWelcome(member, settings);
+  await logMemberJoin(member);
 });
+
+client.on(Events.GuildMemberRemove, member => logMemberLeave(member));
+client.on(Events.MessageDelete, message => logMessageDelete(message));
+client.on(Events.MessageUpdate, (oldMessage, newMessage) => logMessageUpdate(oldMessage, newMessage));
+client.on(Events.GuildRoleCreate, role => logRoleCreate(role));
+client.on(Events.GuildRoleDelete, role => logRoleDelete(role));
+client.on(Events.GuildRoleUpdate, (oldRole, newRole) => logRoleUpdate(oldRole, newRole));
+client.on(Events.ChannelCreate, channel => logChannelCreate(channel));
+client.on(Events.ChannelDelete, channel => logChannelDelete(channel));
+client.on(Events.ChannelUpdate, (oldChannel, newChannel) => logChannelUpdate(oldChannel, newChannel));
 
 async function startBot() {
   await client.login(config.discord.botToken);
