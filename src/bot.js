@@ -10,6 +10,7 @@ const { getGuildSettings } = require('./store');
 const {
   logMemberJoin,
   logMemberLeave,
+  logMemberUpdate,
   logMessageDelete,
   logMessageUpdate,
   logRoleCreate,
@@ -17,7 +18,9 @@ const {
   logRoleUpdate,
   logChannelCreate,
   logChannelDelete,
-  logChannelUpdate
+  logChannelUpdate,
+  logBanAdd,
+  logBanRemove
 } = require('./logger');
 
 const client = new Client({
@@ -25,6 +28,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildModeration,
     GatewayIntentBits.MessageContent
   ],
   partials: [
@@ -149,6 +153,7 @@ client.on(Events.GuildMemberAdd, async member => {
 });
 
 client.on(Events.GuildMemberRemove, member => logMemberLeave(member));
+client.on(Events.GuildMemberUpdate, (oldMember, newMember) => logMemberUpdate(oldMember, newMember));
 client.on(Events.MessageDelete, message => logMessageDelete(message));
 client.on(Events.MessageUpdate, (oldMessage, newMessage) => logMessageUpdate(oldMessage, newMessage));
 client.on(Events.GuildRoleCreate, role => logRoleCreate(role));
@@ -157,6 +162,8 @@ client.on(Events.GuildRoleUpdate, (oldRole, newRole) => logRoleUpdate(oldRole, n
 client.on(Events.ChannelCreate, channel => logChannelCreate(channel));
 client.on(Events.ChannelDelete, channel => logChannelDelete(channel));
 client.on(Events.ChannelUpdate, (oldChannel, newChannel) => logChannelUpdate(oldChannel, newChannel));
+client.on(Events.GuildBanAdd, ban => logBanAdd(ban));
+client.on(Events.GuildBanRemove, ban => logBanRemove(ban));
 
 async function startBot() {
   await client.login(config.discord.botToken);
