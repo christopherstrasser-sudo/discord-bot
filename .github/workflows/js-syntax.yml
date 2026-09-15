@@ -23,7 +23,7 @@ jobs:
           while IFS= read -r -d '' file; do
             echo "Checking $file"
             node --check "$file"
-          done < <(find src public -type f -name '*.js' -print0)
+          done < <(find src public tests -type f -name '*.js' -print0)
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Load critical backend modules
@@ -34,4 +34,6 @@ jobs:
           SESSION_SECRET: ci-session-secret
           PUBLIC_BASE_URL: http://127.0.0.1:3000
         run: |
-          node -e "require('./src/creator-store'); require('./src/creator-providers'); require('./src/creator-runtime'); require('./src/creator-hub-api'); require('./src/ticket-store'); require('./src/ticket-studio-runtime'); require('./src/ticket-studio-api'); console.log('Critical modules loaded successfully')"
+          node -e "require('./src/creator-store'); require('./src/creator-providers'); require('./src/creator-tiktok-provider'); require('./src/creator-runtime-v092'); require('./src/creator-hub-api-v092'); require('./src/ticket-store'); require('./src/ticket-studio-runtime'); require('./src/ticket-studio-api'); console.log('Critical modules loaded successfully')"
+      - name: Run Creator Hub tests
+        run: node --test tests/creator-tiktok-provider.test.js
