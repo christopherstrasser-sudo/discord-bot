@@ -1,4 +1,10 @@
-const { PermissionFlagsBits } = require('discord.js');
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  PermissionFlagsBits
+} = require('discord.js');
 const { getGuildSettings } = require('./store');
 
 const cooldowns = new Map();
@@ -19,6 +25,96 @@ function renderResponse(template, message, args) {
     .replaceAll('{server}', message.guild.name)
     .replaceAll('{channel}', `<#${message.channel.id}>`)
     .replaceAll('{args}', args || '');
+}
+
+function commandBlocks(command) {
+  if (Array.isArray(command?.blocks) && command.blocks.length) return command.blocks;
+  if (String(command?.response || '').trim()) {
+    return [{ type: 'text', text: String(command.response) }];
+  }
+  return [];
+}
+
+function safeColor(value) {
+  const text = String(value || '#5865F2').toUpperCase();
+  return /^#[0-9A-F]{6}$/.test(text) ? text : '#5865F2';
+}
+
+function buildCommandPayload(command, message, args, canEmbed) {
+  const textParts = [];
+  const embeds = [];
+  const buttons = [];
+
+  for (const block of commandBlocks(command)) {
+    if (!block || typeof block !== 'object') continue;
+
+    if (block.type === 'text') {
+      const text = renderResponse(block.text, message, args).trim();
+      if (text) textParts.push(text);
+      continue;
+    }
+
+    if (block.type === 'random') {
+      const options = Array.isArray(block.options) ? block.options.filter(Boolean) : [];
+      if (options.length) {
+        const chosen = options[Math.floor(Math.random() * options.length)];
+        const text = renderResponse(chosen, message, args).trim();
+        if (text) textParts.push(text);
+      }
+      continue;
+    }
+
+    if (block.type === 'embed') {
+      const title = renderResponse(block.title, message, args).trim();
+      const description = renderResponse(block.description, message, args).trim();
+      const footer = renderResponse(block.footer, message, args).trim();
+      const imageUrl = String(block.imageUrl || '').trim();
+
+      if (!canEmbed) {
+        const fallback = [title, description, footer].filter(Boolean).join('\n');
+        if (fallback) textParts.push(fallback);
+        continue;
+      }
+
+      const embed = new EmbedBuilder().setColor(safeColor(block.color));
+      if (title) embed.setTitle(title.slice(0, 256));
+      if (description) embed.setDescription(description.slice(0, 4096));
+      if (footer) embed.setFooter({ text: footer.slice(0, 2048) });
+      if (/^https?:\/\//i.test(imageUrl)) embed.setImage(imageUrl);
+      embeds.push(embed);
+      continue;
+    }
+
+    if (block.type === 'button') {
+      const label = renderResponse(block.label, message, args).trim();
+      const url = String(block.url || '').trim();
+      if (!label || !/^https?:\/\//i.test(url)) continue;
+      buttons.push(
+        new ButtonBuilder()
+          .setStyle(ButtonStyle.Link)
+          .setLabel(label.slice(0, 80))
+          .setURL(url)
+      );
+    }
+  }
+
+  const payload = {
+    allowedMentions: {
+      parse: [],
+      users: [message.author.id],
+      repliedUser: false
+    }
+  };
+
+  const content = textParts.join('\n').trim();
+  if (content) payload.content = content.slice(0, 2000);
+  if (embeds.length) payload.embeds = embeds.slice(0, 10);
+  if (buttons.length) {
+    payload.components = [new ActionRowBuilder().addComponents(buttons.slice(0, 5))];
+  }
+
+  if (!payload.content && !payload.embeds?.length && !payload.components?.length) return null;
+  return payload;
 }
 
 function cleanupCooldowns(now) {
@@ -72,17 +168,17 @@ async function handleCustomCommand(message) {
   if (cooldownSeconds > 0) cooldowns.set(cooldownKey, now + cooldownSeconds * 1000);
   cleanupCooldowns(now);
 
-  const content = renderResponse(command.response, message, args).trim();
-  if (!content) return;
+  const payload = buildCommandPayload(
+    command,
+    message,
+    args,
+    Boolean(permissions?.has(PermissionFlagsBits.EmbedLinks))
+  );
+  if (!payload) return;
 
   try {
-    await message.channel.send({
-      content: content.slice(0, 2000),
-      allowedMentions: {
-        parse: [],
-        users: [message.author.id]
-      }
-    });
+    if (command.delivery === 'reply') await message.reply(payload);
+    else await message.channel.send(payload);
     console.log(`[COMMANDS] ${trigger} used by ${message.author.tag} in ${message.guild.name}`);
   } catch (error) {
     console.warn(`[COMMANDS] Could not answer ${trigger} in ${message.guild.name}: ${error.message}`);
@@ -92,5 +188,6 @@ async function handleCustomCommand(message) {
 module.exports = {
   handleCustomCommand,
   normalizeTrigger,
-  renderResponse
+  renderResponse,
+  buildCommandPayload
 };

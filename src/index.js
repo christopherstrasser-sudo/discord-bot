@@ -1,9 +1,24 @@
+const config = require('./config');
 const { startBot } = require('./bot');
-const { startWeb } = require('./web');
+const { createWebApp } = require('./web');
+const { attachCommandBuilderApi } = require('./command-builder-api');
 
 function isDisallowedIntentError(error) {
   const message = String(error?.message || '');
   return message.toLowerCase().includes('disallowed intent');
+}
+
+function startDashboard() {
+  const app = createWebApp();
+  attachCommandBuilderApi(app);
+
+  return new Promise(resolve => {
+    const server = app.listen(config.port, '0.0.0.0', () => {
+      console.log(`[WEB] Dashboard: ${config.publicBaseUrl}`);
+      console.log(`[WEB] Discord callback: ${config.discord.redirectUri}`);
+      resolve(server);
+    });
+  });
 }
 
 async function main() {
@@ -26,7 +41,7 @@ async function main() {
     console.log('');
   }
 
-  await startWeb();
+  await startDashboard();
 }
 
 main().catch(error => {
