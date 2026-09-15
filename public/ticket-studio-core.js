@@ -3,7 +3,7 @@
   T.s = { cfg:null, saved:null, meta:null, dirty:false, panelId:null, typeId:null, loading:null };
   T.cp = v => JSON.parse(JSON.stringify(v));
   T.esc = v => typeof escapeHtml === 'function' ? escapeHtml(v) : String(v ?? '');
-  T.uid = p => `${p}_${crypto.randomUUID?.() || Date.now().toString(36)}`;
+  T.uid = p => { const raw=(crypto.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-',''); return `${p}_${raw.slice(0,12)}`; };
   T.pSel = () => T.s.cfg?.panels?.find(x => x.id === T.s.panelId) || null;
   T.tSel = () => T.pSel()?.types?.find(x => x.id === T.s.typeId) || null;
   T.pub = p => Boolean(p?.messageId && p?.publishedChannelId);
