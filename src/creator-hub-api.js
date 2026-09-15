@@ -18,7 +18,7 @@ const PLATFORMS = new Set(['twitch', 'youtube', 'tiktok']);
 const EVENTS = {
   twitch: new Set(['live', 'title_change', 'category_change']),
   youtube: new Set(['upload']),
-  tiktok: new Set(['live'])
+  tiktok: new Set(['live', 'upload'])
 };
 
 function access(req, res, next) {
@@ -74,7 +74,6 @@ function normalizeYouTubeSource(value) {
 
   if (/^UC[A-Za-z0-9_-]{20,40}$/.test(source)) return source;
   if (!source.startsWith('@')) source = `@${source}`;
-
   const handle = source.slice(1).trim();
   if (!handle || handle.length > 100 || /[\s/?#]/u.test(handle)) {
     throw new Error('YouTube: Bitte einen gültigen @Handle eintragen, z. B. @rakulein.');
@@ -82,16 +81,34 @@ function normalizeYouTubeSource(value) {
   return `@${handle}`;
 }
 
+function normalizeTikTokSource(value) {
+  let source = str(value, 200);
+  if (!source) return '';
+
+  if (/^(?:https?:\/\/)?(?:www\.)?tiktok\.com\//i.test(source)) {
+    try {
+      const url = new URL(/^https?:\/\//i.test(source) ? source : `https://${source}`);
+      const match = decodeURIComponent(url.pathname || '').match(/^\/@([^/?#]+)(?:\/|$)/u);
+      if (!match) throw new Error('unsupported_path');
+      source = match[1];
+    } catch {
+      throw new Error('TikTok: Bitte @Handle oder eine tiktok.com/@handle URL eintragen.');
+    }
+  }
+
+  source = source.replace(/^@/, '').trim().toLowerCase();
+  if (!/^[A-Za-z0-9._]{2,30}$/.test(source)) {
+    throw new Error('TikTok: Bitte einen gültigen @Handle eintragen, z. B. @rakulein.');
+  }
+  return source;
+}
+
 function normalizeSource(platform, value) {
   if (platform === 'youtube') return normalizeYouTubeSource(value);
-  const source = str(value, 100).replace(platform === 'tiktok' ? /^@/ : /$^/, '').trim();
+  if (platform === 'tiktok') return normalizeTikTokSource(value);
+  const source = str(value, 100);
   if (!source) return '';
-  if (platform === 'twitch' && !/^[A-Za-z0-9_]{3,25}$/.test(source)) {
-    throw new Error('Twitch: Bitte den Kanalnamen ohne URL eintragen.');
-  }
-  if (platform === 'tiktok' && !/^[A-Za-z0-9._]{2,30}$/.test(source)) {
-    throw new Error('TikTok: Bitte den @Handle ohne URL eintragen.');
-  }
+  if (!/^[A-Za-z0-9_]{3,25}$/.test(source)) throw new Error('Twitch: Bitte den Kanalnamen ohne URL eintragen.');
   return source.toLowerCase();
 }
 
@@ -100,9 +117,7 @@ function sanitizeRule(raw, index) {
   if (!PLATFORMS.has(platform)) throw new Error(`Regel ${index + 1}: unbekannte Plattform.`);
   const event = str(raw?.event, 30).toLowerCase();
   if (!EVENTS[platform].has(event)) throw new Error(`Regel ${index + 1}: Event ${event || '—'} wird für ${platform} nicht unterstützt.`);
-  const quietMode = raw?.quietHours?.mode === 'suppress' ? 'suppress' : 'no_ping';
   const cooldown = Number(raw?.cooldownMinutes ?? 10);
-  const cooldownMinutes = Number.isFinite(cooldown) ? Math.max(0, Math.min(Math.floor(cooldown), 1440)) : 10;
 
   return {
     id: safeId(raw?.id),
@@ -114,7 +129,7 @@ function sanitizeRule(raw, index) {
     event,
     channelId: str(raw?.channelId, 32),
     pingRoleId: str(raw?.pingRoleId, 32),
-    cooldownMinutes,
+    cooldownMinutes: Number.isFinite(cooldown) ? Math.max(0, Math.min(Math.floor(cooldown), 1440)) : 10,
     announceFirstMatch: Boolean(raw?.announceFirstMatch),
     filterTitle: str(raw?.filterTitle, 100),
     filterGame: str(raw?.filterGame, 100),
@@ -128,7 +143,7 @@ function sanitizeRule(raw, index) {
       enabled: Boolean(raw?.quietHours?.enabled),
       start: validTime(raw?.quietHours?.start, '22:00'),
       end: validTime(raw?.quietHours?.end, '08:00'),
-      mode: quietMode
+      mode: raw?.quietHours?.mode === 'suppress' ? 'suppress' : 'no_ping'
     }
   };
 }
@@ -142,8 +157,8 @@ function validateRuleAgainstGuild(rule, guild, requireComplete = false) {
   if (rule.channelId) {
     const channel = guild.channels.cache.get(rule.channelId);
     const perms = channel?.permissionsFor?.(me);
-    const validChannel = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
-    if (!validChannel || !perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.SendMessages) || !perms?.has(PermissionFlagsBits.EmbedLinks)) {
+    const valid = channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
+    if (!valid || !perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.SendMessages) || !perms?.has(PermissionFlagsBits.EmbedLinks)) {
       throw new Error(`${rule.name}: Bot kann im Zielkanal nicht mit Embeds schreiben.`);
     }
   }
@@ -157,20 +172,16 @@ function validateRuleAgainstGuild(rule, guild, requireComplete = false) {
 }
 
 function sanitizeConfig(input, guild) {
-  const rulesRaw = Array.isArray(input?.rules) ? input.rules : [];
-  if (rulesRaw.length > MAX_RULES) throw new Error(`Maximal ${MAX_RULES} Creator-Regeln pro Server.`);
-  const rules = rulesRaw.map(sanitizeRule);
+  const rawRules = Array.isArray(input?.rules) ? input.rules : [];
+  if (rawRules.length > MAX_RULES) throw new Error(`Maximal ${MAX_RULES} Creator-Regeln pro Server.`);
+  const rules = rawRules.map(sanitizeRule);
   const ids = new Set();
   for (const rule of rules) {
     if (ids.has(rule.id)) rule.id = safeId('', 'rule');
     ids.add(rule.id);
     validateRuleAgainstGuild(rule, guild, false);
   }
-  return {
-    enabled: Boolean(input?.enabled),
-    timezone: validTimezone(input?.timezone),
-    rules
-  };
+  return { enabled: Boolean(input?.enabled), timezone: validTimezone(input?.timezone), rules };
 }
 
 function metaForGuild(guild) {
@@ -193,11 +204,7 @@ function metaForGuild(guild) {
   return {
     channels,
     roles,
-    capabilities: {
-      canMentionEveryone,
-      writableChannels: channels.length,
-      pingRoles: roles.length
-    },
+    capabilities: { canMentionEveryone, writableChannels: channels.length, pingRoles: roles.length },
     runtime: getRuntimeStatus()
   };
 }
@@ -224,11 +231,7 @@ function publicSnapshot(snapshot) {
 function attachCreatorHubApi(app) {
   app.get('/api/guilds/:guildId/creator-hub', access, (req, res) => {
     const guild = client.guilds.cache.get(req.params.guildId);
-    res.json({
-      config: getCreatorConfig(guild.id),
-      meta: metaForGuild(guild),
-      history: getCreatorHistory(guild.id, 50)
-    });
+    res.json({ config: getCreatorConfig(guild.id), meta: metaForGuild(guild), history: getCreatorHistory(guild.id, 50) });
   });
 
   app.patch('/api/guilds/:guildId/creator-hub', access, (req, res) => {
@@ -244,13 +247,13 @@ function attachCreatorHubApi(app) {
   });
 
   app.post('/api/guilds/:guildId/creator-hub/:ruleId/check', access, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.guildId);
     try {
-      const config = getCreatorConfig(guild.id);
+      const config = getCreatorConfig(req.params.guildId);
       const rule = config.rules.find(item => item.id === req.params.ruleId);
       if (!rule) throw new Error('Creator-Regel nicht gefunden.');
       if (!rule.source) throw new Error('Trage zuerst eine Creator-Quelle ein und speichere sie.');
       const snapshot = await checkCreatorRule(rule);
+      if (snapshot?.error) throw new Error(snapshot.error);
       res.json({ ok: true, snapshot: publicSnapshot(snapshot), runtime: getRuntimeStatus() });
     } catch (error) {
       res.status(400).json({ error: 'creator_check_failed', message: error.message, runtime: getRuntimeStatus() });
