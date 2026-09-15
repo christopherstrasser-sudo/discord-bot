@@ -1,0 +1,366 @@
+/* RAKU wide / comfort layout layer
+   Keeps the existing visual language, but uses modern desktop space properly. */
+
+:root {
+  --content-gutter: clamp(18px, 1.8vw, 34px);
+}
+
+body {
+  font-size: 15px;
+}
+
+.topbar {
+  height: 74px;
+  padding: 0 var(--content-gutter);
+}
+
+.brand { gap: 13px; }
+.brand-mark { width: 38px; height: 38px; }
+.brand-copy b { font-size: 15px; }
+.brand-copy small { font-size: 10px; }
+.global-status { font-size: 13px; padding: 8px 12px; }
+.user-avatar { width: 36px; height: 36px; }
+.user-chip > span b { font-size: 13px; }
+.user-chip > span small { font-size: 11px; }
+.topbar-button { font-size: 12px; }
+
+.main-shell {
+  width: calc(100% - (var(--content-gutter) * 2));
+  max-width: none;
+  margin: 0 auto;
+}
+
+.button {
+  min-height: 43px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+.button-large { min-height: 52px; padding: 0 22px; font-size: 14px; }
+.icon { width: 18px; height: 18px; }
+
+.login-screen {
+  min-height: calc(100vh - 74px);
+  gap: clamp(70px, 7vw, 150px);
+}
+.login-copy p { max-width: 720px; font-size: 18px; }
+.login-console { width: min(520px, 100%); }
+.console-top,
+.console-line,
+.console-foot { padding: 16px 18px; }
+.console-top span,
+.console-foot,
+.console-top b { font-size: 11px; }
+.console-line span { font-size: 13px; }
+.console-line strong { font-size: 12px; }
+
+.server-screen { padding: 60px 0 96px; }
+.page-head h1 { font-size: 58px; }
+.page-head p { font-size: 16px; }
+.overline { font-size: 11px; }
+.deck-stats div { min-width: 128px; padding: 15px 19px; }
+.deck-stats b { font-size: 22px; }
+.deck-stats span { font-size: 10px; }
+.server-toolbar { margin-top: 38px; }
+.search-field { width: min(520px, 100%); height: 46px; padding: 0 15px; }
+.search-field input { font-size: 14px; }
+.segmented-control button { min-height: 38px; padding: 0 16px; font-size: 12px; }
+
+.server-card-grid {
+  margin-top: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 18px;
+}
+.server-card-topline { height: 42px; padding: 0 18px; }
+.server-card-topline span,
+.server-card-topline b { font-size: 10px; }
+.server-card-main { padding: 26px 22px 22px; gap: 17px; }
+.server-icon { width: 70px; height: 70px; border-radius: 18px; }
+.server-card-copy h3 { font-size: 21px; }
+.server-card-copy p { font-size: 13px; }
+.server-card-meter { padding: 0 22px 22px; gap: 11px; }
+.server-card-meter > span,
+.server-card-meter > b { font-size: 9px; }
+.card-action { height: 49px; padding: 0 14px; font-size: 11px; }
+.card-action .icon { width: 15px; height: 15px; }
+
+.guild-screen { padding: 26px 0 80px; }
+.guild-commandbar {
+  min-height: 94px;
+  gap: 16px;
+  padding: 15px 18px;
+}
+.icon-square { width: 42px; height: 42px; }
+.command-server-icon { width: 54px; height: 54px; border-radius: 13px; }
+.command-title { min-width: 230px; }
+.command-title span { font-size: 9px; }
+.command-title h1 { font-size: 21px; }
+.command-status { font-size: 10px; }
+.command-meta { gap: 18px; font-size: 12px; }
+.command-meta span + span { padding-left: 18px; }
+.command-actions { gap: 9px; }
+
+.guild-deck {
+  margin-top: 16px;
+  grid-template-columns: 282px minmax(0, 1fr);
+  min-height: calc(100vh - 220px);
+}
+.deck-nav { padding: 18px 12px; }
+.deck-nav-label { padding: 12px 11px 7px; font-size: 9px; }
+.deck-nav-item {
+  min-height: 49px;
+  padding: 0 12px;
+  grid-template-columns: 20px 1fr auto;
+  gap: 11px;
+}
+.deck-nav-item > span:not(.icon) { font-size: 13px; }
+.deck-nav-item small { font-size: 10px; }
+.deck-telemetry { margin: 22px 10px 0; gap: 11px; }
+.deck-telemetry span { font-size: 9px; }
+
+.deck-workspace {
+  padding: 40px 46px 48px;
+}
+.workspace-head {
+  min-height: 88px;
+  padding-bottom: 26px;
+  margin-bottom: 30px;
+}
+.workspace-head > div > span { font-size: 9px; }
+.workspace-head h2 { margin: 7px 0 8px; font-size: 36px; }
+.workspace-head p { font-size: 14px; line-height: 1.55; }
+
+.overview-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 360px);
+  gap: 22px;
+}
+.module-row {
+  min-height: 90px;
+  grid-template-columns: 44px 1fr auto auto;
+  gap: 16px;
+  padding: 0 18px;
+}
+.module-row-icon { width: 40px; height: 40px; }
+.module-row > div:nth-child(2) b { font-size: 14px; }
+.module-row > div:nth-child(2) span { font-size: 12px; }
+.module-row-state { font-size: 9px; }
+.mini-button { min-height: 36px; padding: 0 12px; font-size: 10px; }
+.telemetry-card { min-height: 100px; padding: 17px; }
+.telemetry-card > span { font-size: 9px; }
+.telemetry-card b { font-size: 32px; }
+.telemetry-card small { font-size: 10px; }
+.diagnostic-cta { min-height: 78px; padding: 0 16px; }
+.diagnostic-cta b { font-size: 12px; }
+.diagnostic-cta small { font-size: 10px; }
+
+.power-toggle { gap: 10px; }
+.power-toggle span { width: 44px; height: 24px; }
+.power-toggle span::before { width: 16px; height: 16px; }
+.power-toggle input:checked + span::before { left: 23px; }
+.power-toggle b { font-size: 12px; }
+
+.workspace-split {
+  grid-template-columns: minmax(0, 1.05fr) minmax(420px, .95fr);
+  gap: 24px;
+}
+.control-panel {
+  padding: 24px;
+  gap: 22px;
+}
+.control-panel.narrow { max-width: none; }
+.field { gap: 10px; }
+.field > span { font-size: 12px; }
+.field small { font-size: 11px; }
+.field select { height: 46px; padding: 0 13px; font-size: 14px; }
+.field textarea { min-height: 160px; padding: 13px; font-size: 14px; }
+.variable-bar { gap: 8px; }
+.variable-bar > span { font-size: 10px; }
+.variable-bar button { padding: 7px 10px; font-size: 10px; }
+
+.preview-console { min-height: 320px; }
+.preview-console-top,
+.preview-console-foot { height: 44px; padding: 0 14px; font-size: 9px; }
+.discord-message { grid-template-columns: 46px 1fr; gap: 13px; padding: 26px 20px; }
+.bot-avatar { width: 46px; height: 46px; }
+.message-author b { font-size: 15px; }
+.message-author span { font-size: 8px; }
+.message-author small { font-size: 10px; }
+.discord-message p { font-size: 14px; line-height: 1.6; }
+
+.permission-readout { min-height: 78px; padding: 15px; gap: 13px; }
+.permission-readout > span { width: 32px; height: 32px; }
+.permission-readout b { font-size: 12px; }
+.permission-readout small { font-size: 10px; }
+.event-matrix span { min-height: 64px; font-size: 9px; }
+.diagnostics-grid { grid-template-columns: minmax(0, 1fr) minmax(360px, .72fr); gap: 24px; }
+.diagnostic-readout { min-height: 170px; padding: 24px; }
+.diagnostic-readout b { font-size: 14px; }
+.diagnostic-readout small { font-size: 11px; }
+
+.toast { min-width: 340px; max-width: 500px; padding: 13px 15px; }
+.toast strong { font-size: 12px; }
+.toast small { font-size: 10px; }
+
+/* Command Flow Builder: give the studio real desktop room. */
+.flow-studio { gap: 16px; }
+.flow-studio-toolbar {
+  min-height: 74px;
+  padding: 15px 18px;
+  gap: 18px;
+}
+.flow-studio-title span,
+.flow-panel-head span,
+.flow-meta-field > span,
+.flow-delivery > span,
+.flow-field > span { font-size: 9px; }
+.flow-studio-title b { font-size: 17px; }
+.flow-studio-stats span { padding: 10px 13px; font-size: 11px; }
+
+.flow-studio-body {
+  min-height: 760px;
+  grid-template-columns: 275px minmax(0, 1fr);
+}
+.flow-command-search { height: 56px; padding: 0 14px; }
+.flow-command-search input { font-size: 13px; }
+.flow-command-list { max-height: 860px; }
+.flow-command-nav {
+  min-height: 68px;
+  grid-template-columns: 34px minmax(0, 1fr) 9px;
+  gap: 11px;
+  padding: 10px 12px;
+}
+.flow-command-index { width: 32px; height: 32px; font-size: 9px; }
+.flow-command-copy b { font-size: 13px; }
+.flow-command-copy small { font-size: 10px; }
+.flow-sidebar-empty { font-size: 12px; }
+
+.flow-command-config {
+  min-height: 84px;
+  grid-template-columns: 50px minmax(240px, 1fr) 135px 220px auto;
+  gap: 13px;
+  padding: 12px 16px;
+}
+.flow-command-switch { width: 44px; height: 24px; }
+.flow-command-switch span::before { width: 16px; height: 16px; }
+.flow-command-switch input:checked + span::before { transform: translateX(18px); }
+.flow-meta-field input { height: 40px; padding: 0 11px; font-size: 13px; }
+.flow-meta-field.cooldown > div,
+.flow-delivery > div { height: 40px; }
+.flow-meta-field.cooldown b { width: 32px; font-size: 10px; }
+.flow-delivery button { font-size: 11px; }
+.flow-command-actions button { height: 40px; padding: 0 12px; font-size: 10px; }
+
+.flow-builder-grid {
+  grid-template-columns: 235px minmax(520px, 1.45fr) minmax(390px, .9fr);
+  min-height: 670px;
+}
+.flow-panel-head,
+.flow-preview-toolbar { min-height: 46px; padding: 0 13px; }
+.flow-panel-head b,
+.flow-preview-toolbar b { font-size: 9px; }
+.flow-palette-list { padding: 12px; gap: 8px; }
+.flow-palette-item {
+  min-height: 64px;
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
+  gap: 10px;
+  padding: 10px;
+}
+.flow-palette-item > span { width: 38px; height: 38px; font-size: 9px; }
+.flow-palette-item b { font-size: 12px; }
+.flow-palette-item small { font-size: 9px; }
+.flow-token-grid { padding: 12px; gap: 7px; }
+.flow-token-grid button { height: 32px; font-size: 9px; }
+.flow-limits { margin: 10px 12px; padding: 11px; gap: 8px; font-size: 9px; }
+
+.flow-canvas { min-height: 624px; padding: 14px; gap: 11px; }
+.flow-drop-empty { min-height: 220px; }
+.flow-drop-empty b { font-size: 13px; }
+.flow-drop-empty span { font-size: 10px; }
+.flow-block-head {
+  min-height: 50px;
+  grid-template-columns: 32px 40px minmax(0, 1fr) auto;
+  gap: 9px;
+  padding: 8px 10px;
+}
+.flow-drag-handle { width: 31px; height: 31px; font-size: 18px; }
+.flow-block-code { width: 38px; height: 31px; font-size: 8px; }
+.flow-block-head > div:nth-child(3) b { font-size: 12px; }
+.flow-block-head > div:nth-child(3) small { font-size: 9px; }
+.flow-block-actions { gap: 4px; }
+.flow-block-actions button { width: 31px; height: 31px; }
+.flow-block-body { padding: 13px; }
+.flow-field { gap: 7px; }
+.flow-field input,
+.flow-field textarea { padding: 10px 11px; font-size: 13px; }
+.flow-field input { height: 40px; }
+.flow-field textarea { min-height: 96px; }
+.flow-charcount { margin-top: 8px; font-size: 9px; }
+.flow-embed-fields,
+.flow-two-cols { gap: 11px; }
+.flow-color-field { grid-template-columns: 46px 1fr; gap: 7px; }
+
+.flow-preview-args { min-height: 50px; grid-template-columns: 66px 1fr; padding: 7px 10px; }
+.flow-preview-args span { font-size: 9px; }
+.flow-preview-args input { height: 34px; padding: 0 9px; font-size: 11px; }
+.flow-discord-preview { min-height: 390px; padding: 20px 15px 24px; }
+.flow-reply-context { margin-left: 52px; font-size: 10px; }
+.flow-preview-message { grid-template-columns: 42px 1fr; gap: 11px; }
+.flow-preview-avatar { width: 42px; height: 42px; }
+.flow-preview-author { font-size: 12px; }
+.flow-preview-text { font-size: 14px; line-height: 1.55; }
+.flow-preview-embed { font-size: 13px; }
+.flow-preview-buttons button,
+.flow-preview-buttons a { min-height: 36px; font-size: 11px; }
+
+/* Extra room on ultrawide screens. */
+@media (min-width: 1800px) {
+  :root { --content-gutter: 36px; }
+  .server-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .guild-deck { grid-template-columns: 300px minmax(0, 1fr); }
+  .deck-workspace { padding-left: 54px; padding-right: 54px; }
+  .flow-studio-body { grid-template-columns: 300px minmax(0, 1fr); }
+  .flow-builder-grid { grid-template-columns: 255px minmax(620px, 1.55fr) minmax(430px, .9fr); }
+}
+
+/* Preserve responsive behavior instead of forcing desktop density onto small screens. */
+@media (max-width: 1180px) {
+  .server-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow-builder-grid { grid-template-columns: 200px minmax(360px, 1fr) 320px; }
+}
+
+@media (max-width: 1050px) {
+  .main-shell { width: calc(100% - 28px); }
+  .deck-workspace { padding: 30px 24px 36px; }
+  .flow-studio-body { grid-template-columns: 220px minmax(0, 1fr); }
+  .flow-builder-grid { grid-template-columns: 1fr; }
+  .flow-palette { border-right: 0; border-bottom: 1px solid var(--line); }
+  .flow-preview-panel { border-left: 0; border-top: 1px solid var(--line); }
+  .flow-command-config { grid-template-columns: 44px minmax(180px, 1fr) 120px 180px; }
+  .flow-command-actions { grid-column: 2 / -1; justify-content: flex-start; }
+}
+
+@media (max-width: 900px) {
+  body { font-size: 14px; }
+  .topbar { height: 68px; }
+  .guild-deck { grid-template-columns: 1fr; min-height: 0; }
+  .deck-workspace { padding: 28px 20px 34px; }
+  .workspace-head h2 { font-size: 32px; }
+  .workspace-split,
+  .diagnostics-grid { grid-template-columns: 1fr; }
+  .flow-studio-body { grid-template-columns: 1fr; }
+  .flow-command-sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+  .flow-command-list { max-height: 300px; }
+}
+
+@media (max-width: 680px) {
+  .main-shell { width: calc(100% - 20px); }
+  .page-head h1 { font-size: 42px; }
+  .server-card-grid { grid-template-columns: 1fr; }
+  .guild-commandbar { padding: 12px; }
+  .deck-workspace { padding: 24px 14px 30px; }
+  .workspace-head h2 { font-size: 30px; }
+  .flow-studio-toolbar { grid-template-columns: 1fr; }
+  .flow-command-config { grid-template-columns: 44px 1fr; }
+  .flow-meta-field,
+  .flow-delivery,
+  .flow-command-actions { grid-column: 1 / -1; }
+}
