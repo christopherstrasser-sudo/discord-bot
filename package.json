@@ -16,6 +16,6 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "piratetok-live-js": "^0.2.0"
+    "piratetok-live-js": "0.1.5"
   }
 }
