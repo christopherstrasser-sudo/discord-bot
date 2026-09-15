@@ -5,43 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>RAKU Discord Control</title>
-  <link rel="stylesheet" href="/styles.css?v=040">
+  <link rel="stylesheet" href="/styles.css?v=050">
 </head>
 <body>
-  <div class="app-shell">
-    <aside id="sidebar" class="sidebar">
+  <div class="app-frame">
+    <header class="topbar">
       <a class="brand" href="/" aria-label="RAKU Discord Control">
         <span class="brand-mark">R</span>
-        <span class="brand-copy"><strong>RAKU</strong><small>Discord Control</small></span>
+        <span class="brand-copy"><b>RAKU</b><small>DISCORD CONTROL</small></span>
       </a>
-
-      <div id="sidebarContext" class="sidebar-context"></div>
-      <nav id="sidebarNav" class="sidebar-nav" aria-label="Navigation"></nav>
-
-      <div class="sidebar-footer">
-        <div id="globalStatus" class="system-status">
-          <span class="system-dot"></span>
-          <div><strong>Systemstatus</strong><small>Wird geprüft …</small></div>
-        </div>
+      <div id="globalStatus" class="global-status" aria-live="polite">
+        <span class="status-pulse"></span><span>System wird geprüft</span>
       </div>
-    </aside>
+      <div id="userArea" class="user-area"></div>
+    </header>
 
-    <section class="workspace">
-      <header class="topbar">
-        <div id="breadcrumb" class="breadcrumb"><span>Control Center</span></div>
-        <div id="userArea" class="user-area"></div>
-      </header>
+    <main class="main-shell">
+      <section id="loggedOut" class="login-screen hidden">
+        <div class="login-copy">
+          <span class="overline">DISCORD SERVER CONTROL</span>
+          <h1>Dein Bot.<br>Dein System.</h1>
+          <p>Verwalte mehrere Discord-Server, Module und Automationen in einem einzigen Control Center.</p>
+          <a class="button button-primary button-large" href="/auth/discord">Mit Discord anmelden</a>
+        </div>
+        <div class="login-console" aria-hidden="true">
+          <div class="console-top"><span>RAKU / CONTROL NODE</span><b>ONLINE</b></div>
+          <div class="console-line"><span>OAuth</span><strong>READY</strong></div>
+          <div class="console-line"><span>Guild routing</span><strong>READY</strong></div>
+          <div class="console-line"><span>Module engine</span><strong>READY</strong></div>
+          <div class="console-foot">v0.5 · local control layer</div>
+        </div>
+      </section>
 
-      <main class="main-content">
-        <section id="loggedOut" class="view hidden auth-view"></section>
-        <section id="serverList" class="view hidden"></section>
-        <section id="guildDashboard" class="view hidden"></section>
-      </main>
-    </section>
+      <section id="serverList" class="server-screen hidden">
+        <div class="page-head">
+          <div>
+            <span class="overline">CONTROL DECK</span>
+            <h1>Server auswählen</h1>
+            <p>Direkter Zugriff auf deine Discord-Server, Module und Diagnosen.</p>
+          </div>
+          <div id="serverStats" class="deck-stats"></div>
+        </div>
+
+        <div class="server-toolbar">
+          <label class="search-field">
+            <span class="search-icon">⌕</span>
+            <input id="guildSearch" type="search" placeholder="Server suchen" autocomplete="off">
+          </label>
+          <div id="guildFilters" class="segmented-control">
+            <button type="button" data-filter="all" class="active">Alle</button>
+            <button type="button" data-filter="installed">Verbunden</button>
+            <button type="button" data-filter="missing">Bot fehlt</button>
+          </div>
+        </div>
+
+        <div id="guildGrid" class="server-card-grid"></div>
+        <div id="emptyState" class="empty-state hidden">
+          <strong>Keine Server gefunden.</strong>
+          <span>Ändere Suche oder Filter.</span>
+        </div>
+      </section>
+
+      <section id="guildDashboard" class="guild-screen hidden">
+        <div id="guildDashboardContent"></div>
+      </section>
+    </main>
   </div>
 
-  <div id="saveDock" class="save-dock hidden" role="status" aria-live="polite"></div>
   <div id="toastHost" class="toast-host" aria-live="polite"></div>
-  <script src="/app.js?v=040"></script>
+  <script src="/app.js?v=050"></script>
 </body>
 </html>
