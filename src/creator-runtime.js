@@ -15,9 +15,13 @@ const {
 const {
   getProviderHealth,
   fetchTwitchStatuses,
-  fetchYouTubeStatus,
-  fetchTikTokStatus
+  fetchYouTubeStatus
 } = require('./creator-providers');
+const {
+  fetchTikTokSnapshot,
+  snapshotForTikTokRule,
+  getTikTokProviderHealth
+} = require('./creator-tiktok-provider');
 
 const DEFAULT_POLL_SECONDS = 90;
 let timer = null;
@@ -48,7 +52,7 @@ function platformLabel(platform) {
 function eventLabel(event) {
   return {
     live: 'Live-Start',
-    upload: 'Neues Video',
+    upload: 'Neuer Upload',
     title_change: 'Titel geändert',
     category_change: 'Kategorie geändert'
   }[event] || event;
@@ -57,22 +61,22 @@ function eventLabel(event) {
 function sampleSnapshot(rule) {
   const platform = rule.platform;
   const source = sourceOf(rule) || 'creator';
-  if (platform === 'youtube') {
+  if (platform === 'youtube' || (platform === 'tiktok' && rule.event === 'upload')) {
     return {
       platform,
       source,
       creator: rule.displayName || 'Creator',
       live: false,
       id: 'demo-video',
-      eventKey: 'demo:youtube',
-      title: 'Mein neues Video ist da!',
+      eventKey: `demo:${platform}:upload`,
+      title: platform === 'tiktok' ? 'Neues TikTok ist online ✨' : 'Mein neues Video ist da!',
       game: '',
-      url: 'https://www.youtube.com/',
+      url: platform === 'tiktok' ? 'https://www.tiktok.com/' : 'https://www.youtube.com/',
       thumbnail: '',
       avatar: '',
       publishedAt: new Date().toISOString(),
       startedAt: new Date().toISOString(),
-      viewers: 0
+      viewers: platform === 'tiktok' ? 12400 : 0
     };
   }
   return {
@@ -81,7 +85,7 @@ function sampleSnapshot(rule) {
     creator: rule.displayName || source || 'Creator',
     live: true,
     id: 'demo-live',
-    eventKey: `demo:${platform}`,
+    eventKey: `demo:${platform}:live`,
     title: platform === 'tiktok' ? 'Wir sind live ✨' : 'Ranked Grind mit der Community',
     game: platform === 'twitch' ? 'VALORANT' : '',
     url: platform === 'tiktok' ? 'https://www.tiktok.com/' : 'https://www.twitch.tv/',
@@ -118,6 +122,28 @@ function normalizeColor(value, platform) {
   return { twitch: '#9146FF', youtube: '#FF0000', tiktok: '#FE2C55' }[platform] || '#5865F2';
 }
 
+function defaultEmbedTitle(rule) {
+  if (rule.platform === 'youtube') return '🎬 {creator} hat ein neues Video';
+  if (rule.platform === 'tiktok' && rule.event === 'upload') return '🎵 Neues TikTok von {creator}';
+  if (rule.event === 'category_change') return '🎮 {creator} spielt jetzt {game}';
+  if (rule.event === 'title_change') return '✏️ Neuer Stream-Titel';
+  return '🔴 {creator} ist jetzt live!';
+}
+
+function defaultEmbedDescription(rule) {
+  if (rule.platform === 'youtube') return '**{title}**\n\nJetzt auf YouTube ansehen.';
+  if (rule.platform === 'tiktok' && rule.event === 'upload') return '**{title}**\n\nJetzt auf TikTok ansehen.';
+  if (rule.event === 'category_change') return '**{title}**\nNeue Kategorie: **{game}**';
+  if (rule.event === 'title_change') return '**{title}**';
+  return '**{title}**\n{game}';
+}
+
+function defaultButtonLabel(rule) {
+  if (rule.platform === 'youtube') return 'Video ansehen';
+  if (rule.platform === 'tiktok') return rule.event === 'upload' ? 'TikTok ansehen' : 'TikTok öffnen';
+  return 'Stream ansehen';
+}
+
 function buildNotificationPayload(rule, snapshot, options = {}) {
   const vars = templateVariables(rule, snapshot);
   const mentionRoleId = options.allowPing === false ? '' : String(rule.pingRoleId || '');
@@ -137,17 +163,16 @@ function buildNotificationPayload(rule, snapshot, options = {}) {
   else embed.setAuthor({ name: vars.creator });
   if (rule.showThumbnail !== false && snapshot.thumbnail && /^https?:\/\//i.test(snapshot.thumbnail)) embed.setImage(snapshot.thumbnail);
   if (snapshot.game) embed.addFields({ name: 'Kategorie', value: snapshot.game.slice(0, 1024), inline: true });
-  if (snapshot.viewers) embed.addFields({ name: 'Zuschauer', value: Number(snapshot.viewers).toLocaleString('de-DE'), inline: true });
+  if (snapshot.viewers && rule.event === 'live') embed.addFields({ name: 'Zuschauer', value: Number(snapshot.viewers).toLocaleString('de-DE'), inline: true });
 
   const components = [];
   if (snapshot.url && /^https?:\/\//i.test(snapshot.url)) {
-    const row = new ActionRowBuilder().addComponents(
+    components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setURL(snapshot.url)
-        .setLabel(String(rule.buttonLabel || defaultButtonLabel(rule.platform)).slice(0, 80))
-    );
-    components.push(row);
+        .setLabel(String(rule.buttonLabel || defaultButtonLabel(rule)).slice(0, 80))
+    ));
   }
 
   return {
@@ -156,22 +181,6 @@ function buildNotificationPayload(rule, snapshot, options = {}) {
     components,
     allowedMentions: mentionRoleId ? { parse: [], roles: [mentionRoleId] } : { parse: [] }
   };
-}
-
-function defaultEmbedTitle(rule) {
-  if (rule.platform === 'youtube') return '🎬 {creator} hat ein neues Video';
-  return rule.event === 'category_change' ? '🎮 {creator} spielt jetzt {game}' : rule.event === 'title_change' ? '✏️ Neuer Stream-Titel' : '🔴 {creator} ist jetzt live!';
-}
-
-function defaultEmbedDescription(rule) {
-  if (rule.platform === 'youtube') return '**{title}**\n\nJetzt auf YouTube ansehen.';
-  if (rule.event === 'category_change') return '**{title}**\nNeue Kategorie: **{game}**';
-  if (rule.event === 'title_change') return '**{title}**';
-  return '**{title}**\n{game}';
-}
-
-function defaultButtonLabel(platform) {
-  return platform === 'youtube' ? 'Video ansehen' : platform === 'tiktok' ? 'TikTok öffnen' : 'Stream ansehen';
 }
 
 function minuteOfDayInZone(timezone, date = new Date()) {
@@ -220,9 +229,9 @@ function eventForRule(rule, snapshot, state) {
   if (!snapshot || snapshot.error) return null;
   const source = sourceOf(rule);
 
-  if (rule.platform === 'youtube') {
-    if (rule.event !== 'upload' || !snapshot.id) return null;
-    const key = `youtube:${source}:upload:${snapshot.id}`;
+  if (rule.event === 'upload') {
+    if (!snapshot.id) return null;
+    const key = `${rule.platform}:${source}:upload:${snapshot.id}`;
     return key !== state.lastEventKey ? { key, kind: 'upload' } : null;
   }
 
@@ -263,7 +272,7 @@ function currentObservation(rule, snapshot, state, event) {
     } : null
   };
   if (event?.key) next.lastEventKey = event.key;
-  else if (!state.initialized && rule.platform === 'youtube' && snapshot?.id) next.lastEventKey = `youtube:${sourceOf(rule)}:upload:${snapshot.id}`;
+  else if (!state.initialized && rule.event === 'upload' && snapshot?.id) next.lastEventKey = `${rule.platform}:${sourceOf(rule)}:upload:${snapshot.id}`;
   else if (!state.initialized && rule.event === 'live' && snapshot?.live && snapshot?.id) next.lastEventKey = `${rule.platform}:${sourceOf(rule)}:live:${snapshot.id}`;
   return next;
 }
@@ -414,9 +423,14 @@ async function loadSnapshots(ruleEntries) {
 
   const yt = await mapLimit(youtube, 4, fetchYouTubeStatus);
   for (const [source, value] of yt) snapshots.set(`youtube:${source}`, value);
-  const tt = await mapLimit(tiktok, 4, fetchTikTokStatus);
+  const tt = await mapLimit(tiktok, 4, fetchTikTokSnapshot);
   for (const [source, value] of tt) snapshots.set(`tiktok:${source}`, value);
   return snapshots;
+}
+
+function selectSnapshot(rule, snapshot) {
+  if (rule.platform === 'tiktok') return snapshotForTikTokRule(rule, snapshot);
+  return snapshot;
 }
 
 async function pollCreatorHub(client) {
@@ -436,8 +450,8 @@ async function pollCreatorHub(client) {
     }
     const snapshots = await loadSnapshots(entries);
     for (const entry of entries) {
-      const snapshot = snapshots.get(sourceKey(entry.rule)) || { error: 'Provider lieferte keinen Status.' };
-      await processRule(client, entry.guildId, entry.config, entry.rule, snapshot);
+      const raw = snapshots.get(sourceKey(entry.rule)) || { error: 'Provider lieferte keinen Status.' };
+      await processRule(client, entry.guildId, entry.config, entry.rule, selectSnapshot(entry.rule, raw));
     }
   } catch (error) {
     lastPollError = String(error.message || error);
@@ -455,7 +469,7 @@ async function checkCreatorRule(rule) {
     return map.get(source) || null;
   }
   if (rule.platform === 'youtube') return fetchYouTubeStatus(source);
-  if (rule.platform === 'tiktok') return fetchTikTokStatus(source);
+  if (rule.platform === 'tiktok') return selectSnapshot(rule, await fetchTikTokSnapshot(source));
   throw new Error('Unbekannter Provider.');
 }
 
@@ -467,6 +481,8 @@ async function sendCreatorTest(client, guildId, rule) {
 }
 
 function getRuntimeStatus() {
+  const providers = getProviderHealth();
+  providers.tiktok = getTikTokProviderHealth();
   return {
     running: Boolean(timer),
     polling,
@@ -474,7 +490,7 @@ function getRuntimeStatus() {
     lastPollStartedAt,
     lastPollFinishedAt,
     lastPollError,
-    providers: getProviderHealth()
+    providers
   };
 }
 
@@ -495,5 +511,7 @@ module.exports = {
   sendCreatorTest,
   getRuntimeStatus,
   buildNotificationPayload,
-  sampleSnapshot
+  sampleSnapshot,
+  eventForRule,
+  selectSnapshot
 };
