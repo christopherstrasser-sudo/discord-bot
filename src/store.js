@@ -19,7 +19,8 @@ const DEFAULT_GUILD_SETTINGS = Object.freeze({
     channelId: ''
   },
   customCommands: {
-    enabled: false
+    enabled: false,
+    commands: []
   }
 });
 
