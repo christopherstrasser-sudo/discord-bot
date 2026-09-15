@@ -6,6 +6,8 @@ const providerHealth = {
 
 let twitchToken = null;
 let twitchTokenExpiresAt = 0;
+const youtubeHandleCache = new Map();
+const YOUTUBE_HANDLE_CACHE_MS = 24 * 60 * 60 * 1000;
 
 function nowIso() {
   return new Date().toISOString();
@@ -48,7 +50,7 @@ async function fetchJson(url, options = {}) {
   try {
     const response = await fetch(url, {
       ...options,
-      headers: { 'User-Agent': 'RAKU-Creator-Hub/0.9', ...(options.headers || {}) },
+      headers: { 'User-Agent': 'RAKU-Creator-Hub/0.9.1', ...(options.headers || {}) },
       signal: controller.signal
     });
     if (!response.ok) {
@@ -67,7 +69,7 @@ async function fetchText(url, options = {}) {
   try {
     const response = await fetch(url, {
       ...options,
-      headers: { 'User-Agent': 'RAKU-Creator-Hub/0.9', ...(options.headers || {}) },
+      headers: { 'User-Agent': 'RAKU-Creator-Hub/0.9.1', ...(options.headers || {}) },
       signal: controller.signal
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -169,37 +171,123 @@ function attributeValue(xml, tag, attribute) {
   return match ? decodeXml(match[1]) : '';
 }
 
-async function fetchYouTubeStatus(channelId) {
-  const id = String(channelId || '').trim();
-  if (!id) throw new Error('YouTube Channel-ID fehlt.');
+function normalizeYouTubeLookup(value) {
+  let source = String(value || '').trim();
+  if (!source) throw new Error('YouTube @Handle fehlt.');
+
+  if (/^(?:https?:\/\/)?(?:www\.)?youtube\.com\//i.test(source)) {
+    try {
+      const url = new URL(/^https?:\/\//i.test(source) ? source : `https://${source}`);
+      const path = decodeURIComponent(url.pathname || '');
+      const channelMatch = path.match(/^\/channel\/(UC[A-Za-z0-9_-]{20,40})(?:\/|$)/i);
+      if (channelMatch) return { kind: 'id', value: channelMatch[1] };
+      const handleMatch = path.match(/^\/@([^/?#]+)(?:\/|$)/u);
+      if (handleMatch) source = `@${handleMatch[1]}`;
+      else throw new Error('unsupported_path');
+    } catch {
+      throw new Error('YouTube: Bitte @Handle oder eine youtube.com/@handle URL eintragen.');
+    }
+  }
+
+  if (/^UC[A-Za-z0-9_-]{20,40}$/.test(source)) return { kind: 'id', value: source };
+  if (!source.startsWith('@')) source = `@${source}`;
+  const handle = source.slice(1).trim();
+  if (!handle || handle.length > 100 || /[\s/?#]/u.test(handle)) {
+    throw new Error('YouTube: Ungültiger @Handle.');
+  }
+  return { kind: 'handle', value: `@${handle}` };
+}
+
+function extractYouTubeChannelId(html) {
+  const text = String(html || '');
+  const patterns = [
+    /<meta[^>]+itemprop=["']channelId["'][^>]+content=["'](UC[A-Za-z0-9_-]{20,40})["']/i,
+    /<meta[^>]+content=["'](UC[A-Za-z0-9_-]{20,40})["'][^>]+itemprop=["']channelId["']/i,
+    /"externalId":"(UC[A-Za-z0-9_-]{20,40})"/,
+    /\\"externalId\\":\\"(UC[A-Za-z0-9_-]{20,40})\\"/,
+    /"channelId":"(UC[A-Za-z0-9_-]{20,40})"/,
+    /https:\/\/www\.youtube\.com\/channel\/(UC[A-Za-z0-9_-]{20,40})/
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[1];
+  }
+  return '';
+}
+
+async function resolveYouTubeChannelId(source, options = {}) {
+  const lookup = normalizeYouTubeLookup(source);
+  if (lookup.kind === 'id') return { channelId: lookup.value, source: lookup.value };
+
+  const cacheKey = lookup.value.toLowerCase();
+  const cached = youtubeHandleCache.get(cacheKey);
+  if (!options.force && cached && cached.expiresAt > Date.now()) {
+    return { channelId: cached.channelId, source: lookup.value };
+  }
+
+  const html = await fetchText(`https://www.youtube.com/${encodeURI(lookup.value)}`, {
+    headers: { 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8' },
+    timeoutMs: 12000
+  });
+  const channelId = extractYouTubeChannelId(html);
+  if (!channelId) throw new Error(`YouTube: ${lookup.value} konnte nicht aufgelöst werden.`);
+
+  youtubeHandleCache.set(cacheKey, {
+    channelId,
+    expiresAt: Date.now() + YOUTUBE_HANDLE_CACHE_MS
+  });
+  return { channelId, source: lookup.value };
+}
+
+async function fetchYouTubeFeed(channelId, publicSource) {
+  const xml = await fetchText(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`);
+  const authorBlock = xml.match(/<author>([\s\S]*?)<\/author>/i)?.[1] || '';
+  const creator = tagValue(authorBlock, 'name') || publicSource || channelId;
+  const entry = xml.match(/<entry>([\s\S]*?)<\/entry>/i)?.[1] || '';
+  const videoId = entry ? tagValue(entry, 'yt:videoId') : '';
+  const title = entry ? tagValue(entry, 'title') : '';
+  const publishedAt = entry ? tagValue(entry, 'published') : '';
+  const videoUrl = entry ? attributeValue(entry, 'link', 'href') : '';
+  const thumbnail = entry ? attributeValue(entry, 'media:thumbnail', 'url') : '';
+  const channelUrl = publicSource?.startsWith('@')
+    ? `https://www.youtube.com/${encodeURI(publicSource)}`
+    : `https://www.youtube.com/channel/${channelId}`;
+  const url = videoUrl || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : channelUrl);
+
+  return {
+    platform: 'youtube',
+    source: publicSource || channelId,
+    channelId,
+    creator,
+    exists: true,
+    live: false,
+    id: videoId,
+    eventKey: videoId ? `youtube:${channelId}:upload:${videoId}` : `youtube:${channelId}:empty`,
+    title,
+    game: '',
+    url,
+    thumbnail,
+    avatar: '',
+    startedAt: publishedAt,
+    publishedAt,
+    viewers: 0
+  };
+}
+
+async function fetchYouTubeStatus(source) {
+  let lookup;
   try {
-    const xml = await fetchText(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(id)}`);
-    const authorBlock = xml.match(/<author>([\s\S]*?)<\/author>/i)?.[1] || '';
-    const creator = tagValue(authorBlock, 'name') || id;
-    const entry = xml.match(/<entry>([\s\S]*?)<\/entry>/i)?.[1] || '';
-    if (!entry) throw new Error('YouTube Feed enthält keinen Eintrag.');
-    const videoId = tagValue(entry, 'yt:videoId');
-    const title = tagValue(entry, 'title');
-    const publishedAt = tagValue(entry, 'published');
-    const url = attributeValue(entry, 'link', 'href') || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : '');
-    const thumbnail = attributeValue(entry, 'media:thumbnail', 'url');
-    const result = {
-      platform: 'youtube',
-      source: id,
-      creator,
-      exists: true,
-      live: false,
-      id: videoId,
-      eventKey: videoId ? `youtube:${id}:upload:${videoId}` : '',
-      title,
-      game: '',
-      url,
-      thumbnail,
-      avatar: '',
-      startedAt: publishedAt,
-      publishedAt,
-      viewers: 0
-    };
+    lookup = normalizeYouTubeLookup(source);
+    let resolved = await resolveYouTubeChannelId(lookup.value);
+    let result;
+    try {
+      result = await fetchYouTubeFeed(resolved.channelId, lookup.value);
+    } catch (error) {
+      if (lookup.kind !== 'handle') throw error;
+      youtubeHandleCache.delete(lookup.value.toLowerCase());
+      resolved = await resolveYouTubeChannelId(lookup.value, { force: true });
+      result = await fetchYouTubeFeed(resolved.channelId, lookup.value);
+    }
     success('youtube');
     return result;
   } catch (error) {
@@ -253,5 +341,7 @@ module.exports = {
   getProviderHealth,
   fetchTwitchStatuses,
   fetchYouTubeStatus,
-  fetchTikTokStatus
+  fetchTikTokStatus,
+  resolveYouTubeChannelId,
+  extractYouTubeChannelId
 };
