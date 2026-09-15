@@ -1,0 +1,617 @@
+/* RAKU Control Deck UI v1 — visual/UX layer only */
+:root {
+  --raku-bg: #07090e;
+  --raku-bg-2: #0a0d14;
+  --raku-panel: #0e121b;
+  --raku-panel-2: #121824;
+  --raku-panel-3: #171e2c;
+  --raku-line: rgba(255,255,255,.08);
+  --raku-line-strong: rgba(255,255,255,.13);
+  --raku-text: #f6f8fb;
+  --raku-muted: #8993a5;
+  --raku-dim: #5f697a;
+  --raku-accent: #7586ff;
+  --raku-accent-soft: rgba(117,134,255,.16);
+  --raku-good: #44d7a8;
+  --raku-warn: #f0b85a;
+  --raku-bad: #f36f7b;
+  --raku-radius: 18px;
+  --raku-shadow: 0 18px 60px rgba(0,0,0,.28);
+}
+
+html { background: var(--raku-bg); }
+body {
+  background:
+    radial-gradient(circle at 82% -10%, rgba(117,134,255,.10), transparent 28rem),
+    radial-gradient(circle at -10% 32%, rgba(68,215,168,.035), transparent 26rem),
+    var(--raku-bg) !important;
+  color: var(--raku-text);
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 72%);
+}
+
+.topbar {
+  background: rgba(7,9,14,.96) !important;
+  border-bottom: 1px solid var(--raku-line) !important;
+  min-height: 76px;
+}
+.brand-mark {
+  box-shadow: 0 0 0 1px rgba(117,134,255,.28), 0 0 34px rgba(117,134,255,.12);
+}
+.global-status {
+  border: 1px solid var(--raku-line) !important;
+  background: #0d1119 !important;
+}
+
+.guild-commandbar.raku-commandbar-v1 {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  min-height: 84px;
+  padding: 14px 22px !important;
+  gap: 16px !important;
+  background: rgba(7,9,14,.96) !important;
+  border: 1px solid var(--raku-line) !important;
+  border-radius: 0 0 18px 18px !important;
+  box-shadow: 0 16px 44px rgba(0,0,0,.20);
+}
+.raku-commandbar-v1 .command-title { min-width: 0; flex: 1; }
+.raku-commandbar-v1 .command-title > span {
+  color: var(--raku-muted);
+  letter-spacing: .16em;
+  font-size: 10px;
+}
+.raku-commandbar-v1 .command-title h1 { font-size: 20px !important; letter-spacing: -.02em; }
+.raku-commandbar-v1 .command-meta { display: none !important; }
+.raku-commandbar-v1 .command-status {
+  margin-left: auto;
+  border: 1px solid rgba(68,215,168,.18);
+  background: rgba(68,215,168,.055);
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+.raku-commandbar-v1 .command-status b { font-size: 10px; letter-spacing: .12em; }
+.raku-hide-command-action { display: none !important; }
+.raku-commandbar-v1 .command-actions { margin-left: 0 !important; }
+.raku-commandbar-v1 .button { min-height: 42px; padding-inline: 16px; }
+
+.guild-deck {
+  display: grid !important;
+  grid-template-columns: 286px minmax(0,1fr) !important;
+  gap: 28px !important;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 28px 28px 64px !important;
+}
+.deck-nav {
+  position: sticky;
+  top: 108px;
+  align-self: start;
+  display: flex !important;
+  flex-direction: column;
+  gap: 0 !important;
+  padding: 16px !important;
+  background: linear-gradient(180deg, rgba(15,19,29,.98), rgba(10,13,20,.98)) !important;
+  border: 1px solid var(--raku-line) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--raku-shadow);
+  overflow: hidden;
+}
+.deck-nav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(117,134,255,.75), transparent);
+}
+.raku-nav-group { margin: 0 0 18px; }
+.raku-nav-group:last-of-type { margin-bottom: 10px; }
+.deck-nav-label {
+  margin: 0 10px 7px !important;
+  padding: 0 !important;
+  font-size: 9px !important;
+  letter-spacing: .18em !important;
+  color: #626d80 !important;
+}
+.deck-nav-item {
+  position: relative;
+  width: 100%;
+  min-height: 52px !important;
+  margin: 2px 0 !important;
+  padding: 8px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  display: grid !important;
+  grid-template-columns: 30px minmax(0,1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease !important;
+}
+.deck-nav-item:hover {
+  transform: translateX(2px);
+  background: rgba(255,255,255,.035) !important;
+  border-color: rgba(255,255,255,.055) !important;
+}
+.deck-nav-item.active {
+  background: linear-gradient(90deg, rgba(117,134,255,.16), rgba(117,134,255,.045)) !important;
+  border-color: rgba(117,134,255,.24) !important;
+  box-shadow: inset 2px 0 0 var(--raku-accent);
+}
+.deck-nav-item > .icon {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.035);
+}
+.deck-nav-item.active > .icon { background: rgba(117,134,255,.16); }
+.deck-nav-item > span:not(.icon) {
+  font-size: 13px !important;
+  font-weight: 720;
+  text-align: left;
+  white-space: nowrap;
+}
+.deck-nav-item small {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px !important;
+  color: #707b8e !important;
+  white-space: nowrap;
+}
+.deck-nav-item small .state-dot { display: none !important; }
+.raku-nav-node {
+  width: 7px;
+  height: 7px;
+  border: 1px solid #596375;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px #111722;
+}
+.raku-nav-node.on {
+  border-color: var(--raku-good);
+  background: var(--raku-good);
+  box-shadow: 0 0 12px rgba(68,215,168,.35);
+}
+.deck-telemetry {
+  margin-top: 4px !important;
+  padding: 14px 12px !important;
+  border-top: 1px solid var(--raku-line) !important;
+  border-bottom: 1px solid var(--raku-line) !important;
+  background: transparent !important;
+}
+.raku-nav-core {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 9px 4px;
+}
+.raku-nav-core b { display:block; font-size:9px; letter-spacing:.12em; color:#8c97a9; }
+.raku-nav-core small { display:block; margin-top:2px; font-size:9px; color:#586274; }
+.raku-core-node {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(68,215,168,.30);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.raku-core-node::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(68,215,168,.18);
+  border-radius: 50%;
+}
+.raku-core-node i {
+  width: 5px;
+  height: 5px;
+  background: var(--raku-good);
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(68,215,168,.7);
+  animation: rakuPulse 2.4s ease-in-out infinite;
+}
+
+.deck-workspace {
+  min-width: 0;
+  padding: 0 !important;
+}
+.raku-workspace-v1 {
+  animation: rakuWorkspaceIn .20s ease both;
+}
+
+/* Shared module hero */
+.workspace-head,
+.role-studio-toolbar,
+.ticket-head,
+.creator-head {
+  position: relative;
+  overflow: hidden;
+  min-height: 152px !important;
+  padding: 30px 32px !important;
+  margin: 0 0 26px !important;
+  border: 1px solid var(--raku-line) !important;
+  border-radius: var(--raku-radius) !important;
+  background:
+    linear-gradient(135deg, rgba(117,134,255,.11), transparent 42%),
+    linear-gradient(180deg, #111722, #0d121b) !important;
+  box-shadow: var(--raku-shadow);
+}
+.workspace-head::before,
+.role-studio-toolbar::before,
+.ticket-head::before,
+.creator-head::before {
+  content: '';
+  position: absolute;
+  right: -40px;
+  top: -80px;
+  width: 360px;
+  height: 260px;
+  opacity: .55;
+  background:
+    linear-gradient(120deg, transparent 0 44%, rgba(117,134,255,.16) 44% 45%, transparent 45% 58%, rgba(117,134,255,.08) 58% 59%, transparent 59%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 34px);
+  transform: skewX(-16deg);
+  pointer-events: none;
+}
+.workspace-head::after,
+.role-studio-toolbar::after,
+.ticket-head::after,
+.creator-head::after {
+  content: '';
+  position: absolute;
+  left: 32px;
+  bottom: 0;
+  width: 150px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--raku-accent), transparent);
+  box-shadow: 0 0 18px rgba(117,134,255,.35);
+}
+.workspace-head > *, .role-studio-toolbar > *, .ticket-head > *, .creator-head > * { position: relative; z-index: 1; }
+.workspace-head h2,
+.ticket-head h2,
+.creator-head h2 {
+  margin-top: 9px !important;
+  font-size: clamp(30px, 3vw, 44px) !important;
+  line-height: 1 !important;
+  letter-spacing: -.035em !important;
+}
+.workspace-head p,
+.ticket-head p,
+.creator-head p,
+.role-studio-title small {
+  max-width: 760px;
+  margin-top: 12px !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  color: #929daf !important;
+}
+
+/* General breathing room */
+.control-panel,
+.preview-console,
+.event-matrix,
+.diagnostics-grid > *,
+.coming-panel {
+  border-radius: var(--raku-radius) !important;
+}
+.control-panel { padding: 28px !important; }
+.workspace-split,
+.diagnostics-grid {
+  gap: 26px !important;
+  align-items: start !important;
+}
+.field { gap: 9px !important; margin-bottom: 22px !important; }
+.field > span { font-size: 10px !important; letter-spacing: .12em; color: #758094 !important; }
+.field input,
+.field select,
+.field textarea {
+  min-height: 48px !important;
+  border-radius: 11px !important;
+  padding: 12px 14px !important;
+}
+.field textarea { min-height: 150px !important; line-height: 1.55 !important; }
+.variable-bar { margin-top: 18px !important; padding-top: 18px !important; gap: 8px !important; }
+
+/* Overview / Server Pulse */
+.raku-overview-v1 { display: flex; flex-direction: column; gap: 26px; }
+.raku-pulse-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(360px,1.15fr) minmax(520px,.85fr);
+  gap: 34px;
+  min-height: 270px;
+  padding: 34px;
+  border: 1px solid var(--raku-line);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(117,134,255,.17), transparent 34%),
+    linear-gradient(135deg, #111722, #0a0e16 70%);
+  box-shadow: var(--raku-shadow);
+}
+.raku-pulse-hero::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(117,134,255,.8), rgba(68,215,168,.5), transparent);
+  animation: rakuSignal 5s linear infinite;
+}
+.raku-hero-copy { align-self: center; position: relative; z-index:1; }
+.raku-kicker { color:#748094; font-size:10px; font-weight:800; letter-spacing:.18em; }
+.raku-hero-copy h2 { margin: 12px 0 12px; font-size: clamp(34px,4vw,56px); line-height:1; letter-spacing:-.045em; }
+.raku-hero-copy p { max-width:620px; margin:0; color:#929daf; font-size:15px; line-height:1.7; }
+.raku-signal-line { display:flex; align-items:center; gap:7px; margin-top:28px; color:#647084; font-size:9px; letter-spacing:.12em; }
+.raku-signal-line i { width:7px; height:7px; border:1px solid rgba(68,215,168,.45); border-radius:50%; }
+.raku-signal-line i:first-child { background:var(--raku-good); box-shadow:0 0 14px rgba(68,215,168,.45); animation:rakuPulse 2s infinite; }
+.raku-pulse-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-self:stretch; position:relative; z-index:1; }
+.raku-pulse-stats article {
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  min-height:96px;
+  padding:18px;
+  border:1px solid var(--raku-line);
+  border-radius:14px;
+  background:rgba(255,255,255,.025);
+  transition:transform .16s ease,border-color .16s ease,background .16s ease;
+}
+.raku-pulse-stats article:hover { transform:translateY(-2px); border-color:rgba(117,134,255,.22); background:rgba(117,134,255,.045); }
+.raku-pulse-stats article span { font-size:9px; letter-spacing:.13em; color:#667184; }
+.raku-pulse-stats article b { margin-top:7px; font-size:29px; letter-spacing:-.03em; }
+.raku-pulse-stats article small { margin-top:4px; color:#687386; font-size:10px; }
+
+.raku-pulse-grid { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(360px,.75fr); gap:26px; }
+.raku-live-card,.raku-attention-card,.raku-module-deck {
+  border:1px solid var(--raku-line);
+  border-radius:18px;
+  background:linear-gradient(180deg,#0f141e,#0b0f17);
+  box-shadow:0 14px 40px rgba(0,0,0,.18);
+}
+.raku-live-card > header,.raku-attention-card > header,.raku-module-deck > header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:20px 22px;
+  border-bottom:1px solid var(--raku-line);
+}
+.raku-live-card header span,.raku-attention-card header span,.raku-module-deck header span { display:block; font-size:9px; letter-spacing:.14em; color:#697487; }
+.raku-live-card header b,.raku-attention-card header b,.raku-module-deck header b { display:block; margin-top:5px; font-size:16px; }
+.raku-live-beacon { width:10px; height:10px; border-radius:50%; background:var(--raku-good); box-shadow:0 0 18px rgba(68,215,168,.45); animation:rakuPulse 2.2s infinite; }
+.raku-activity-list { padding:8px 20px 18px; }
+.raku-activity-row { display:grid; grid-template-columns:10px minmax(0,1fr) auto; gap:12px; align-items:center; padding:14px 2px; border-bottom:1px solid rgba(255,255,255,.05); }
+.raku-activity-row:last-child { border-bottom:0; }
+.raku-activity-dot { width:7px; height:7px; border-radius:50%; background:#697386; }
+.raku-activity-dot.sent,.raku-activity-dot.test { background:var(--raku-good); box-shadow:0 0 10px rgba(68,215,168,.25); }
+.raku-activity-dot.error { background:var(--raku-bad); }
+.raku-activity-row b { display:block; font-size:12px; }
+.raku-activity-row small { display:block; margin-top:3px; color:#707b8e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.raku-activity-row time { color:#596476; font-size:10px; }
+.raku-pulse-empty { padding:32px 4px 22px; }
+.raku-pulse-empty b,.raku-pulse-empty span { display:block; }
+.raku-pulse-empty b { font-size:13px; }
+.raku-pulse-empty span { margin-top:6px; color:#697386; line-height:1.6; font-size:11px; }
+
+.raku-attention-card > div { padding:12px; }
+.raku-attention-card button {
+  width:100%;
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  margin:2px 0;
+  border:1px solid transparent;
+  border-radius:12px;
+  background:transparent;
+  text-align:left;
+  transition:.16s ease;
+}
+.raku-attention-card button:hover { background:rgba(240,184,90,.055); border-color:rgba(240,184,90,.14); }
+.raku-attention-card button > span { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:rgba(240,184,90,.09); color:var(--raku-warn); font-weight:900; }
+.raku-attention-card button b,.raku-attention-card button small { display:block; }
+.raku-attention-card button b { font-size:11px; }
+.raku-attention-card button small { margin-top:3px; color:#737e90; font-size:10px; }
+.raku-attention-card button em { font-style:normal; color:#8c97a8; font-size:9px; }
+.raku-attention-clear { display:flex; align-items:center; gap:12px; padding:20px 12px; }
+.raku-attention-clear > span { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; border:1px solid rgba(68,215,168,.24); color:var(--raku-good); }
+.raku-attention-clear b,.raku-attention-clear small { display:block; }
+.raku-attention-clear small { margin-top:4px; color:#6e798b; }
+
+.raku-module-deck > header > small { color:#657083; font-size:10px; }
+.raku-module-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; padding:18px; }
+.raku-module-card {
+  position:relative;
+  overflow:hidden;
+  min-height:192px;
+  padding:20px;
+  border:1px solid var(--raku-line);
+  border-radius:15px;
+  background:#0d121b;
+  text-align:left;
+  transition:transform .18s ease,border-color .18s ease,background .18s ease;
+}
+.raku-module-card::before {
+  content:'';
+  position:absolute;
+  inset:auto -30px -65px auto;
+  width:150px;
+  height:150px;
+  border:1px solid rgba(117,134,255,.08);
+  border-radius:50%;
+}
+.raku-module-card:hover { transform:translateY(-3px); border-color:rgba(117,134,255,.24); background:#101622; }
+.raku-module-card.on { box-shadow:inset 0 1px 0 rgba(117,134,255,.14); }
+.raku-card-top { display:flex; align-items:center; justify-content:space-between; }
+.raku-card-top > span { font-size:9px; letter-spacing:.14em; color:#667184; }
+.raku-control-node { position:relative; display:grid; place-items:center; width:24px; height:24px; border:1px solid #394354; border-radius:50%; }
+.raku-control-node u { width:5px; height:5px; border-radius:50%; background:#4e5868; text-decoration:none; }
+.raku-module-card.on .raku-control-node { border-color:rgba(68,215,168,.32); }
+.raku-module-card.on .raku-control-node u { background:var(--raku-good); box-shadow:0 0 12px rgba(68,215,168,.45); animation:rakuPulse 2.4s infinite; }
+.raku-module-card > b { display:block; margin-top:20px; font-size:19px; letter-spacing:-.02em; }
+.raku-module-card > p { min-height:42px; margin:8px 0 18px; color:#7b8698; font-size:11px; line-height:1.55; }
+.raku-module-card footer { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding-top:14px; border-top:1px solid rgba(255,255,255,.055); }
+.raku-module-card footer span { font-size:9px; font-weight:800; color:#697486; }
+.raku-module-card.on footer span { color:var(--raku-good); }
+.raku-module-card footer em { font-style:normal; font-size:9px; color:#5f697a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.raku-module-card footer strong { font-size:16px; color:#667184; }
+
+/* Role Studio: two deliberate columns, more air */
+.role-studio { display:flex; flex-direction:column; gap:0; }
+.role-studio-toolbar { display:grid !important; grid-template-columns:minmax(280px,1fr) auto auto auto !important; gap:24px !important; align-items:center !important; }
+.role-studio-title b { font-size:32px !important; letter-spacing:-.03em; }
+.role-studio-body { gap:24px !important; }
+.role-panel-sidebar { width:260px !important; min-width:260px !important; border-radius:16px !important; }
+.role-panel-stage { min-width:0; }
+.role-panel-commandbar { padding:18px 20px !important; margin-bottom:18px !important; border-radius:15px !important; }
+.role-builder-grid { grid-template-columns:minmax(0,1fr) minmax(330px,430px) !important; gap:26px !important; align-items:start !important; }
+.role-editor-column { display:flex; flex-direction:column; gap:18px !important; }
+.role-config-card { padding:24px !important; border-radius:16px !important; }
+.role-target-strip { padding:20px !important; border-radius:15px !important; }
+.role-preview-column { min-width:0; }
+.role-preview-stack { position:sticky; top:110px; }
+.role-item-row { min-height:74px !important; padding:12px !important; gap:10px !important; border-radius:13px !important; }
+.role-section-head { margin-bottom:20px !important; }
+
+/* Ticket Studio: remove the cramped three-column feel */
+.ticket-shell { display:flex; flex-direction:column; }
+.ticket-head { display:flex !important; align-items:center !important; justify-content:space-between !important; gap:32px !important; }
+.ticket-body { display:grid !important; grid-template-columns:250px minmax(0,1fr) !important; gap:24px !important; align-items:start !important; }
+.ticket-panels { width:auto !important; min-width:0 !important; border-radius:16px !important; position:sticky; top:110px; }
+.ticket-body > main { min-width:0; }
+.ticket-panelbar { padding:18px 20px !important; margin-bottom:18px !important; border-radius:15px !important; }
+.ticket-grid {
+  display:grid !important;
+  grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr) !important;
+  grid-template-areas:'left right' 'center right' !important;
+  gap:24px !important;
+  align-items:start !important;
+}
+.ticket-left { grid-area:left; display:flex; flex-direction:column; gap:18px !important; }
+.ticket-center { grid-area:center; min-width:0; }
+.ticket-right { grid-area:right; min-width:0; }
+.ticket-left > section,.ticket-workflows,.ticket-sticky > div { border-radius:16px !important; }
+.ticket-left > section,.ticket-workflows { padding:24px !important; }
+.ticket-sticky { position:sticky; top:110px; display:flex; flex-direction:column; gap:16px !important; }
+.ticket-form-grid { gap:16px !important; }
+.ticket-type-wrap { gap:18px !important; }
+.ticket-q { padding:16px !important; border-radius:13px !important; }
+
+/* Creator Hub: large editor, deliberate spacing */
+.creator-shell { display:flex; flex-direction:column; }
+.creator-head { display:flex !important; align-items:center !important; justify-content:space-between !important; gap:28px !important; }
+.creator-provider-grid { gap:16px !important; margin-bottom:18px !important; }
+.creator-provider { min-height:155px !important; padding:20px !important; border-radius:16px !important; transition:transform .16s ease,border-color .16s ease; }
+.creator-provider:hover { transform:translateY(-2px); border-color:rgba(117,134,255,.18) !important; }
+.creator-runtime-strip { min-height:52px; padding:12px 16px !important; margin-bottom:24px !important; border-radius:14px !important; }
+.creator-layout { display:grid !important; grid-template-columns:272px minmax(0,1fr) !important; gap:24px !important; align-items:start !important; }
+.creator-rules { width:auto !important; min-width:0 !important; position:sticky; top:110px; border-radius:16px !important; }
+.creator-workspace { min-width:0; }
+.creator-editor-top { padding:20px 22px !important; margin-bottom:18px !important; border-radius:15px !important; }
+.creator-editor-grid { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(350px,430px) !important; gap:26px !important; align-items:start !important; }
+.creator-editor-grid > main { display:flex; flex-direction:column; gap:18px !important; min-width:0; }
+.creator-block { padding:24px !important; border-radius:16px !important; }
+.creator-block > header { margin-bottom:20px !important; }
+.creator-form-grid { gap:16px !important; }
+.creator-form-grid label { gap:8px !important; }
+.creator-form-grid input,.creator-form-grid select,.creator-form-grid textarea { min-height:46px !important; border-radius:10px !important; }
+.creator-sticky { position:sticky; top:110px; display:flex; flex-direction:column; gap:16px !important; }
+.creator-history { margin-top:26px !important; border-radius:18px !important; }
+.creator-history > header { padding:22px 24px !important; }
+.creator-history-row { padding:16px 22px !important; }
+.raku-collapsible > header { margin-bottom:0 !important; }
+.raku-collapsible.collapsed > :not(header) { display:none !important; }
+.raku-collapse-toggle {
+  margin-left:auto;
+  min-height:32px;
+  padding:6px 10px;
+  border:1px solid var(--raku-line-strong);
+  border-radius:9px;
+  background:rgba(255,255,255,.025);
+  color:#909bad;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.06em;
+}
+.raku-collapse-toggle:hover { border-color:rgba(117,134,255,.30); color:#dce1ea; }
+
+/* Commands and other editors */
+.command-builder-shell,.commands-editor { gap:24px !important; }
+.command-builder-grid { gap:24px !important; }
+
+/* Small motion, restrained */
+@keyframes rakuPulse {
+  0%,100% { opacity:.6; transform:scale(.86); }
+  50% { opacity:1; transform:scale(1.06); }
+}
+@keyframes rakuSignal {
+  0% { transform:translateX(-35%); opacity:.45; }
+  50% { opacity:1; }
+  100% { transform:translateX(35%); opacity:.45; }
+}
+@keyframes rakuWorkspaceIn {
+  from { opacity:.45; transform:translateY(5px); }
+  to { opacity:1; transform:none; }
+}
+
+@media (max-width: 1500px) {
+  .guild-deck { grid-template-columns:250px minmax(0,1fr) !important; gap:20px !important; padding-inline:20px !important; }
+  .raku-pulse-hero { grid-template-columns:1fr; }
+  .raku-pulse-stats { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .raku-module-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ticket-grid { grid-template-columns:minmax(0,1fr) 330px !important; }
+  .creator-editor-grid,.role-builder-grid { grid-template-columns:minmax(0,1fr) 340px !important; }
+}
+
+@media (max-width: 1180px) {
+  .guild-deck { grid-template-columns:1fr !important; }
+  .deck-nav { position:relative; top:auto; display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px !important; }
+  .raku-nav-group { margin:0; padding:8px; border:1px solid var(--raku-line); border-radius:14px; }
+  .deck-telemetry,.raku-nav-core { display:none !important; }
+  .raku-pulse-grid { grid-template-columns:1fr; }
+  .ticket-body,.creator-layout { grid-template-columns:1fr !important; }
+  .ticket-panels,.creator-rules { position:relative; top:auto; }
+  .ticket-grid { grid-template-columns:1fr !important; grid-template-areas:'left' 'center' 'right' !important; }
+  .ticket-sticky,.creator-sticky,.role-preview-stack { position:relative; top:auto; }
+  .creator-editor-grid,.role-builder-grid { grid-template-columns:1fr !important; }
+  .role-studio-body { display:block !important; }
+  .role-panel-sidebar { width:100% !important; min-width:0 !important; margin-bottom:20px; }
+}
+
+@media (max-width: 760px) {
+  .guild-deck { padding:14px 12px 40px !important; }
+  .deck-nav { grid-template-columns:1fr; padding:10px !important; }
+  .raku-commandbar-v1 { border-radius:0 !important; padding:10px 12px !important; }
+  .raku-commandbar-v1 .command-status { display:none; }
+  .raku-commandbar-v1 .button.button-ghost { display:none; }
+  .workspace-head,.role-studio-toolbar,.ticket-head,.creator-head { padding:22px !important; min-height:132px !important; }
+  .raku-pulse-hero { padding:24px; min-height:0; }
+  .raku-pulse-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .raku-module-grid { grid-template-columns:1fr; padding:12px; }
+  .raku-pulse-grid { gap:16px; }
+  .creator-provider-grid { grid-template-columns:1fr !important; }
+  .role-studio-toolbar { display:flex !important; flex-direction:column; align-items:stretch !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
