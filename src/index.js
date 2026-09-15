@@ -9,6 +9,8 @@ const { attachTicketRuntime } = require('./ticket-studio-runtime');
 require('./creator-tiktok-provider-v097-patch');
 const { attachCreatorHubApi } = require('./creator-hub-api');
 const { startCreatorRuntime } = require('./creator-runtime');
+const { attachVoiceStudioApi } = require('./voice-studio-api');
+const { attachVoiceStudioRuntime } = require('./voice-studio-runtime');
 const { retryTransient, formatErrorDetails } = require('./startup-utils');
 
 function isDisallowedIntentError(error) {
@@ -23,6 +25,7 @@ function startDashboard() {
   attachEmojiApi(app);
   attachTicketStudioApi(app);
   attachCreatorHubApi(app);
+  attachVoiceStudioApi(app);
 
   return new Promise(resolve => {
     const server = app.listen(config.port, '0.0.0.0', () => {
@@ -53,6 +56,7 @@ async function main() {
   console.log('=========================================');
 
   attachTicketRuntime(client);
+  attachVoiceStudioRuntime(client);
 
   try {
     await startDiscordBot();
