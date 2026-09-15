@@ -17,10 +17,11 @@ async function main() {
     if (!isDisallowedIntentError(error)) throw error;
 
     console.log('');
-    console.log('[SETUP] Discord Server Members Intent ist noch nicht aktiviert.');
+    console.log('[SETUP] Mindestens ein benötigter Discord Gateway Intent ist noch nicht aktiviert.');
     console.log('[SETUP] Developer Portal -> Bot -> Privileged Gateway Intents');
-    console.log('[SETUP] -> Server Members Intent einschalten und Änderungen speichern.');
-    console.log('[SETUP] Danach den Bot einmal neu starten.');
+    console.log('[SETUP] -> Server Members Intent einschalten');
+    console.log('[SETUP] -> Message Content Intent einschalten');
+    console.log('[SETUP] -> Änderungen speichern und den Bot neu starten.');
     console.log('[SETUP] Das Web-Dashboard wird bis dahin ohne Bot-Verbindung gestartet.');
     console.log('');
   }
