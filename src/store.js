@@ -21,6 +21,10 @@ const DEFAULT_GUILD_SETTINGS = Object.freeze({
   customCommands: {
     enabled: false,
     commands: []
+  },
+  rolePanels: {
+    enabled: false,
+    panels: []
   }
 });
 

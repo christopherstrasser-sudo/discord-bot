@@ -2,6 +2,7 @@ const config = require('./config');
 const { startBot } = require('./bot');
 const { createWebApp } = require('./web');
 const { attachCommandBuilderApi } = require('./command-builder-api');
+const { attachRoleStudioApi } = require('./role-studio-api');
 
 function isDisallowedIntentError(error) {
   const message = String(error?.message || '');
@@ -11,6 +12,7 @@ function isDisallowedIntentError(error) {
 function startDashboard() {
   const app = createWebApp();
   attachCommandBuilderApi(app);
+  attachRoleStudioApi(app);
 
   return new Promise(resolve => {
     const server = app.listen(config.port, '0.0.0.0', () => {

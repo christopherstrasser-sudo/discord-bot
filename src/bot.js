@@ -8,6 +8,7 @@ const {
 const config = require('./config');
 const { getGuildSettings } = require('./store');
 const { handleCustomCommand } = require('./custom-commands');
+const { handleRoleInteraction, handleRoleReaction } = require('./role-studio');
 const {
   logMemberJoin,
   logMemberLeave,
@@ -29,12 +30,15 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.MessageContent
   ],
   partials: [
     Partials.Message,
-    Partials.Channel
+    Partials.Channel,
+    Partials.Reaction,
+    Partials.User
   ]
 });
 
@@ -166,6 +170,9 @@ client.on(Events.ChannelDelete, channel => logChannelDelete(channel));
 client.on(Events.ChannelUpdate, (oldChannel, newChannel) => logChannelUpdate(oldChannel, newChannel));
 client.on(Events.GuildBanAdd, ban => logBanAdd(ban));
 client.on(Events.GuildBanRemove, ban => logBanRemove(ban));
+client.on(Events.InteractionCreate, interaction => handleRoleInteraction(interaction));
+client.on(Events.MessageReactionAdd, (reaction, user) => handleRoleReaction(reaction, user, true));
+client.on(Events.MessageReactionRemove, (reaction, user) => handleRoleReaction(reaction, user, false));
 
 async function startBot() {
   await client.login(config.discord.botToken);
