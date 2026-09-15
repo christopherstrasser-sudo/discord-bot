@@ -8,7 +8,8 @@ const {
   snapshotForTikTokRule,
   getTikTokProviderHealth,
   findPostList,
-  tikTokTimeFromId
+  tikTokTimeFromId,
+  postItemsFromPayload
 } = require('../src/creator-tiktok-provider');
 
 const fixture = `<!doctype html><html><body>
@@ -70,6 +71,26 @@ test('recognizes 2026 header-only profile as requiring a post fallback', () => {
   assert.equal(profile.uploadSupported, false);
   assert.equal(profile.latestUpload, null);
   assert.equal(profile.secUid, 'MS4wLjABAAAA-fallback');
+});
+
+test('does not mistake a missing videoCount field for an empty TikTok profile', () => {
+  const html = `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">{"__DEFAULT_SCOPE__":{"webapp.user-detail":{"statusCode":0,"userInfo":{"user":{"uniqueId":"creator","secUid":"MS4wLjABAAAA-fallback"},"stats":{}}}}}</script>`;
+  const profile = parseProfileDocument(html, 'creator');
+  assert.equal(profile.videoCountKnown, false);
+  assert.equal(profile.uploadSupported, false);
+  assert.equal(profile.uploadSource, '');
+});
+
+test('accepts alternate TikTok post payload keys', () => {
+  const item = {
+    id: '7990000000000000002',
+    desc: 'Alternate payload',
+    createTime: 1789470002,
+    author: { uniqueId: 'rakulein' },
+    video: { cover: 'x' }
+  };
+  assert.equal(postItemsFromPayload({ item_list: [item] })[0].id, item.id);
+  assert.equal(postItemsFromPayload({ data: { aweme_list: [item] } })[0].id, item.id);
 });
 
 test('treats a zero-video profile as supported but empty', () => {
