@@ -3,6 +3,10 @@ const {
   fetchTikTokCollectorUpload,
   collectorStatus
 } = require('./tiktok-collector');
+const {
+  fetchTikTokSignedUpload,
+  getSignatureEngineHealth
+} = require('./tiktok-signature-engine');
 
 const health = {
   configured: true,
@@ -10,9 +14,10 @@ const health = {
   lastCheckedAt: null,
   lastSuccessAt: null,
   lastError: '',
-  mode: 'collector',
+  mode: 'signature+collector',
   capabilities: { live: null, upload: null },
-  collector: null
+  collector: null,
+  signatureEngine: null
 };
 
 let pirateTokPromise = null;
@@ -43,6 +48,18 @@ function numberOf(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function uploadDeps() {
+  return {
+    findBrowserExecutable: legacy.findBrowserExecutable,
+    parseProfileDocument: legacy.parseProfileDocument,
+    pickLatestUploadFromItems: legacy.pickLatestUploadFromItems,
+    postItemsFromPayload: legacy.postItemsFromPayload,
+    timeoutMs,
+    language,
+    region
+  };
+}
+
 async function loadPirateTok() {
   if (!pirateTokPromise) pirateTokPromise = import('piratetok-live-js');
   return pirateTokPromise;
@@ -51,7 +68,8 @@ async function loadPirateTok() {
 function setHealth(patch = {}) {
   Object.assign(health, patch, {
     lastCheckedAt: nowIso(),
-    collector: collectorStatus()
+    collector: collectorStatus(),
+    signatureEngine: getSignatureEngineHealth()
   });
 }
 
@@ -59,8 +77,9 @@ function getTikTokProviderHealth() {
   return JSON.parse(JSON.stringify({
     ...health,
     configured: true,
-    mode: 'collector',
-    collector: collectorStatus()
+    mode: 'signature+collector',
+    collector: collectorStatus(),
+    signatureEngine: getSignatureEngineHealth()
   }));
 }
 
@@ -96,34 +115,42 @@ async function fetchLive(source, mod) {
   }
 }
 
+function normalizedUpload(result, source) {
+  return {
+    supported: true,
+    latestUpload: result.latestUpload || null,
+    creator: String(result.profile?.creator || source),
+    avatar: String(result.profile?.avatar || ''),
+    source: String(result.source || 'tiktok')
+  };
+}
+
 async function fetchUpload(source) {
+  const deps = uploadDeps();
+  const errors = [];
+
   try {
-    const result = await fetchTikTokCollectorUpload(source, {
-      findBrowserExecutable: legacy.findBrowserExecutable,
-      parseProfileDocument: legacy.parseProfileDocument,
-      pickLatestUploadFromItems: legacy.pickLatestUploadFromItems,
-      postItemsFromPayload: legacy.postItemsFromPayload,
-      timeoutMs,
-      language,
-      region
-    });
-    return {
-      supported: true,
-      latestUpload: result.latestUpload || null,
-      creator: String(result.profile?.creator || source),
-      avatar: String(result.profile?.avatar || ''),
-      source: String(result.source || 'collector')
-    };
+    const signed = await fetchTikTokSignedUpload(source, deps);
+    return normalizedUpload(signed, source);
   } catch (error) {
-    return {
-      supported: false,
-      latestUpload: null,
-      creator: source,
-      avatar: '',
-      source: 'collector',
-      error: String(error?.message || error)
-    };
+    errors.push(`Signature: ${error?.message || error}`);
   }
+
+  try {
+    const collected = await fetchTikTokCollectorUpload(source, deps);
+    return normalizedUpload(collected, source);
+  } catch (error) {
+    errors.push(`Collector: ${error?.message || error}`);
+  }
+
+  return {
+    supported: false,
+    latestUpload: null,
+    creator: source,
+    avatar: '',
+    source: 'signature+collector',
+    error: errors.join(' · ')
+  };
 }
 
 async function fetchTikTokSnapshot(username) {
@@ -173,14 +200,14 @@ async function fetchTikTokSnapshot(username) {
     setHealth({
       ok: fullyHealthy,
       lastSuccessAt: nowIso(),
-      lastError: fullyHealthy ? '' : errors.join(' · ').slice(0, 700),
+      lastError: fullyHealthy ? '' : errors.join(' · ').slice(0, 1000),
       capabilities: { live: liveSupported, upload: uploadSupported }
     });
     return snapshot;
   } catch (error) {
     setHealth({
       ok: false,
-      lastError: String(error?.message || error || 'Unbekannter Fehler').slice(0, 700),
+      lastError: String(error?.message || error || 'Unbekannter Fehler').slice(0, 1000),
       capabilities: { live: false, upload: false }
     });
     throw error;
@@ -195,7 +222,7 @@ function snapshotForTikTokRule(rule, snapshot) {
   }
   if (!snapshot.uploadSupported) {
     const detail = snapshot.uploadError ? ` ${snapshot.uploadError}` : '';
-    return { error: `TikTok Upload-Erkennung ist momentan nicht verfügbar.${detail}`.slice(0, 1200) };
+    return { error: `TikTok Upload-Erkennung ist momentan nicht verfügbar.${detail}`.slice(0, 1500) };
   }
   const upload = snapshot.latestUpload;
   return {
