@@ -1,5 +1,5 @@
 (() => {
-  const EMOJI_DATA_SOURCE = 'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@1/de/emojibase/data.json';
+  const EMOJI_DATA_SOURCE = '/api/emoji-data';
   let overlay = null;
   let picker = null;
   let activeInput = null;
@@ -19,7 +19,7 @@
       flags: 'Flaggen'
     },
     categoriesLabel: 'Kategorien',
-    emojiUnsupportedMessage: 'Dein Browser unterstützt keine farbigen Emojis.',
+    emojiUnsupportedMessage: 'Dein Browser unterstützt dieses Emoji nicht.',
     favoritesLabel: 'Favoriten',
     loadingMessage: 'Emojis werden geladen …',
     networkErrorMessage: 'Emojis konnten nicht geladen werden.',
@@ -118,10 +118,11 @@
       host.innerHTML = '';
       picker = document.createElement('emoji-picker');
       picker.className = 'raku-emoji-picker';
-      picker.locale = 'de';
+      picker.locale = 'de-x-raku';
       picker.dataSource = EMOJI_DATA_SOURCE;
       picker.i18n = i18n;
       picker.skinToneEmoji = '👍';
+      picker.emojiVersion = 16;
       picker.addEventListener('emoji-click', event => {
         const unicode = event.detail?.unicode || event.detail?.emoji?.unicode || '';
         if (!unicode) return;
@@ -162,7 +163,6 @@
     const input = event.target.closest('input[data-role-emoji]');
     if (!input) return;
 
-    // Shift+click intentionally keeps the raw text field accessible for power users.
     if (event.shiftKey) return;
 
     event.preventDefault();
