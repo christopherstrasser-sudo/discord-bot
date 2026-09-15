@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { getHandle, setHandle } = require('./tiktok-handle-cache');
 
 const DEFAULT_PORT = 31887;
 const STATE_DIR = path.join(process.cwd(), 'data', 'tiktok-collector');
@@ -122,7 +123,6 @@ async function ensureEngine(deps) {
     const script = serverPath();
     if (!fs.existsSync(script)) throw new Error('tiktok-signature ist nicht vollständig installiert.');
 
-    // Gepinnte Dependency lokal härten: Sidecar darf niemals auf dem öffentlichen Interface lauschen.
     hardenServerBinding(script);
     fs.mkdirSync(STATE_DIR, { recursive: true });
     const logFd = fs.openSync(ENGINE_LOG_FILE, 'a');
@@ -156,8 +156,6 @@ async function ensureEngine(deps) {
       engineHealth.ready = false;
       engineHealth.lastError = String(error?.message || error);
     });
-    // Der lokale Signer darf den Discord-Bot beim Beenden nicht festhalten.
-    // Läuft er weiter, kann der nächste Bot-Start dieselbe warme Guest-Session wiederverwenden.
     child.unref();
 
     return waitUntilReady(child);
@@ -175,7 +173,6 @@ async function ensureEngine(deps) {
 
 function commonParams(extra = {}) {
   const params = new URLSearchParams({
-    // Gleiche Fingerprint-Werte wie die lokale Signature Engine / deren getestete Beispiele.
     WebIdLastTime: String(Date.now()),
     aid: '1988',
     app_language: 'en',
@@ -207,23 +204,12 @@ function commonParams(extra = {}) {
 }
 
 function searchUrl(source) {
-  const params = commonParams({
-    count: '10',
-    cursor: '0',
-    keyword: source,
-    from_page: 'search'
-  });
+  const params = commonParams({ count: '10', cursor: '0', keyword: source, from_page: 'search' });
   return `https://www.tiktok.com/api/search/user/full/?${params.toString()}`;
 }
 
 function videosUrl(secUid) {
-  const params = commonParams({
-    count: '30',
-    coverFormat: '0',
-    cursor: '0',
-    secUid,
-    from_page: 'user'
-  });
+  const params = commonParams({ count: '30', coverFormat: '0', cursor: '0', secUid, from_page: 'user' });
   return `https://www.tiktok.com/api/post/item_list/?${params.toString()}`;
 }
 
@@ -273,6 +259,21 @@ function exactUserFromSearch(data, source) {
   return users.find(user => String(user.uniqueId || user.unique_id || '').toLowerCase() === normalized) || null;
 }
 
+function cachedProfile(source) {
+  const cached = getHandle(source);
+  if (!cached?.secUid) return null;
+  return {
+    secUid: cached.secUid,
+    creator: cached.creator || source,
+    avatar: cached.avatar || ''
+  };
+}
+
+function cacheProfile(source, profile) {
+  setHandle(source, profile);
+  return profile;
+}
+
 async function publicProfileFallback(source, deps) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -300,21 +301,21 @@ async function publicProfileFallback(source, deps) {
 }
 
 async function resolveUser(source, deps) {
+  const cached = cachedProfile(source);
+  if (cached) return cached;
+
   const errors = [];
   const search = searchUrl(source);
-
   try {
     const data = await fetchSigned(search, deps);
     const user = exactUserFromSearch(data, source);
-    if (user) {
-      const secUid = String(user.secUid || user.sec_uid || '').trim();
-      if (secUid) {
-        return {
-          secUid,
-          creator: String(user.nickname || user.uniqueId || user.unique_id || source),
-          avatar: String(user.avatarLarger || user.avatar_larger?.url_list?.[0] || user.avatarThumb || user.avatar_thumb?.url_list?.[0] || '')
-        };
-      }
+    const secUid = String(user?.secUid || user?.sec_uid || '').trim();
+    if (user && secUid) {
+      return cacheProfile(source, {
+        secUid,
+        creator: String(user.nickname || user.uniqueId || user.unique_id || source),
+        avatar: String(user.avatarLarger || user.avatar_larger?.url_list?.[0] || user.avatarThumb || user.avatar_thumb?.url_list?.[0] || '')
+      });
     }
     errors.push('Signierte Suche lieferte keinen exakten Creator mit secUid.');
   } catch (error) {
@@ -327,11 +328,11 @@ async function resolveUser(source, deps) {
     const user = exactUserFromSearch(data, source);
     const secUid = String(user?.secUid || user?.sec_uid || '').trim();
     if (user && secUid) {
-      return {
+      return cacheProfile(source, {
         secUid,
         creator: String(user.nickname || user.uniqueId || user.unique_id || source),
         avatar: String(user.avatarLarger || user.avatar_larger?.url_list?.[0] || user.avatarThumb || user.avatar_thumb?.url_list?.[0] || '')
-      };
+      });
     }
     errors.push('Search-Page-Intercept lieferte keinen exakten Creator mit secUid.');
   } catch (error) {
@@ -339,7 +340,7 @@ async function resolveUser(source, deps) {
   }
 
   try {
-    return await publicProfileFallback(source, deps);
+    return cacheProfile(source, await publicProfileFallback(source, deps));
   } catch (error) {
     errors.push(`Profil-Fallback: ${error?.message || error}`);
   }
