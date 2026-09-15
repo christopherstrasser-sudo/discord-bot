@@ -12,7 +12,8 @@ const COLORS = {
   edit: 0x5865f2,
   create: 0x23a559,
   update: 0x5865f2,
-  remove: 0xed4245
+  remove: 0xed4245,
+  moderation: 0xf23f42
 };
 
 function truncate(value, max = 1024) {
@@ -90,9 +91,7 @@ function embedToFallback(embed) {
   const data = embed.toJSON();
   const lines = [`**${data.title || 'Server-Log'}**`];
   if (data.description) lines.push(data.description);
-  for (const field of data.fields || []) {
-    lines.push(`**${field.name}:** ${field.value}`);
-  }
+  for (const field of data.fields || []) lines.push(`**${field.name}:** ${field.value}`);
   return truncate(lines.join('\n'), 1900);
 }
 
@@ -123,7 +122,6 @@ function baseEmbed(title, color) {
 
 async function logMemberJoin(member) {
   if (!member?.guild || member.user?.bot) return;
-
   const created = member.user.createdTimestamp
     ? `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`
     : 'Unbekannt';
@@ -136,20 +134,15 @@ async function logMemberJoin(member) {
       { name: 'Mitglieder', value: String(member.guild.memberCount), inline: true }
     );
 
-  if (member.user.displayAvatarURL) {
-    embed.setThumbnail(member.user.displayAvatarURL({ size: 128 }));
-  }
-
+  if (member.user.displayAvatarURL) embed.setThumbnail(member.user.displayAvatarURL({ size: 128 }));
   await sendGuildLog(member.guild, embed);
 }
 
 async function logMemberLeave(member) {
   if (!member?.guild || member.user?.bot) return;
-
   const joined = member.joinedTimestamp
     ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`
     : 'Unbekannt';
-
   const roles = member.roles?.cache
     ?.filter(role => role.id !== member.guild.id)
     .sort((a, b) => b.position - a.position)
@@ -166,11 +159,45 @@ async function logMemberLeave(member) {
       { name: 'Rollen', value: truncate(roles), inline: false }
     );
 
-  if (member.user.displayAvatarURL) {
-    embed.setThumbnail(member.user.displayAvatarURL({ size: 128 }));
+  if (member.user.displayAvatarURL) embed.setThumbnail(member.user.displayAvatarURL({ size: 128 }));
+  await sendGuildLog(member.guild, embed);
+}
+
+async function logMemberUpdate(oldMember, newMember) {
+  if (!newMember?.guild || newMember.user?.bot) return;
+
+  const changes = [];
+  const addedRoles = newMember.roles.cache
+    .filter(role => role.id !== newMember.guild.id && !oldMember.roles.cache.has(role.id))
+    .map(role => role.name);
+  const removedRoles = oldMember.roles.cache
+    .filter(role => role.id !== newMember.guild.id && !newMember.roles.cache.has(role.id))
+    .map(role => role.name);
+
+  if (addedRoles.length) changes.push(`Rolle hinzugefügt: **${truncate(addedRoles.join(', '), 700)}**`);
+  if (removedRoles.length) changes.push(`Rolle entfernt: **${truncate(removedRoles.join(', '), 700)}**`);
+  if (oldMember.nickname !== newMember.nickname) {
+    changes.push(`Nickname: **${truncate(oldMember.nickname || oldMember.user.username, 180)}** → **${truncate(newMember.nickname || newMember.user.username, 180)}**`);
   }
 
-  await sendGuildLog(member.guild, embed);
+  const oldTimeout = oldMember.communicationDisabledUntilTimestamp || 0;
+  const newTimeout = newMember.communicationDisabledUntilTimestamp || 0;
+  if (oldTimeout !== newTimeout) {
+    if (newTimeout > Date.now()) {
+      changes.push(`Timeout gesetzt bis <t:${Math.floor(newTimeout / 1000)}:F>.`);
+    } else {
+      changes.push('Timeout aufgehoben.');
+    }
+  }
+
+  if (!changes.length) return;
+
+  const embed = baseEmbed('Mitglied geändert', COLORS.update)
+    .addFields(
+      { name: 'Nutzer', value: userLabel(newMember.user), inline: false },
+      { name: 'Änderungen', value: truncate(changes.join('\n'), 1000), inline: false }
+    );
+  await sendGuildLog(newMember.guild, embed);
 }
 
 function messageContent(message) {
@@ -192,7 +219,6 @@ function attachmentSummary(message) {
 
 async function logMessageDelete(message) {
   if (!message?.guild || message.author?.bot) return;
-
   const embed = baseEmbed('Nachricht gelöscht', COLORS.delete)
     .addFields(
       { name: 'Nutzer', value: userLabel(message.author), inline: false },
@@ -200,10 +226,8 @@ async function logMessageDelete(message) {
       { name: 'Message ID', value: String(message.id || 'Unbekannt'), inline: true },
       { name: 'Inhalt', value: messageContent(message), inline: false }
     );
-
   const attachments = attachmentSummary(message);
   if (attachments) embed.addFields({ name: 'Anhänge', value: attachments, inline: false });
-
   await sendGuildLog(message.guild, embed);
 }
 
@@ -212,15 +236,11 @@ async function logMessageUpdate(oldMessage, newMessage) {
   if (!guild) return;
 
   let resolvedNew = newMessage;
-  if (newMessage?.partial) {
-    resolvedNew = await newMessage.fetch().catch(() => newMessage);
-  }
-
+  if (newMessage?.partial) resolvedNew = await newMessage.fetch().catch(() => newMessage);
   if (resolvedNew?.author?.bot) return;
 
   const before = oldMessage?.content?.trim() || 'Inhalt vorher nicht im Cache verfügbar.';
   const after = resolvedNew?.content?.trim() || 'Kein Textinhalt / Inhalt nicht verfügbar.';
-
   if (before === after && !oldMessage?.partial && !newMessage?.partial) return;
 
   const embed = baseEmbed('Nachricht bearbeitet', COLORS.edit)
@@ -231,7 +251,6 @@ async function logMessageUpdate(oldMessage, newMessage) {
       { name: 'Vorher', value: truncate(before, 1000), inline: false },
       { name: 'Nachher', value: truncate(after, 1000), inline: false }
     );
-
   if (resolvedNew?.url) embed.setURL(resolvedNew.url);
   await sendGuildLog(guild, embed);
 }
@@ -306,9 +325,7 @@ async function logChannelUpdate(oldChannel, newChannel) {
   if (oldChannel.parentId !== newChannel.parentId) changes.push(`Kategorie: **${oldChannel.parent?.name || 'Keine'}** → **${newChannel.parent?.name || 'Keine'}**`);
   if ('topic' in oldChannel && oldChannel.topic !== newChannel.topic) changes.push('Thema wurde geändert.');
   if ('nsfw' in oldChannel && oldChannel.nsfw !== newChannel.nsfw) changes.push(`NSFW: **${yesNo(oldChannel.nsfw)}** → **${yesNo(newChannel.nsfw)}**`);
-  if ('rateLimitPerUser' in oldChannel && oldChannel.rateLimitPerUser !== newChannel.rateLimitPerUser) {
-    changes.push(`Slowmode: **${oldChannel.rateLimitPerUser || 0}s** → **${newChannel.rateLimitPerUser || 0}s**`);
-  }
+  if ('rateLimitPerUser' in oldChannel && oldChannel.rateLimitPerUser !== newChannel.rateLimitPerUser) changes.push(`Slowmode: **${oldChannel.rateLimitPerUser || 0}s** → **${newChannel.rateLimitPerUser || 0}s**`);
   if ('bitrate' in oldChannel && oldChannel.bitrate !== newChannel.bitrate) changes.push(`Bitrate: **${oldChannel.bitrate}** → **${newChannel.bitrate}**`);
   if ('userLimit' in oldChannel && oldChannel.userLimit !== newChannel.userLimit) changes.push(`User-Limit: **${oldChannel.userLimit || 0}** → **${newChannel.userLimit || 0}**`);
   if (!changes.length) return;
@@ -322,9 +339,27 @@ async function logChannelUpdate(oldChannel, newChannel) {
   await sendGuildLog(newChannel.guild, embed);
 }
 
+async function logBanAdd(ban) {
+  if (!ban?.guild) return;
+  const embed = baseEmbed('Mitglied gebannt', COLORS.moderation)
+    .addFields(
+      { name: 'Nutzer', value: userLabel(ban.user), inline: false },
+      { name: 'Grund', value: truncate(ban.reason || 'Kein Grund angegeben.'), inline: false }
+    );
+  await sendGuildLog(ban.guild, embed);
+}
+
+async function logBanRemove(ban) {
+  if (!ban?.guild) return;
+  const embed = baseEmbed('Ban aufgehoben', COLORS.join)
+    .addFields({ name: 'Nutzer', value: userLabel(ban.user), inline: false });
+  await sendGuildLog(ban.guild, embed);
+}
+
 module.exports = {
   logMemberJoin,
   logMemberLeave,
+  logMemberUpdate,
   logMessageDelete,
   logMessageUpdate,
   logRoleCreate,
@@ -332,5 +367,7 @@ module.exports = {
   logRoleUpdate,
   logChannelCreate,
   logChannelDelete,
-  logChannelUpdate
+  logChannelUpdate,
+  logBanAdd,
+  logBanRemove
 };
