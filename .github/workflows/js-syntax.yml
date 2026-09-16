@@ -126,7 +126,7 @@ jobs:
             if (!profileApi.includes(token)) throw new Error(`Bot Profile API token missing: ${token}`);
           }
           const profileUi = fs.readFileSync('public/bot-profile.js', 'utf8');
-          for (const token of ["data-tab = 'profile'", 'Bot-Profil', 'Server-Avatar', 'GLOBAL · GESPERRT', 'separaten Custom Bot', 'prepareAvatar']) {
+          for (const token of ["dataset.tab = 'profile'", 'Bot-Profil', 'Server-Avatar', 'GLOBAL · GESPERRT', 'separaten Custom Bot', 'prepareAvatar']) {
             if (!profileUi.includes(token)) throw new Error(`Bot Profile UI token missing: ${token}`);
           }
           if (/setPresence\s*\(|setActivity\s*\(/.test(profileUi) || /setPresence\s*\(|setActivity\s*\(/.test(profileApi)) {
