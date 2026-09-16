@@ -85,13 +85,14 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('public/index.html', 'utf8');
-          const required = ['/raku-orbit-v600.css', '/raku-orbit-v600.js'];
+          const required = ['/raku-orbit-v610.css', '/raku-orbit-v600.js'];
           for (const asset of required) {
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
 
-          const retired = [
+          const forbidden = [
+            'raku-orbit-v600.css',
             'raku-studio-v500.css',
             'raku-workspace-v500.js',
             'raku-prism-v400.css',
@@ -105,13 +106,19 @@ jobs:
             'role-studio-v150.css',
             'ticket-studio-v160.css'
           ];
-          for (const name of retired) {
+          for (const name of forbidden) {
             if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
             if (fs.existsSync(`public/${name}`)) throw new Error(`Retired UI asset still exists: public/${name}`);
           }
 
-          if (!fs.existsSync('public/raku-orbit-v600.css')) throw new Error('Orbit UI stylesheet missing');
+          if (!fs.existsSync('public/raku-orbit-v610.css')) throw new Error('Orbit v6.1 stylesheet missing');
           if (!fs.existsSync('public/raku-orbit-v600.js')) throw new Error('Orbit shell renderer missing');
+
+          const css = fs.readFileSync('public/raku-orbit-v610.css', 'utf8');
+          for (const token of ['--o-font:', '--o-display:', '.o6-dock', '.o6-constellation', 'grid-auto-flow:dense', '.role-panel-commandbar', '.ticket-panelbar', '.creator-editor-top']) {
+            if (!css.includes(token)) throw new Error(`Orbit production token missing: ${token}`);
+          }
+          if (!html.includes('family=Inter') || !html.includes('family=Manrope')) throw new Error('Production web typography missing');
 
           const screenContract = ['#loggedOut.hidden', '#serverList.hidden', '#guildDashboard.hidden', 'display:none !important'];
           for (const token of screenContract) {
@@ -119,17 +126,11 @@ jobs:
           }
 
           const shell = fs.readFileSync('public/raku-orbit-v600.js', 'utf8');
-          for (const token of ['o6-stage', 'o6-dock', 'o6-floating-head', 'o6-constellation', 'o6-orbit-map']) {
-            if (!shell.includes(token)) throw new Error(`Orbit architecture token missing: ${token}`);
-          }
-          if (shell.includes('r5-sidebar') || shell.includes('r5-contextbar')) throw new Error('Retired sidebar architecture leaked into Orbit shell');
-
-          const css = fs.readFileSync('public/raku-orbit-v600.css', 'utf8');
-          for (const token of ['.o6-dock', '.o6-floating-head', '.o6-orbit-map', '.o6-login-stage']) {
-            if (!css.includes(token)) throw new Error(`Orbit visual token missing: ${token}`);
+          for (const token of ['o6-stage', 'o6-dock', 'o6-floating-head', 'o6-constellation']) {
+            if (!shell.includes(token)) throw new Error(`Orbit shell architecture token missing: ${token}`);
           }
 
-          console.log('Orbit UI v6 contract verified');
+          console.log('Orbit UI v6.1 production contract verified');
           NODE
 
       - name: Install dependencies
