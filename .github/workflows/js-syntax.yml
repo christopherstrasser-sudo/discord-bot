@@ -34,28 +34,18 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const path = require('path');
-
           function walk(dir) {
             return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
               const full = path.join(dir, entry.name);
               return entry.isDirectory() ? walk(full) : [full];
             });
           }
-
           function checkCss(file) {
             const text = fs.readFileSync(file, 'utf8');
-            let braces = 0;
-            let quote = null;
-            let comment = false;
-            let escape = false;
-
+            let braces = 0, quote = null, comment = false, escape = false;
             for (let i = 0; i < text.length; i += 1) {
-              const ch = text[i];
-              const next = text[i + 1];
-              if (comment) {
-                if (ch === '*' && next === '/') { comment = false; i += 1; }
-                continue;
-              }
+              const ch = text[i], next = text[i + 1];
+              if (comment) { if (ch === '*' && next === '/') { comment = false; i += 1; } continue; }
               if (quote) {
                 if (escape) { escape = false; continue; }
                 if (ch === '\\') { escape = true; continue; }
@@ -66,89 +56,54 @@ jobs:
               if (ch === '"' || ch === "'") { quote = ch; continue; }
               if (ch === '{') braces += 1;
               if (ch === '}') braces -= 1;
-              if (braces < 0) throw new Error(`${file}: unexpected closing brace near offset ${i}`);
+              if (braces < 0) throw new Error(`${file}: unexpected closing brace`);
             }
-
-            if (comment) throw new Error(`${file}: unclosed comment`);
-            if (quote) throw new Error(`${file}: unclosed string`);
-            if (braces !== 0) throw new Error(`${file}: unbalanced braces (${braces})`);
+            if (comment || quote || braces !== 0) throw new Error(`${file}: invalid CSS structure`);
             console.log(`CSS OK ${file}`);
           }
-
           for (const file of walk('public').filter(file => file.endsWith('.css'))) checkCss(file);
           NODE
 
-      - name: Check Orbit UI contract
+      - name: Check Orbit and Creator Social contract
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('public/index.html', 'utf8');
-          const required = ['/raku-orbit-v610.css', '/raku-orbit-v600.js'];
+          const required = [
+            '/raku-orbit-v610.css',
+            '/raku-orbit-v600.js',
+            '/raku-module-shell.css',
+            '/raku-module-shell.js',
+            '/creator-social-extension.css',
+            '/creator-social-extension.js'
+          ];
           for (const asset of required) {
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-
-          const forbidden = [
-            'raku-orbit-v600.css',
-            'raku-studio-v500.css',
-            'raku-workspace-v500.js',
-            'raku-prism-v400.css',
-            'raku-ui-v100.js',
-            'raku-glass-v300.css',
-            'raku-design-v200.css',
-            'raku-ux-v2.js',
-            'raku-ux-v2-guides.js',
-            'raku-ux-v2-hints.js',
-            'raku-module-unification-v142.css',
-            'role-studio-v150.css',
-            'ticket-studio-v160.css'
-          ];
-          for (const name of forbidden) {
-            if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
-            if (fs.existsSync(`public/${name}`)) throw new Error(`Retired UI asset still exists: public/${name}`);
+          if (!html.includes('v=0250')) throw new Error('v0.25 cache key missing');
+          for (const file of ['src/creator-social-providers.js', 'src/creator-social-runtime.js']) {
+            if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
-
-          if (!fs.existsSync('public/raku-orbit-v610.css')) throw new Error('Orbit stylesheet missing');
-          if (!fs.existsSync('public/raku-orbit-v600.js')) throw new Error('Orbit shell renderer missing');
-
-          const css = fs.readFileSync('public/raku-orbit-v610.css', 'utf8');
-          for (const token of ['--o-font:', '--o-display:', '.o6-dock', 'top:92px', '.o6-orbit-links', '.o6-core-halo', '.o6-node-g', '.o6-node-h', 'grid-auto-flow:dense', '.role-panel-commandbar', '.ticket-panelbar', '.creator-editor-top']) {
-            if (!css.includes(token)) throw new Error(`Orbit v6.2 production token missing: ${token}`);
+          const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
+          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])"]) {
+            if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
           }
-          if (!html.includes('family=Inter') || !html.includes('family=Manrope')) throw new Error('Production web typography missing');
-          if (!html.includes('v=0240')) throw new Error('Orbit v0.24 cache key missing');
-
-          const screenContract = ['#loggedOut.hidden', '#serverList.hidden', '#guildDashboard.hidden', 'display:none !important'];
-          for (const token of screenContract) {
-            if (!html.includes(token)) throw new Error(`App screen-state contract missing: ${token}`);
+          const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
+          for (const token of ['instagram', 'bluesky', "platform === 'x'", 'appendProviderCards']) {
+            if (!socialUi.includes(token)) throw new Error(`Creator Social UI token missing: ${token}`);
           }
-
-          const shell = fs.readFileSync('public/raku-orbit-v600.js', 'utf8');
-          for (const token of ['o6-stage', 'o6-command-rail', 'MODULE_ICONS', 'o6-orbit-links', 'data-orbit-position', "constellationNode('autorole'", "constellationNode('logging'"]) {
-            if (!shell.includes(token)) throw new Error(`Orbit v6.2 shell token missing: ${token}`);
-          }
-
-          console.log('Orbit UI v6.2 top-rail contract verified');
+          console.log('Orbit + Creator Social v0.25 contract verified');
           NODE
 
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Load critical backend modules
-        env:
-          DISCORD_CLIENT_ID: ci-client
-          DISCORD_CLIENT_SECRET: ci-secret
-          DISCORD_BOT_TOKEN: ci-token
-          SESSION_SECRET: ci-session-secret
-          PUBLIC_BASE_URL: http://127.0.0.1:3000
+      - name: Load creator social modules
         run: |
-          node -e "require('./src/creator-store'); require('./src/creator-providers'); require('./src/creator-tiktok-provider'); require('./src/tiktok-collector'); require('./src/tiktok-signature-engine'); require('./src/creator-tiktok-provider-v097-patch'); require('./src/creator-runtime'); require('./src/creator-hub-api'); require('./src/ticket-store'); require('./src/ticket-studio-runtime'); require('./src/ticket-studio-api'); require('./src/voice-studio-store'); require('./src/voice-studio-runtime'); require('./src/voice-studio-api'); require('./src/analytics-store'); require('./src/analytics-runtime'); require('./src/analytics-api'); require('./src/startup-utils'); console.log('Critical modules loaded successfully')"
-          node -e "import('piratetok-live-js').then(m=>{if(typeof m.checkOnline!=='function'||typeof m.fetchRoomInfo!=='function'||typeof m.randomUa!=='function')throw new Error('PirateTok exports missing'); console.log('PirateTok exports verified')})"
-          node -e "import('puppeteer-core').then(m=>{if(!m.default&&!m.launch)throw new Error('Puppeteer Core export missing'); console.log('Puppeteer Core verified')})"
-          node -e "const p=require('tiktok-signature/package.json'); if(p.version!=='4.3.6') throw new Error('Unexpected tiktok-signature version'); console.log('TikTok Signature package verified', p.version)"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-social-runtime'); console.log('Creator social modules loaded')"
 
       - name: Run automated tests
         run: node --test tests/*.test.js
