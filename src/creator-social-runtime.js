@@ -11,7 +11,7 @@ const {
   SOCIAL_PLATFORMS,
   fetchSocialPost,
   getSocialProviderHealth
-} = require('./creator-social-providers');
+} = require('./creator-social-provider-router');
 
 const DEFAULT_POLL_SECONDS = 90;
 let timer = null;
