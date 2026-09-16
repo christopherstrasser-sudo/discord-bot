@@ -14,6 +14,7 @@ const { attachVoiceStudioApi } = require('./voice-studio-api');
 const { attachVoiceStudioRuntime } = require('./voice-studio-runtime');
 const { attachAnalyticsApi } = require('./analytics-api');
 const { attachAnalyticsRuntime } = require('./analytics-runtime');
+const { attachBotProfileApi } = require('./bot-profile-api');
 const { retryTransient, formatErrorDetails } = require('./startup-utils');
 
 function isDisallowedIntentError(error) {
@@ -30,6 +31,7 @@ function startDashboard() {
   attachCreatorHubApi(app);
   attachVoiceStudioApi(app);
   attachAnalyticsApi(app);
+  attachBotProfileApi(app);
 
   return new Promise(resolve => {
     const server = app.listen(config.port, '0.0.0.0', () => {
