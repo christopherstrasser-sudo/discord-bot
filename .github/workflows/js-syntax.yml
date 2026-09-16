@@ -84,10 +84,12 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('public/index.html', 'utf8');
-          const required = '/raku-glass-v300.css';
+          const required = '/raku-prism-v400.css';
           const count = html.split(required).length - 1;
           if (count !== 1) throw new Error(`Expected exactly one ${required} reference, found ${count}`);
+
           const forbidden = [
+            'raku-glass-v300.css',
             'raku-design-v200.css',
             'raku-ux-v2.js',
             'raku-ux-v2-guides.js',
@@ -99,13 +101,14 @@ jobs:
           for (const name of forbidden) {
             if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
           }
-          if (!fs.existsSync('public/raku-glass-v300.css')) throw new Error('Canonical Glass UI stylesheet missing');
+
+          if (!fs.existsSync('public/raku-prism-v400.css')) throw new Error('Canonical Prism OS stylesheet missing');
 
           const screenContract = [
             '#loggedOut.hidden',
             '#serverList.hidden',
             '#guildDashboard.hidden',
-            'display: none !important'
+            'display:none !important'
           ];
           for (const token of screenContract) {
             if (!html.includes(token)) throw new Error(`App screen-state contract missing: ${token}`);
@@ -116,7 +119,7 @@ jobs:
           if (!app.includes("$('#serverList').classList.remove('hidden')")) throw new Error('Server picker state activation missing');
           if (!app.includes("$('#guildDashboard').classList.remove('hidden')")) throw new Error('Guild dashboard state activation missing');
 
-          console.log('UI design and screen-state contract verified');
+          console.log('Prism OS and screen-state contract verified');
           NODE
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
