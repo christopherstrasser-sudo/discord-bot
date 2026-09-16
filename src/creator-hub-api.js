@@ -263,12 +263,23 @@ function checkedEventKey(rule, snapshot) {
   return `${rule.platform}:${String(rule.source || '').replace(/^@/, '').toLowerCase()}:${kind}:${snapshot.id}`;
 }
 
+async function resolveCheckedPublishChannel(guild, rule) {
+  if (!rule.channelId) throw new Error(`${rule.name}: Zielkanal fehlt.`);
+  const channel = guild.channels.cache.get(rule.channelId) || await guild.channels.fetch(rule.channelId).catch(() => null);
+  if (!channel || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type) || typeof channel.send !== 'function') {
+    throw new Error(`${rule.name}: Zielkanal ist nicht mehr verfügbar.`);
+  }
+  const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+  const perms = me ? channel.permissionsFor(me) : null;
+  if (!perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.SendMessages) || !perms?.has(PermissionFlagsBits.EmbedLinks)) {
+    throw new Error(`${rule.name}: Bot kann im Zielkanal nicht mit Embeds schreiben.`);
+  }
+  return channel;
+}
+
 async function publishCheckedSnapshot(guild, rule, snapshot) {
   if (!snapshot?.id) throw new Error('Die Quelle wurde gefunden, hat aber keinen veröffentlichbaren aktuellen Inhalt geliefert.');
-  validateRuleAgainstGuild(rule, guild, true);
-  const channel = guild.channels.cache.get(rule.channelId);
-  if (!channel?.send) throw new Error(`${rule.name}: Zielkanal ist nicht mehr verfügbar.`);
-
+  const channel = await resolveCheckedPublishChannel(guild, rule);
   const payload = buildNotificationPayload(rule, snapshot, { allowPing: false });
   const message = await channel.send(payload);
   const now = new Date().toISOString();
@@ -310,6 +321,20 @@ async function publishCheckedSnapshot(guild, rule, snapshot) {
   return { messageId: message.id, channelId: message.channelId, eventKey };
 }
 
+function logCheckedPublishError(guild, rule, snapshot, error) {
+  appendCreatorHistory(guild.id, {
+    ruleId: rule.id,
+    ruleName: rule.name,
+    platform: rule.platform,
+    source: String(rule.source || ''),
+    event: rule.event,
+    status: 'error',
+    message: `Quelle erfolgreich geprüft, Discord-Ausgabe fehlgeschlagen: ${String(error?.message || error).slice(0, 360)}`,
+    title: String(snapshot?.title || '').slice(0, 200),
+    url: String(snapshot?.url || '').slice(0, 500)
+  });
+}
+
 function attachCreatorHubApi(app) {
   app.get('/api/guilds/:guildId/creator-hub', access, (req, res) => {
     const guild = client.guilds.cache.get(req.params.guildId);
@@ -338,19 +363,27 @@ function attachCreatorHubApi(app) {
       const snapshot = SOCIAL_PLATFORMS.has(rule.platform) ? await checkSocialRule(rule) : await checkCreatorRule(rule);
       if (snapshot?.error) throw new Error(snapshot.error);
 
-      const published = shouldPublishCheckedRule(rule)
-        ? await publishCheckedSnapshot(guild, rule, snapshot)
-        : null;
+      let published = null;
+      let publishError = '';
+      if (shouldPublishCheckedRule(rule)) {
+        try {
+          published = await publishCheckedSnapshot(guild, rule, snapshot);
+        } catch (error) {
+          publishError = String(error?.message || error).slice(0, 500);
+          logCheckedPublishError(guild, rule, snapshot, error);
+        }
+      }
 
       res.json({
         ok: true,
         snapshot: publicSnapshot(snapshot),
         published,
+        publishError,
         history: getCreatorHistory(guild.id, 50),
         runtime: metaForGuild(guild).runtime
       });
     } catch (error) {
-      res.status(400).json({ error: 'creator_check_failed', message: error.message, runtime: getRuntimeStatus() });
+      res.status(400).json({ error: 'creator_check_failed', message: error.message, runtime: metaForGuild(guild).runtime });
     }
   });
 
