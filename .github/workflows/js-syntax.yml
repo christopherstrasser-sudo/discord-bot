@@ -12,10 +12,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Check JavaScript syntax
         shell: bash
         run: |
@@ -24,6 +26,7 @@ jobs:
             echo "Checking $file"
             node --check "$file"
           done < <(find src public tests -type f -name '*.js' -print0)
+
       - name: Check CSS syntax sanity
         shell: bash
         run: |
@@ -49,19 +52,16 @@ jobs:
             for (let i = 0; i < text.length; i += 1) {
               const ch = text[i];
               const next = text[i + 1];
-
               if (comment) {
                 if (ch === '*' && next === '/') { comment = false; i += 1; }
                 continue;
               }
-
               if (quote) {
                 if (escape) { escape = false; continue; }
                 if (ch === '\\') { escape = true; continue; }
                 if (ch === quote) quote = null;
                 continue;
               }
-
               if (ch === '/' && next === '*') { comment = true; i += 1; continue; }
               if (ch === '"' || ch === "'") { quote = ch; continue; }
               if (ch === '{') braces += 1;
@@ -77,18 +77,23 @@ jobs:
 
           for (const file of walk('public').filter(file => file.endsWith('.css'))) checkCss(file);
           NODE
-      - name: Check UI design contract
+
+      - name: Check Studio UI contract
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('public/index.html', 'utf8');
-          const required = '/raku-prism-v400.css';
-          const count = html.split(required).length - 1;
-          if (count !== 1) throw new Error(`Expected exactly one ${required} reference, found ${count}`);
+          const required = ['/raku-studio-v500.css', '/raku-workspace-v500.js'];
+          for (const asset of required) {
+            const count = html.split(asset).length - 1;
+            if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
+          }
 
           const forbidden = [
+            'raku-prism-v400.css',
+            'raku-ui-v100.js',
             'raku-glass-v300.css',
             'raku-design-v200.css',
             'raku-ux-v2.js',
@@ -100,29 +105,33 @@ jobs:
           ];
           for (const name of forbidden) {
             if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
+            if (fs.existsSync(`public/${name}`)) throw new Error(`Retired UI asset still exists: public/${name}`);
           }
 
-          if (!fs.existsSync('public/raku-prism-v400.css')) throw new Error('Canonical Prism OS stylesheet missing');
+          if (!fs.existsSync('public/raku-studio-v500.css')) throw new Error('Studio UI stylesheet missing');
+          if (!fs.existsSync('public/raku-workspace-v500.js')) throw new Error('Studio shell renderer missing');
 
-          const screenContract = [
-            '#loggedOut.hidden',
-            '#serverList.hidden',
-            '#guildDashboard.hidden',
-            'display:none !important'
-          ];
+          const bannedCopy = ['CONTROL NODE', 'SERVER PULSE', 'CONTROL OS', 'Prism OS'];
+          for (const phrase of bannedCopy) {
+            if (html.includes(phrase)) throw new Error(`Retired fake-system copy still present in index.html: ${phrase}`);
+          }
+
+          const screenContract = ['#loggedOut.hidden', '#serverList.hidden', '#guildDashboard.hidden', 'display:none !important'];
           for (const token of screenContract) {
             if (!html.includes(token)) throw new Error(`App screen-state contract missing: ${token}`);
           }
 
-          const app = fs.readFileSync('public/app.js', 'utf8');
-          if (!app.includes("$('#loggedOut').classList.remove('hidden')")) throw new Error('Login screen state activation missing');
-          if (!app.includes("$('#serverList').classList.remove('hidden')")) throw new Error('Server picker state activation missing');
-          if (!app.includes("$('#guildDashboard').classList.remove('hidden')")) throw new Error('Guild dashboard state activation missing');
+          const shell = fs.readFileSync('public/raku-workspace-v500.js', 'utf8');
+          for (const token of ['r5-shell', 'r5-sidebar', 'r5-contextbar', 'r5-overview']) {
+            if (!shell.includes(token)) throw new Error(`Studio shell architecture token missing: ${token}`);
+          }
 
-          console.log('Prism OS and screen-state contract verified');
+          console.log('Studio UI v5 contract verified');
           NODE
+
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Load critical backend modules
         env:
           DISCORD_CLIENT_ID: ci-client
@@ -135,5 +144,6 @@ jobs:
           node -e "import('piratetok-live-js').then(m=>{if(typeof m.checkOnline!=='function'||typeof m.fetchRoomInfo!=='function'||typeof m.randomUa!=='function')throw new Error('PirateTok exports missing'); console.log('PirateTok exports verified')})"
           node -e "import('puppeteer-core').then(m=>{if(!m.default&&!m.launch)throw new Error('Puppeteer Core export missing'); console.log('Puppeteer Core verified')})"
           node -e "const p=require('tiktok-signature/package.json'); if(p.version!=='4.3.6') throw new Error('Unexpected tiktok-signature version'); console.log('TikTok Signature package verified', p.version)"
+
       - name: Run automated tests
         run: node --test tests/*.test.js
