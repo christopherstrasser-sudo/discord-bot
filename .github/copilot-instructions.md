@@ -2,16 +2,18 @@
 
 ## Current release
 
-- Version: **0.18.0**
+- Version: **0.19.0**
 - Branch: `main`
-- UI generation: **Glass UI v3**
-- Canonical product-wide visual file: `public/raku-glass-v300.css`
+- UI generation: **Prism OS v4**
+- Canonical product-wide visual file: `public/raku-prism-v400.css`
 
 ## Critical design decision
 
-The dashboard was fully visually rebuilt on 2026-09-16 after older layered override systems caused spacing and consistency regressions.
+On 2026-09-16 the previous Glass UI v3 was intentionally discarded after the user requested a complete visual restart rather than another round of line-by-line fixes.
 
-Do not restore or recreate these retired concepts:
+Do not restore `public/raku-glass-v300.css` and do not recreate its look as a patch layer.
+
+Also keep the older retired design layers retired:
 - `layout-wide.css`
 - `ui-fixes.css`
 - `raku-ui-v100.css`
@@ -24,22 +26,22 @@ Do not restore or recreate these retired concepts:
 - `role-studio-v150.css`
 - `ticket-studio-v160.css`
 - `raku-design-v200.css`
+- `raku-glass-v300.css`
 - UX-v2 runtime decorators/guides/hints
 
-Those files/layers were intentionally removed.
+## Prism OS direction
 
-## Design direction
-
-The complete product uses one dark **smoked-glass** visual language:
-- subtle translucent major surfaces
-- restrained backdrop blur
-- strong readability and contrast
-- Discord-adjacent dark palette without cloning Discord
-- blurple accent with subtle cyan highlights
-- consistent radii and spacing
-- minimal microcopy
-- no decorative generated images
-- no AI-style instructional clutter
+Prism OS is a fresh product language, not a continuation of v3:
+- dark control-system canvas
+- restrained translucent surfaces
+- larger, clearer typography
+- more whitespace
+- violet/cyan signal accents
+- fewer tiny labels
+- consistent work-area/preview geometry
+- calm navigation and card hierarchy
+- no generated decorative imagery
+- no instructional clutter
 
 The same visual system applies to:
 - login
@@ -56,41 +58,47 @@ The same visual system applies to:
 - Analytics
 - Diagnostics
 
+## Screen architecture
+
+Login, server picker and guild dashboard are three mutually exclusive screens.
+
+`public/index.html` contains a hard `.hidden` visibility contract for:
+- `#loggedOut`
+- `#serverList`
+- `#guildDashboard`
+
+Never let design CSS override app visibility state.
+
 ## CSS architecture
 
 Load order in `public/index.html`:
 1. base/component mechanics CSS
-2. `public/raku-glass-v300.css` last
+2. `public/raku-prism-v400.css` last
 
-`raku-glass-v300.css` is the only product-wide design authority.
-Module CSS keeps component mechanics only.
+`raku-prism-v400.css` is the only product-wide appearance authority.
 
 Never add another global `fix`, `polish`, `wide`, `readability` or override stylesheet.
 Never dynamically inject design CSS from JavaScript.
 
-See `DESIGN.md` for the spacing/layout contract.
+See `DESIGN.md` for the layout/readability contract.
 
 ## Runtime UI files
 
 Keep:
-- `public/raku-ui-v100.js` — navigation grouping and overview behavior; despite its old filename it is still active behavior, not a CSS design layer.
-- `public/save-button-fix.js` — save behavior only; it must not load CSS/assets.
+- `public/raku-ui-v100.js` — navigation grouping and overview behavior; old filename, active behavior.
+- `public/save-button-fix.js` — save behavior only; never load visual assets here.
 - module JS files for Role/Ticket/Creator/Voice/Analytics/Commands.
-
-Removed intentionally:
-- `public/raku-ux-v2.js`
-- `public/raku-ux-v2-guides.js`
-- `public/raku-ux-v2-hints.js`
 
 ## UX priorities
 
-1. Consistency before adding more polish.
+1. One coherent commercial product before module-specific polish.
 2. Readability before density.
-3. Major editor modules should use a large work area plus a predictable preview/status column.
-4. Login and server picker must feel like the same product as the dashboard.
-5. Server cards retain real Discord server icons where available.
+3. Major editors use a large work area plus predictable preview/status area.
+4. Login and server picker must clearly belong to the same product as the dashboard.
+5. Server cards keep real Discord server icons where available.
 6. Do not generate images for the interface.
+7. Do not revive the v3 look or solve visual issues with new override files.
 
 ## Next work
 
-Continue feature development from v0.18.0. If visual changes are needed, change the canonical v3 design system rather than layering another stylesheet on top.
+Continue feature development from **v0.19.0**. Visual changes go directly into Prism OS v4.
