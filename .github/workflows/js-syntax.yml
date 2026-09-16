@@ -115,7 +115,7 @@ jobs:
           if (!fs.existsSync('public/raku-orbit-v600.js')) throw new Error('Orbit shell renderer missing');
 
           const css = fs.readFileSync('public/raku-orbit-v610.css', 'utf8');
-          for (const token of ['--o-font:', '--o-display:', '.o6-command-rail', 'top:92px', '.o6-orbit-links', '.o6-core-halo', '.o6-node-g', '.o6-node-h', 'grid-auto-flow:dense', '.role-panel-commandbar', '.ticket-panelbar', '.creator-editor-top']) {
+          for (const token of ['--o-font:', '--o-display:', '.o6-dock', 'top:92px', '.o6-orbit-links', '.o6-core-halo', '.o6-node-g', '.o6-node-h', 'grid-auto-flow:dense', '.role-panel-commandbar', '.ticket-panelbar', '.creator-editor-top']) {
             if (!css.includes(token)) throw new Error(`Orbit v6.2 production token missing: ${token}`);
           }
           if (!html.includes('family=Inter') || !html.includes('family=Manrope')) throw new Error('Production web typography missing');
