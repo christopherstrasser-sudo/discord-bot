@@ -100,7 +100,23 @@ jobs:
             if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
           }
           if (!fs.existsSync('public/raku-glass-v300.css')) throw new Error('Canonical Glass UI stylesheet missing');
-          console.log('UI design contract verified');
+
+          const screenContract = [
+            '#loggedOut.hidden',
+            '#serverList.hidden',
+            '#guildDashboard.hidden',
+            'display: none !important'
+          ];
+          for (const token of screenContract) {
+            if (!html.includes(token)) throw new Error(`App screen-state contract missing: ${token}`);
+          }
+
+          const app = fs.readFileSync('public/app.js', 'utf8');
+          if (!app.includes("$('#loggedOut').classList.remove('hidden')")) throw new Error('Login screen state activation missing');
+          if (!app.includes("$('#serverList').classList.remove('hidden')")) throw new Error('Server picker state activation missing');
+          if (!app.includes("$('#guildDashboard').classList.remove('hidden')")) throw new Error('Guild dashboard state activation missing');
+
+          console.log('UI design and screen-state contract verified');
           NODE
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
