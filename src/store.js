@@ -25,6 +25,11 @@ const DEFAULT_GUILD_SETTINGS = Object.freeze({
   rolePanels: {
     enabled: false,
     panels: []
+  },
+  botProfile: {
+    nickname: '',
+    bio: '',
+    avatarHash: ''
   }
 });
 
