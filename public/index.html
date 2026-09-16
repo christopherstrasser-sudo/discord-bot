@@ -27,6 +27,37 @@
     #loggedOut.hidden,
     #serverList.hidden,
     #guildDashboard.hidden { display:none !important; }
+
+    /* Orbit owns the page background. The legacy .deck-workspace surface is mechanics only. */
+    body.o6-dashboard-mode #guildWorkspace.deck-workspace.o6-canvas {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
+    /* Keep the labelled command rail intentionally compact on desktop. */
+    @media (min-width: 901px) {
+      body.o6-dashboard-mode .o6-command-rail.o6-dock {
+        width: min(1160px, calc(100vw - 64px)) !important;
+        max-width: min(1160px, calc(100vw - 64px)) !important;
+        gap: 2px !important;
+        padding: 6px 7px !important;
+      }
+      body.o6-dashboard-mode .o6-command-rail .o6-dock-item {
+        min-width: 62px !important;
+        height: 46px !important;
+        gap: 6px !important;
+        padding: 0 8px !important;
+      }
+      body.o6-dashboard-mode .o6-command-rail .o6-module-symbol,
+      body.o6-dashboard-mode .o6-command-rail .o6-module-symbol svg {
+        width: 18px !important;
+        height: 18px !important;
+      }
+      body.o6-dashboard-mode .o6-command-rail .o6-dock-separator {
+        margin-inline: 1px !important;
+      }
+    }
   </style>
 </head>
 <body>
