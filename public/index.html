@@ -6,26 +6,24 @@
   <meta name="color-scheme" content="dark">
   <title>RAKU Discord Control</title>
 
-  <!-- Component foundations: mechanics/layout local to each module. -->
-  <link rel="stylesheet" href="/styles.css?v=0181">
-  <link rel="stylesheet" href="/commands-editor.css?v=0181">
-  <link rel="stylesheet" href="/role-studio.css?v=0181">
-  <link rel="stylesheet" href="/ticket-studio.css?v=0181">
-  <link rel="stylesheet" href="/creator-hub.css?v=0181">
-  <link rel="stylesheet" href="/emoji-picker-popup.css?v=0181">
-  <link rel="stylesheet" href="/voice-studio.css?v=0181">
-  <link rel="stylesheet" href="/analytics-studio.css?v=0181">
+  <!-- Module mechanics only. -->
+  <link rel="stylesheet" href="/styles.css?v=0190">
+  <link rel="stylesheet" href="/commands-editor.css?v=0190">
+  <link rel="stylesheet" href="/role-studio.css?v=0190">
+  <link rel="stylesheet" href="/ticket-studio.css?v=0190">
+  <link rel="stylesheet" href="/creator-hub.css?v=0190">
+  <link rel="stylesheet" href="/emoji-picker-popup.css?v=0190">
+  <link rel="stylesheet" href="/voice-studio.css?v=0190">
+  <link rel="stylesheet" href="/analytics-studio.css?v=0190">
 
-  <!-- The one product-wide visual layer. -->
-  <link rel="stylesheet" href="/raku-glass-v300.css?v=0181">
+  <!-- Single final appearance layer. -->
+  <link rel="stylesheet" href="/raku-prism-v400.css?v=0190">
 
-  <!-- App-state contract: login, server picker and dashboard are mutually exclusive screens. -->
+  <!-- Visibility belongs to app state, never to design CSS. -->
   <style id="app-screen-state-contract">
     #loggedOut.hidden,
     #serverList.hidden,
-    #guildDashboard.hidden {
-      display: none !important;
-    }
+    #guildDashboard.hidden { display:none !important; }
   </style>
 </head>
 <body>
@@ -33,7 +31,7 @@
     <header class="topbar">
       <a class="brand" href="/" aria-label="RAKU Discord Control">
         <span class="brand-mark">R</span>
-        <span class="brand-copy"><b>RAKU</b><small>DISCORD CONTROL</small></span>
+        <span class="brand-copy"><b>RAKU</b><small>CONTROL OS</small></span>
       </a>
       <div id="globalStatus" class="global-status" aria-live="polite">
         <span class="status-pulse"></span><span>System wird geprüft</span>
@@ -44,27 +42,28 @@
     <main class="main-shell">
       <section id="loggedOut" class="login-screen hidden">
         <div class="login-copy">
-          <span class="overline">MULTI-SERVER CONTROL / DISCORD</span>
-          <h1>Dein Server.<br>Dein Control Deck.</h1>
-          <p>Community, Rollen, Tickets, Creator-Automationen, Voice und Analytics in einer Oberfläche – schnell erreichbar und klar nach Aufgaben organisiert.</p>
-          <a class="button button-primary button-large" href="/auth/discord">Mit Discord starten</a>
+          <span class="overline">DISCORD OPERATIONS / MULTI SERVER</span>
+          <h1>Control für deine Community</h1>
+          <p>Ein zentraler Arbeitsplatz für Rollen, Tickets, Automationen, Creator Alerts, Voice und Serverdaten – ohne zwischen zehn Tools zu springen.</p>
+          <a class="button button-primary button-large" href="/auth/discord">Control OS öffnen</a>
         </div>
-        <div class="login-console" aria-hidden="true">
-          <div class="console-top"><span>RAKU / CONTROL DECK</span><b>READY</b></div>
-          <div class="console-line"><span>Community & Rollen</span><strong>CONNECTED</strong></div>
-          <div class="console-line"><span>Tickets & Automationen</span><strong>READY</strong></div>
+
+        <aside class="login-console" aria-label="Systemübersicht">
+          <div class="console-top"><span>RAKU CONTROL OS</span><b>ONLINE</b></div>
+          <div class="console-line"><span>Community Layer</span><strong>READY</strong></div>
+          <div class="console-line"><span>Automation Engine</span><strong>READY</strong></div>
+          <div class="console-line"><span>Support & Roles</span><strong>READY</strong></div>
           <div class="console-line"><span>Voice & Analytics</span><strong>READY</strong></div>
-          <div class="console-line"><span>Multi-Server Routing</span><strong>ONLINE</strong></div>
-          <div class="console-foot">v0.18.1 · glass ui v3</div>
-        </div>
+          <div class="console-foot">v0.19.0 · Prism OS</div>
+        </aside>
       </section>
 
       <section id="serverList" class="server-screen hidden">
         <div class="page-head">
           <div>
             <span class="overline">SERVER NETWORK</span>
-            <h1>Deine Server.</h1>
-            <p>Wähle einen Server und spring direkt in sein Control Deck.</p>
+            <h1>Wähle deinen Workspace.</h1>
+            <p>Jeder Discord-Server bleibt ein eigener Arbeitsbereich mit eigener Konfiguration, eigenen Modulen und eigenem Status.</p>
           </div>
           <div id="serverStats" class="deck-stats"></div>
         </div>
@@ -96,27 +95,24 @@
 
   <div id="toastHost" class="toast-host" aria-live="polite"></div>
 
-  <!-- App and module behavior. -->
-  <script src="/app.js?v=0181"></script>
-  <script src="/save-button-fix.js?v=0181"></script>
-  <script src="/commands-editor.js?v=0181"></script>
-  <script src="/role-studio-observer-guard.js?v=0181"></script>
-  <script src="/role-studio.js?v=0181"></script>
-  <script src="/role-studio-observer-guard.js?restore=1&v=0181"></script>
-  <script src="/ticket-studio-core.js?v=0181"></script>
-  <script src="/ticket-studio-render.js?v=0181"></script>
-  <script src="/ticket-studio-actions.js?v=0181"></script>
-  <script src="/creator-hub-core.js?v=0181"></script>
-  <script src="/creator-hub-render.js?v=0181"></script>
-  <script src="/creator-hub-youtube-handle.js?v=0181"></script>
-  <script src="/creator-hub-tiktok-v092.js?v=0181"></script>
-  <script src="/creator-hub-actions.js?v=0181"></script>
+  <script src="/app.js?v=0190"></script>
+  <script src="/save-button-fix.js?v=0190"></script>
+  <script src="/commands-editor.js?v=0190"></script>
+  <script src="/role-studio-observer-guard.js?v=0190"></script>
+  <script src="/role-studio.js?v=0190"></script>
+  <script src="/role-studio-observer-guard.js?restore=1&v=0190"></script>
+  <script src="/ticket-studio-core.js?v=0190"></script>
+  <script src="/ticket-studio-render.js?v=0190"></script>
+  <script src="/ticket-studio-actions.js?v=0190"></script>
+  <script src="/creator-hub-core.js?v=0190"></script>
+  <script src="/creator-hub-render.js?v=0190"></script>
+  <script src="/creator-hub-youtube-handle.js?v=0190"></script>
+  <script src="/creator-hub-tiktok-v092.js?v=0190"></script>
+  <script src="/creator-hub-actions.js?v=0190"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.29.1/index.js"></script>
-  <script src="/emoji-picker-popup.js?v=0181"></script>
-
-  <!-- Shared navigation/overview behavior. -->
-  <script src="/raku-ui-v100.js?v=0181"></script>
-  <script src="/voice-studio.js?v=0181"></script>
-  <script src="/analytics-studio.js?v=0181"></script>
+  <script src="/emoji-picker-popup.js?v=0190"></script>
+  <script src="/raku-ui-v100.js?v=0190"></script>
+  <script src="/voice-studio.js?v=0190"></script>
+  <script src="/analytics-studio.js?v=0190"></script>
 </body>
 </html>
