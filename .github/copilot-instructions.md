@@ -2,103 +2,80 @@
 
 ## Current release
 
-- Version: **0.19.0**
+- Version: **0.20.0**
 - Branch: `main`
-- UI generation: **Prism OS v4**
-- Canonical product-wide visual file: `public/raku-prism-v400.css`
+- UI generation: **Studio UI v5**
+- Global visual layer: `public/raku-studio-v500.css`
+- Final dashboard shell renderer: `public/raku-workspace-v500.js`
 
-## Critical design decision
+## Critical UI decision
 
-On 2026-09-16 the previous Glass UI v3 was intentionally discarded after the user requested a complete visual restart rather than another round of line-by-line fixes.
+The previous Prism/Glass/Control-OS dashboard direction was explicitly rejected. Do not restore it.
 
-Do not restore `public/raku-glass-v300.css` and do not recreate its look as a patch layer.
+The authenticated dashboard was rebuilt structurally, not merely reskinned:
 
-Also keep the older retired design layers retired:
-- `layout-wide.css`
-- `ui-fixes.css`
-- `raku-ui-v100.css`
-- `raku-ui-v100-overrides.css`
-- `raku-ux-v2.css`
-- `raku-readability-v121.css`
-- `raku-visual-system-v140.css`
-- `raku-visual-v141-fix.css`
-- `raku-module-unification-v142.css`
-- `role-studio-v150.css`
-- `ticket-studio-v160.css`
-- `raku-design-v200.css`
-- `raku-glass-v300.css`
+- no second global header above the dashboard
+- fixed left application sidebar
+- one slim context bar
+- one workspace
+- compact operational overview
+- no giant server hero
+- no fake telemetry or sci-fi copy
+
+## Retired files/concepts
+
+Do not recreate or reference:
+
+- `public/raku-ui-v100.js`
+- `public/raku-prism-v400.css`
+- `public/raku-glass-v300.css`
+- `public/raku-design-v200.css`
 - UX-v2 runtime decorators/guides/hints
+- module unification/readability/wide/fix layers
+- role/ticket version-specific polish stylesheets
 
-## Prism OS direction
+Avoid phrases and UI concepts such as:
 
-Prism OS is a fresh product language, not a continuation of v3:
-- dark control-system canvas
-- restrained translucent surfaces
-- larger, clearer typography
-- more whitespace
-- violet/cyan signal accents
-- fewer tiny labels
-- consistent work-area/preview geometry
-- calm navigation and card hierarchy
-- no generated decorative imagery
-- no instructional clutter
+- CONTROL NODE
+- SERVER PULSE
+- CONTROL OS
+- Prism OS
+- fake READY/ONLINE system boards used as decoration
 
-The same visual system applies to:
-- login
-- server picker
-- overview
-- Welcome
-- Auto-Roles
-- Role Studio
-- Ticket Studio
-- Commands
-- Creator Hub
-- Server Logs
-- Voice Studio
-- Analytics
-- Diagnostics
+## Visual direction
 
-## Screen architecture
+The product should look like a serious creator/community administration app:
 
-Login, server picker and guild dashboard are three mutually exclusive screens.
+- dark neutral base
+- restrained violet accent
+- modest translucency, not glass everywhere
+- compact navigation
+- readable working UI
+- real information density
+- minimal decorative microcopy
+- consistent forms, cards, spacing and radii
+- real Discord server icons remain visible in server cards
+- no generated images in the interface
 
-`public/index.html` contains a hard `.hidden` visibility contract for:
-- `#loggedOut`
-- `#serverList`
-- `#guildDashboard`
+## Runtime architecture
 
-Never let design CSS override app visibility state.
+`public/raku-workspace-v500.js` is loaded after Role/Ticket/Creator/Voice/Analytics module hooks and owns the final dashboard shell.
 
-## CSS architecture
+It intentionally keeps legacy class hooks such as `.deck-nav`, `.deck-nav-item`, `.guild-commandbar` and `#guildWorkspace` only for compatibility with existing functional code. Their old visual layout is retired.
 
-Load order in `public/index.html`:
-1. base/component mechanics CSS
-2. `public/raku-prism-v400.css` last
+Module renderers still own their functionality. `raku-studio-v500.css` normalizes the visible outer layout and controls.
 
-`raku-prism-v400.css` is the only product-wide appearance authority.
+## Screen contract
 
-Never add another global `fix`, `polish`, `wide`, `readability` or override stylesheet.
-Never dynamically inject design CSS from JavaScript.
-
-See `DESIGN.md` for the layout/readability contract.
-
-## Runtime UI files
-
-Keep:
-- `public/raku-ui-v100.js` — navigation grouping and overview behavior; old filename, active behavior.
-- `public/save-button-fix.js` — save behavior only; never load visual assets here.
-- module JS files for Role/Ticket/Creator/Voice/Analytics/Commands.
+Login, server picker and guild dashboard are mutually exclusive screens. Never use visual CSS that overrides `.hidden`.
 
 ## UX priorities
 
-1. One coherent commercial product before module-specific polish.
-2. Readability before density.
-3. Major editors use a large work area plus predictable preview/status area.
-4. Login and server picker must clearly belong to the same product as the dashboard.
-5. Server cards keep real Discord server icons where available.
-6. Do not generate images for the interface.
-7. Do not revive the v3 look or solve visual issues with new override files.
+1. Functionality and readability before decoration.
+2. Simplify structure before adding effects.
+3. Avoid generic AI-admin-dashboard patterns.
+4. Keep module layout consistent.
+5. No giant empty surfaces.
+6. No new global polish/override stylesheet.
 
-## Next work
-
-Continue feature development from **v0.19.0**. Visual changes go directly into Prism OS v4.
+See `DESIGN.md` for the detailed design contract.
