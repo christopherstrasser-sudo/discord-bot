@@ -9,7 +9,7 @@
   const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X' };
   const SUBTITLES = {
     twitch: 'HELIX LIVE', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
-    instagram: 'RAKU SOCIAL RELAY', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY'
+    instagram: 'BROWSERLESS HTTP', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY'
   };
 
   const originalPlatform = C.platform;
@@ -55,7 +55,7 @@
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
     }
 
-    if (platform === 'instagram' && health.serverProviderConfigured === false) {
+    if (platform === 'instagram' && health.tlsImpersonation !== true && health.serverProviderConfigured === false) {
       return {
         cls: 'missing',
         label: 'BACKEND PROVIDER FEHLT',
@@ -65,7 +65,7 @@
 
     if (health.lastError && !health.ok) return { cls: 'bad', label: 'DEGRADED', copy: health.lastError };
     if (!health.lastCheckedAt) {
-      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Zentraler RAKU Provider · keine Zugangsdaten pro Discord-Server.' };
+      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Browserloser TLS-HTTP-Abruf · kein Chrome-Prozess, Login oder eigener API-Key nötig.' };
       if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
       if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Serverseitiger X-Read-Relay · kein X-Login oder API-Key nötig.' };
     }
@@ -118,7 +118,7 @@
     const data = {
       instagram: {
         title: 'Instagram Handle', placeholder: 'rakulein',
-        help: 'Nur öffentliches Profil angeben. Der Discord-Server selbst braucht keine Instagram-Zugangsdaten; der Abruf läuft über den zentralen RAKU Provider.'
+        help: 'Öffentliches Profil. Browserloser HTTP-Abruf mit Chrome-kompatiblem Netzwerk-Fingerprint; kein lokaler Browser, Instagram-Login oder eigener API-Key nötig.'
       },
       bluesky: {
         title: 'Bluesky Handle', placeholder: 'rakulein.bsky.social',
