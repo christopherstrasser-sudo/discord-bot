@@ -1,9 +1,10 @@
 const base = require('./creator-social-providers');
 const { fetchInstagramKeyless } = require('./creator-instagram-keyless');
+const { fetchInstagramImginn } = require('./creator-instagram-imginn');
 
 const providerHealth = {
   x: { ok: true, mode: 'x-md', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
-  instagram: { ok: true, mode: 'keyless-web', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
+  instagram: { ok: true, mode: 'imginn-relay', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
 };
 
 const cache = new Map();
@@ -144,6 +145,17 @@ async function fetchXMdPost(value) {
   });
 }
 
+async function fetchInstagramImginnPost(value) {
+  const source = base.normalizeSocialHandle('instagram', value);
+  return cached('instagram-imginn', source, 8 * 60 * 1000, async () => {
+    const snapshot = await fetchInstagramImginn(source, { maxDetails: 6, timeoutMs: 18000 });
+    updateHealth('instagram', true, 'imginn-relay');
+    return snapshot;
+  }).catch(error => {
+    throw new Error(`Imginn Relay: ${compactError(error)}`);
+  });
+}
+
 async function fetchInstagramScrapeCreators(value) {
   const source = base.normalizeSocialHandle('instagram', value);
   const apiKey = optionalEnv('SCRAPECREATORS_API_KEY');
@@ -183,19 +195,12 @@ async function fetchInstagramPost(value) {
   const relayToken = optionalEnv('RAKU_SOCIAL_RELAY_TOKEN');
   const errors = [];
 
-  try {
-    const result = await fetchInstagramKeyless(source);
-    updateHealth('instagram', true, result.mode || 'keyless-web');
-    return result.snapshot;
-  } catch (error) {
-    errors.push(`Keyless: ${compactError(error)}`);
-  }
-
+  // Stable server-side providers take priority. Dashboard users still only enter a handle.
   if (relayUrl) {
     try {
       return await fetchInstagramRelay(source, relayUrl, relayToken);
     } catch (error) {
-      errors.push(`Relay: ${compactError(error)}`);
+      errors.push(`RAKU Relay: ${compactError(error)}`);
     }
   }
 
@@ -207,8 +212,24 @@ async function fetchInstagramPost(value) {
     }
   }
 
-  const message = `Instagram aktuell nicht abrufbar (${errors.join(' | ').slice(0, 650)}).`;
-  updateHealth('instagram', false, 'keyless-web', message);
+  // Public third-party viewer relay. No Instagram login/API key required by the bot user.
+  try {
+    return await fetchInstagramImginnPost(source);
+  } catch (error) {
+    errors.push(compactError(error));
+  }
+
+  // Last-resort direct Instagram path. This is often blocked by require_login/401 in 2026.
+  try {
+    const result = await fetchInstagramKeyless(source);
+    updateHealth('instagram', true, result.mode || 'keyless-web');
+    return result.snapshot;
+  } catch (error) {
+    errors.push(`Instagram direkt: ${compactError(error)}`);
+  }
+
+  const message = `Instagram aktuell nicht abrufbar (${errors.join(' | ').slice(0, 760)}).`;
+  updateHealth('instagram', false, 'imginn-relay', message);
   throw new Error(message);
 }
 
@@ -232,6 +253,7 @@ function getSocialProviderHealth() {
     configured: true,
     userCredentialsRequired: false,
     browserRequired: false,
+    publicRelayAvailable: true,
     keylessProfileFeed: true,
     serverProviderConfigured: Boolean(optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
   };
