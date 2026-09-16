@@ -83,29 +83,42 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0262')) throw new Error('v0.26.2 cache key missing');
-          for (const file of ['src/creator-social-providers.js', 'src/creator-social-runtime.js']) {
+          if (!html.includes('v=0270')) throw new Error('v0.27.0 cache key missing');
+
+          for (const file of ['src/creator-social-providers.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
+          if (fs.existsSync('src/creator-social-browser.js')) throw new Error('Local browser social fallback must stay retired');
+          if (fs.existsSync('tests/creator-social-browser.test.js')) throw new Error('Obsolete browser fallback test must stay retired');
+
           const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
-          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'resolveCheckedPublishChannel', 'publishError', 'logCheckedPublishError', "rule.platform === 'youtube'", "rule.platform === 'tiktok' && rule.event === 'upload'", 'allowPing: false']) {
+          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'publishError', 'allowPing: false']) {
             if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
           }
-          const providers = fs.readFileSync('src/creator-social-providers.js', 'utf8');
-          for (const token of ['syndication.twitter.com', '__NEXT_DATA__', 'web_profile_info', 'feed/user/', 'parseInstagramFeedPayload', 'parseInstagramRelayHtml', "mode: 'public-syndication'", "mode: 'public-web'"]) {
-            if (!providers.includes(token)) throw new Error(`Keyless provider token missing: ${token}`);
+
+          const runtime = fs.readFileSync('src/creator-social-runtime.js', 'utf8');
+          if (!runtime.includes("require('./creator-social-provider-router')")) throw new Error('Creator social runtime must use provider router');
+
+          const router = fs.readFileSync('src/creator-social-provider-router.js', 'utf8');
+          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "import('impit')", "browser: 'chrome'", 'parseInstagramFeedPayload', 'tlsImpersonation: true', 'SCRAPECREATORS_API_KEY', 'RAKU_SOCIAL_RELAY_URL']) {
+            if (!router.includes(token)) throw new Error(`Provider router token missing: ${token}`);
           }
-          if (providers.includes('X Provider ist nicht konfiguriert. X_BEARER_TOKEN fehlt.')) throw new Error('X still hard-requires a bearer token');
-          if (providers.includes('INSTAGRAM_GRAPH_ACCESS_TOKEN und INSTAGRAM_GRAPH_IG_USER_ID fehlen.')) throw new Error('Instagram still hard-requires Graph credentials');
+          if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use a local browser');
+
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (pkg.version !== '0.27.0') throw new Error(`Expected package version 0.27.0, got ${pkg.version}`);
+          if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
+
           const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
-          for (const token of ['PUBLIC POST INDEX', 'PUBLIC SYNDICATION', 'kein API-Key nötig', 'appendProviderCards']) {
+          for (const token of ['BROWSERLESS HTTP', 'X.MD RELAY', 'kein lokaler Browser', 'appendProviderCards']) {
             if (!socialUi.includes(token)) throw new Error(`Creator Social UI token missing: ${token}`);
           }
+
           const actions = fs.readFileSync('public/creator-hub-actions.js', 'utf8');
           for (const token of ['aktuellster Inhalt wurde in Discord gepostet', 'result.publishError', 'Quelle erfolgreich geprüft']) {
             if (!actions.includes(token)) throw new Error(`Creator check feedback missing: ${token}`);
           }
-          console.log('Orbit + Creator Social v0.26.2 contract verified');
+          console.log('Orbit + Creator Social v0.27.0 contract verified');
           NODE
 
       - name: Install dependencies
@@ -113,7 +126,8 @@ jobs:
 
       - name: Load creator social modules
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-social-runtime'); console.log('Creator social modules loaded')"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); console.log('Creator social modules loaded')"
+          node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
 
       - name: Run automated tests
         run: node --test tests/*.test.js
