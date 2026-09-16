@@ -127,7 +127,7 @@ jobs:
           }
 
           const shell = fs.readFileSync('public/raku-orbit-v600.js', 'utf8');
-          for (const token of ['o6-stage', 'o6-command-rail', 'MODULE_ICONS', 'o6-orbit-links', 'data-orbit-position', 'o6-node-g', 'o6-node-h']) {
+          for (const token of ['o6-stage', 'o6-command-rail', 'MODULE_ICONS', 'o6-orbit-links', 'data-orbit-position', "constellationNode('autorole'", "constellationNode('logging'"]) {
             if (!shell.includes(token)) throw new Error(`Orbit v6.2 shell token missing: ${token}`);
           }
 
