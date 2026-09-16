@@ -80,7 +80,12 @@
   C.ensureSaved=async()=>{if(S.dirty)await C.save();return C.rule()};
   C.check=async()=>{
     const button=document.querySelector('[data-cr-check]');if(button)button.disabled=true;S.checking=true;C.render();
-    try{const rule=await C.ensureSaved();if(!rule)throw new Error('Regel nicht gefunden.');const result=await api(`/api/guilds/${activeGuildData.guild.id}/creator-hub/${rule.id}/check`,{method:'POST'});S.check=result.snapshot;S.meta.runtime=result.runtime||S.meta.runtime;toast('Creator-Quelle erfolgreich geprüft.');}
+    try{
+      const rule=await C.ensureSaved();if(!rule)throw new Error('Regel nicht gefunden.');
+      const result=await api(`/api/guilds/${activeGuildData.guild.id}/creator-hub/${rule.id}/check`,{method:'POST'});
+      S.check=result.snapshot;S.meta.runtime=result.runtime||S.meta.runtime;S.history=result.history||S.history;
+      toast(result.published?'Quelle geprüft – aktuellster Inhalt wurde in Discord gepostet (ohne Rollen-Ping).':'Creator-Quelle erfolgreich geprüft.');
+    }
     catch(error){S.check={error:error.message};toast(error.message,'error')}finally{S.checking=false;if(activeTab==='creators')C.render()}
   };
   C.test=async()=>{
