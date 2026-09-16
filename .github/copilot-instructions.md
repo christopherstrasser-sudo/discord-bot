@@ -2,7 +2,7 @@
 
 ## Current release
 
-- Version: **0.28.0**
+- Version: **0.28.1**
 - Branch: `main`
 - UI generation: **Orbit UI v6.2 + Module Shell**
 - Global visual layer: `public/raku-orbit-v610.css`
@@ -35,7 +35,7 @@ Each module may have its own internal editor layout, but the outer page width, h
 
 The Bot Profile page uses the same Orbit module geometry but owns its dedicated profile hero and Discord-style live preview.
 
-## Bot Profile architecture — v0.28.0
+## Bot Profile architecture — v0.28.1
 
 Server administrators can customize the shared bot's **guild member profile** from the dashboard.
 
@@ -61,7 +61,7 @@ Implementation:
 
 **Do not implement per-guild activity/presence for the shared bot.** Discord Gateway presence is global to the bot connection and has no guild-specific scope.
 
-The Bot Profile page intentionally displays Activity as `GLOBAL · GESPERRT` and explains the limitation. Never let one tenant/server admin call `setPresence()` / `setActivity()` on the shared bot, because that would change the visible activity across every server using the same bot.
+The previous disabled Activity / `GLOBAL · GESPERRT` UI section was removed in v0.28.1 because it had no actionable server-specific functionality. Do not re-add it to the Bot Profile page. Never let one tenant/server admin call `setPresence()` / `setActivity()` on the shared bot, because that would change the visible activity across every server using the same bot.
 
 If true per-server activity/status is requested later, implement it only as a separate **Custom Bot** architecture where that server has its own Discord application/token/client connection.
 
@@ -135,6 +135,7 @@ Feature renderers still own functionality. `public/raku-orbit-v610.css` owns sha
 
 Do not recreate or reference:
 
+- Bot Profile Activity / `GLOBAL · GESPERRT` section
 - per-guild `setPresence()` / `setActivity()` on the shared bot
 - local-browser Instagram/X social fallback
 - `src/creator-social-browser.js`
