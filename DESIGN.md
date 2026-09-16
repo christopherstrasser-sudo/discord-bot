@@ -1,22 +1,30 @@
-# RAKU Discord Control — Design System Rules
+# RAKU Discord Control — Glass UI v3
 
 ## Canonical visual layer
 
-`public/raku-design-v200.css` is the **only** product-wide design/spacing layer.
+`public/raku-glass-v300.css` is the **only** product-wide visual layer.
 
-It owns:
-- page and module spacing
-- surfaces, borders, shadows and radii
+It owns the complete look and feel of the product:
+- login
+- server picker
+- top bar and server command bar
+- navigation
+- overview
+- all module shells
+- shared spacing
 - typography hierarchy
-- common form-control sizing
-- responsive breakpoints
-- the shared module header/hero rhythm
-- outer layouts for Role Studio, Ticket Studio, Creator Hub, Commands, Voice and Analytics
+- surfaces, glass, blur, borders, shadows and radii
+- form-control sizing
+- outer editor/preview layouts
+- shared responsive behavior
+
+The target aesthetic is **dark smoked glass**: subtle transparency, restrained blur, high contrast and readable text. Glass is used on major surfaces, not every tiny nested element.
 
 ## Module CSS
 
-Module CSS files remain responsible for component mechanics and module-specific internals only:
+Module CSS files remain responsible for component mechanics and module-specific structure only:
 
+- `public/styles.css`
 - `public/commands-editor.css`
 - `public/role-studio.css`
 - `public/ticket-studio.css`
@@ -25,45 +33,74 @@ Module CSS files remain responsible for component mechanics and module-specific 
 - `public/analytics-studio.css`
 - `public/emoji-picker-popup.css`
 
-Do **not** introduce another global polish/fix/override stylesheet. If a shared spacing, surface or responsive rule changes, change `raku-design-v200.css`.
+Do **not** add another global `fix`, `polish`, `override`, `wide`, `readability` or version-specific module stylesheet.
+
+If a visual rule affects multiple pages or controls the outer layout of a module, it belongs in `raku-glass-v300.css`.
 
 ## Spacing contract
 
-The canonical tokens live in `:root` inside `raku-design-v200.css`.
+The canonical tokens are defined in `:root` inside `raku-glass-v300.css`:
 
-- `--ds-gap: 18px` — main module/column spacing
-- `--ds-gap-sm: 14px` — card stacks and internal major spacing
-- `--ds-gap-xs: 8px` — compact controls
-- `--ds-pad: 18px` — normal card padding
-- `--ds-pad-lg: 22px` — module hero padding
-- `--ds-radius-lg: 16px` — major surfaces
-- `--ds-radius-md: 12px` — nested cards
-- `--ds-radius-sm: 9px` — controls/buttons
-- `--ds-control-h: 42px` — standard input/button height
+- `--g-gap-xl: 26px` — large visual separation
+- `--g-gap: 20px` — standard module/column spacing
+- `--g-gap-sm: 14px` — card stacks and internal sections
+- `--g-gap-xs: 8px` — compact controls
+- `--g-pad-xl: 28px` — hero/large content padding
+- `--g-pad: 22px` — standard card padding
+- `--g-pad-sm: 16px` — compact card padding
+- `--g-control: 44px` — standard input/button height
+- `--g-radius-xl: 22px` — feature surfaces
+- `--g-radius-lg: 17px` — primary cards
+- `--g-radius-md: 13px` — nested cards
+- `--g-radius-sm: 10px` — controls
+
+Do not invent another spacing scale inside an individual module unless its component mechanics genuinely require it.
+
+## Readability contract
+
+- Normal UI text should stay around 12–15px.
+- Secondary/helper text should normally stay at 10–11px.
+- 8–9px text is reserved for compact technical labels, counters and uppercase metadata only.
+- Primary actions must be visually obvious without relying on glow alone.
+- Major cards must have enough contrast to remain readable when backdrop blur is unavailable.
+
+## Layout contract
+
+Complex modules use the same desktop pattern:
+
+1. module hero
+2. optional guidance/status strip
+3. module sidebar/list where needed
+4. large editor/work area
+5. live preview/status column
+
+Role Studio, Ticket Studio, Creator Hub and Voice Studio should converge to the same proportions instead of defining unrelated page geometries.
 
 ## Loading rules
 
 Design CSS is loaded synchronously in `public/index.html`.
 
-`public/save-button-fix.js` must never load CSS or visual assets. Runtime design injection is prohibited because it makes cascade order timing-dependent.
+`public/save-button-fix.js` must never load CSS or other visual assets.
 
-The load order is:
-1. base app CSS
-2. module component CSS
-3. `raku-design-v200.css` last
+Load order:
+1. base/component CSS
+2. `raku-glass-v300.css` last
+
+There must be exactly **one** product-wide visual layer.
 
 ## Responsive contract
 
-Use the shared breakpoints already defined in `raku-design-v200.css`:
+Shared layout breakpoints live in `raku-glass-v300.css`:
 
-- 1500px — reduce desktop column widths
-- 1250px — stack preview/editor columns
-- 1050px — stack module sidebars/navigation
+- 1500px — reduce dense desktop grids
+- 1240px — stack preview/editor columns
+- 1040px — stack app/sidebar layouts
 - 760px — mobile layout
+- 520px — narrow mobile layout
 
-Avoid module-specific breakpoints for outer layout unless the component genuinely cannot use the shared breakpoints.
+Module CSS may keep component-specific breakpoints, but must not redefine the outer product layout.
 
 ## Rule of thumb
 
-If a change affects more than one module, it belongs in `raku-design-v200.css`.
-If a change affects only the mechanics of one module component, it belongs in that module's base CSS.
+If a design change can be described as “the app should…”, it belongs in `raku-glass-v300.css`.
+If it can only be described as “this one component internally needs…”, it belongs in the module CSS.
