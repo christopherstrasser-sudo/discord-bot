@@ -119,7 +119,7 @@ jobs:
             if (!css.includes(token)) throw new Error(`Orbit v6.2 production token missing: ${token}`);
           }
           if (!html.includes('family=Inter') || !html.includes('family=Manrope')) throw new Error('Production web typography missing');
-          if (!html.includes('v=0230')) throw new Error('Orbit v0.23 cache key missing');
+          if (!html.includes('v=0240')) throw new Error('Orbit v0.24 cache key missing');
 
           const screenContract = ['#loggedOut.hidden', '#serverList.hidden', '#guildDashboard.hidden', 'display:none !important'];
           for (const token of screenContract) {
