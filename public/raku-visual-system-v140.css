@@ -1,0 +1,834 @@
+/* RAKU Visual System v0.14.0
+   One visual language for login, server picker and every dashboard module.
+   Presentation only: no module behaviour is changed here. */
+
+:root {
+  --r14-bg: #07090d;
+  --r14-bg-2: #0a0d13;
+  --r14-panel: #0e131b;
+  --r14-panel-2: #111823;
+  --r14-panel-3: #151d29;
+  --r14-panel-hover: #18212e;
+  --r14-line: rgba(154,168,192,.14);
+  --r14-line-strong: rgba(154,168,192,.24);
+  --r14-text: #f4f6fb;
+  --r14-copy: #a5afbe;
+  --r14-muted: #7b8798;
+  --r14-faint: #586476;
+  --r14-accent: #7180ff;
+  --r14-accent-strong: #8793ff;
+  --r14-accent-soft: rgba(113,128,255,.13);
+  --r14-good: #48d9a2;
+  --r14-warn: #efb95f;
+  --r14-bad: #f17686;
+  --r14-radius: 16px;
+  --r14-radius-sm: 11px;
+  --r14-shadow: 0 20px 54px rgba(0,0,0,.24);
+  --r14-shadow-soft: 0 10px 28px rgba(0,0,0,.15);
+}
+
+body.raku-visual-v140 {
+  background:
+    radial-gradient(circle at 13% -7%, rgba(113,128,255,.105), transparent 31rem),
+    radial-gradient(circle at 92% 25%, rgba(77,155,255,.045), transparent 34rem),
+    linear-gradient(180deg, var(--r14-bg) 0%, #090c11 46%, #07090d 100%) !important;
+  color: var(--r14-text);
+}
+body.raku-visual-v140::after {
+  content: '';
+  position: fixed;
+  inset: 76px 0 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: .2;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.5) 42%, transparent 82%);
+}
+
+/* ---------- GLOBAL CHROME ---------- */
+.raku-visual-v140 .topbar {
+  min-height: 76px;
+  height: 76px;
+  padding-inline: 32px;
+  background: rgba(7,9,13,.94) !important;
+  border-bottom: 1px solid var(--r14-line) !important;
+  box-shadow: 0 12px 34px rgba(0,0,0,.17);
+  backdrop-filter: blur(18px);
+}
+.raku-visual-v140 .brand { gap: 13px; }
+.raku-visual-v140 .brand-mark {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(145deg, #f7f8fc, #cfd5e2) !important;
+  color: #080b11 !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.16), 0 0 34px rgba(113,128,255,.12) !important;
+}
+.raku-visual-v140 .brand-copy b { font-size: 15px; letter-spacing: .14em; }
+.raku-visual-v140 .brand-copy small { font-size: 10px; color: var(--r14-muted); }
+.raku-visual-v140 .global-status {
+  min-height: 36px;
+  padding: 0 14px !important;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 999px !important;
+  background: rgba(14,19,27,.86) !important;
+  color: var(--r14-copy) !important;
+  font-size: 12px !important;
+}
+.raku-visual-v140 .user-chip > span b { font-size: 13px; }
+.raku-visual-v140 .user-chip > span small { font-size: 11px; }
+.raku-visual-v140 .topbar-button { font-size: 12px; }
+.raku-visual-v140 .main-shell { width: min(1840px, calc(100% - 64px)); }
+
+/* ---------- SHARED CONTROLS ---------- */
+.raku-visual-v140 .button,
+.raku-visual-v140 .mini-button,
+.raku-visual-v140 .card-action,
+.raku-visual-v140 .role-small-button,
+.raku-visual-v140 .creator-action,
+.raku-visual-v140 .ticket-new {
+  border-radius: 10px;
+}
+.raku-visual-v140 .button {
+  min-height: 44px;
+  padding-inline: 16px;
+  border: 1px solid var(--r14-line-strong);
+  background: var(--r14-panel-2);
+  color: var(--r14-text);
+  font-size: 12px;
+  box-shadow: none;
+}
+.raku-visual-v140 .button:hover:not(:disabled) {
+  background: var(--r14-panel-hover);
+  border-color: rgba(168,181,205,.34);
+}
+.raku-visual-v140 .button-primary,
+.raku-visual-v140 .ux-primary-action.button,
+.raku-visual-v140 button.ux-primary-action:not(.role-small-button) {
+  background: linear-gradient(180deg, #7584ff, #6473ef) !important;
+  border-color: #8490ff !important;
+  color: #fff !important;
+  box-shadow: 0 10px 28px rgba(88,101,242,.18);
+}
+.raku-visual-v140 .button-primary:hover:not(:disabled),
+.raku-visual-v140 .ux-primary-action.button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #8491ff, #7180ff) !important;
+  transform: translateY(-1px);
+}
+.raku-visual-v140 .deck-workspace input:not([type='checkbox']):not([type='radio']):not([type='color']),
+.raku-visual-v140 .deck-workspace select,
+.raku-visual-v140 .deck-workspace textarea {
+  border: 1px solid var(--r14-line-strong) !important;
+  border-radius: 10px !important;
+  background: #090d13 !important;
+  color: var(--r14-text) !important;
+  font-size: 14px !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.018);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.raku-visual-v140 .deck-workspace input:not([type='checkbox']):not([type='radio']):not([type='color']):focus,
+.raku-visual-v140 .deck-workspace select:focus,
+.raku-visual-v140 .deck-workspace textarea:focus {
+  outline: 0;
+  border-color: rgba(113,128,255,.66) !important;
+  box-shadow: 0 0 0 3px rgba(113,128,255,.095) !important;
+  background: #0b1017 !important;
+}
+.raku-visual-v140 .deck-workspace label > span,
+.raku-visual-v140 .deck-workspace .field > span,
+.raku-visual-v140 .deck-workspace [class*='field'] > span {
+  color: #8490a1 !important;
+  font-weight: 850 !important;
+  letter-spacing: .105em !important;
+}
+.raku-visual-v140 .deck-workspace small,
+.raku-visual-v140 .deck-workspace .ux-field-help,
+.raku-visual-v140 .deck-workspace .ux-section-caption {
+  color: var(--r14-muted);
+}
+
+/* ---------- LOGIN ---------- */
+.raku-visual-v140 .login-screen.raku-login-v140 {
+  min-height: calc(100vh - 76px) !important;
+  padding: 64px 0 82px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0,1.04fr) minmax(520px,.96fr) !important;
+  gap: clamp(48px,6vw,104px) !important;
+  align-items: center !important;
+}
+.raku-login-copy-v140 { min-width: 0; }
+.raku-login-kicker-v140 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(113,128,255,.25);
+  border-radius: 9px;
+  background: rgba(113,128,255,.07);
+  color: #bdc4ff;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+.raku-login-kicker-v140 i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--r14-good);
+  box-shadow: 0 0 0 5px rgba(72,217,162,.07), 0 0 18px rgba(72,217,162,.24);
+}
+.raku-login-copy-v140 h1 {
+  max-width: 920px;
+  margin: 24px 0 20px;
+  font-size: clamp(62px,6.4vw,108px);
+  line-height: .88;
+  letter-spacing: -.06em;
+}
+.raku-login-copy-v140 h1 span { color: #b7c0d2; }
+.raku-login-copy-v140 > p {
+  max-width: 700px;
+  margin: 0;
+  color: var(--r14-copy);
+  font-size: 18px;
+  line-height: 1.72;
+}
+.raku-login-actions-v140 {
+  margin-top: 30px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.raku-login-actions-v140 .button {
+  min-height: 54px;
+  padding-inline: 22px;
+  font-size: 13px;
+}
+.raku-login-actions-v140 small {
+  max-width: 300px;
+  color: var(--r14-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.raku-login-proof-v140 {
+  margin-top: 42px;
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  border-top: 1px solid var(--r14-line);
+  border-bottom: 1px solid var(--r14-line);
+}
+.raku-login-proof-v140 article {
+  min-height: 100px;
+  padding: 18px;
+  border-right: 1px solid var(--r14-line);
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+.raku-login-proof-v140 article:first-child { padding-left: 0; }
+.raku-login-proof-v140 article:last-child { border-right: 0; }
+.raku-login-proof-v140 span { color: #697587; font-size: 9px; font-weight: 950; letter-spacing: .13em; }
+.raku-login-proof-v140 b { font-size: 14px; }
+.raku-login-proof-v140 small { color: var(--r14-muted); font-size: 11px; line-height: 1.45; }
+.raku-login-stage-v140 {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--r14-line-strong);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(113,128,255,.085), transparent 34%),
+    linear-gradient(165deg, #121925, #0a0e14 78%);
+  box-shadow: 0 38px 90px rgba(0,0,0,.38), 0 0 0 1px rgba(255,255,255,.018) inset;
+}
+.raku-login-stage-v140::after {
+  content: '';
+  position: absolute;
+  right: -72px;
+  top: -72px;
+  width: 240px;
+  height: 240px;
+  border: 1px solid rgba(113,128,255,.09);
+  border-radius: 50%;
+  box-shadow: 0 0 0 36px rgba(113,128,255,.018), 0 0 0 72px rgba(113,128,255,.012);
+  pointer-events: none;
+}
+.raku-login-stage-head-v140 {
+  position: relative;
+  z-index: 1;
+  min-height: 58px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--r14-line);
+  background: rgba(0,0,0,.13);
+}
+.raku-login-stage-head-v140 span { color: #788497; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+.raku-login-stage-head-v140 b { color: var(--r14-good); font-size: 10px; letter-spacing: .12em; }
+.raku-login-matrix-v140 {
+  position: relative;
+  z-index: 1;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1.2fr .8fr .8fr;
+  gap: 10px;
+}
+.raku-login-matrix-v140 article {
+  min-height: 108px;
+  padding: 14px;
+  border: 1px solid var(--r14-line);
+  border-radius: 12px;
+  background: rgba(255,255,255,.016);
+  display: grid;
+  align-content: space-between;
+  gap: 6px;
+}
+.raku-login-matrix-v140 article:first-child {
+  border-color: rgba(113,128,255,.27);
+  background: linear-gradient(145deg, rgba(113,128,255,.13), rgba(255,255,255,.012));
+}
+.raku-login-matrix-v140 span { color: #6d798b; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.raku-login-matrix-v140 b { font-size: 24px; letter-spacing: -.035em; }
+.raku-login-matrix-v140 small { color: #8692a2; font-size: 10px; line-height: 1.4; }
+.raku-login-stack-v140 { position: relative; z-index: 1; padding: 0 18px 18px; display: grid; gap: 8px; }
+.raku-login-stack-v140 article {
+  min-height: 61px;
+  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(154,168,192,.11);
+  border-radius: 11px;
+  background: rgba(255,255,255,.013);
+}
+.raku-login-stack-v140 article > i {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(113,128,255,.23);
+  border-radius: 9px;
+  color: #b8c0ff;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 950;
+}
+.raku-login-stack-v140 article div { min-width: 0; display: grid; gap: 3px; }
+.raku-login-stack-v140 article b { font-size: 13px; }
+.raku-login-stack-v140 article small { color: var(--r14-muted); font-size: 10px; }
+.raku-login-stack-v140 article em { color: var(--r14-good); font-size: 9px; font-style: normal; font-weight: 900; letter-spacing: .1em; }
+.raku-login-stage-foot-v140 {
+  min-height: 48px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--r14-line);
+  color: #667285;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .11em;
+}
+
+/* ---------- SERVER PICKER ---------- */
+.raku-visual-v140 .server-screen.raku-server-picker-v140 { padding: 52px 0 88px; }
+.raku-visual-v140 .server-screen .page-head {
+  position: relative;
+  overflow: hidden;
+  min-height: 184px;
+  padding: 30px 32px;
+  align-items: center;
+  border: 1px solid var(--r14-line);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(113,128,255,.105), transparent 42%),
+    linear-gradient(180deg, #111822, #0c1118);
+  box-shadow: var(--r14-shadow-soft);
+}
+.raku-visual-v140 .server-screen .page-head::after {
+  content: '';
+  position: absolute;
+  left: 32px;
+  bottom: 0;
+  width: 180px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--r14-accent), transparent);
+  box-shadow: 0 0 18px rgba(113,128,255,.28);
+}
+.raku-visual-v140 .server-screen .page-head h1 { margin: 9px 0 12px; font-size: clamp(44px,4.4vw,64px); }
+.raku-visual-v140 .server-screen .page-head p { color: var(--r14-copy); font-size: 15px; line-height: 1.65; }
+.raku-picker-kicker-v140 { color: #9ba6ff; font-size: 10px; font-weight: 950; letter-spacing: .16em; }
+.raku-visual-v140 .deck-stats {
+  overflow: hidden;
+  border: 1px solid var(--r14-line-strong);
+  border-radius: 13px;
+  background: rgba(8,12,17,.7);
+  box-shadow: 0 10px 24px rgba(0,0,0,.11);
+}
+.raku-visual-v140 .deck-stats div { min-width: 116px; padding: 14px 17px; border-left-color: var(--r14-line); }
+.raku-visual-v140 .deck-stats b { font-size: 21px; }
+.raku-visual-v140 .deck-stats span { font-size: 9px; color: var(--r14-muted); }
+.raku-visual-v140 .ux-server-path {
+  margin-top: 18px !important;
+  overflow: hidden;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 15px;
+  background: rgba(11,15,21,.72) !important;
+}
+.raku-visual-v140 .ux-server-path article { min-height: 82px; padding: 15px 18px !important; border-right-color: var(--r14-line) !important; }
+.raku-visual-v140 .ux-server-path i { border-radius: 9px; background: rgba(113,128,255,.055); }
+.raku-visual-v140 .ux-server-path b { font-size: 13px; }
+.raku-visual-v140 .ux-server-path small { font-size: 11px; color: var(--r14-muted); }
+.raku-visual-v140 .server-toolbar {
+  margin-top: 18px !important;
+  padding: 10px;
+  border: 1px solid var(--r14-line);
+  border-radius: 14px;
+  background: rgba(11,15,21,.72);
+}
+.raku-visual-v140 .search-field {
+  height: 46px;
+  border: 1px solid var(--r14-line-strong);
+  border-radius: 10px;
+  background: #090d13;
+}
+.raku-visual-v140 .search-field input { font-size: 13px; }
+.raku-visual-v140 .segmented-control {
+  border-color: var(--r14-line-strong);
+  border-radius: 10px;
+  background: #090d13;
+}
+.raku-visual-v140 .segmented-control button { min-height: 38px; border-radius: 7px; font-size: 11px; }
+.raku-visual-v140 .segmented-control button.active { background: var(--r14-panel-3); color: #fff; }
+.raku-visual-v140 .server-card-grid {
+  grid-template-columns: repeat(auto-fit,minmax(400px,1fr));
+  gap: 18px !important;
+  margin-top: 18px !important;
+}
+.raku-visual-v140 .server-card.raku-server-card-v140 {
+  clip-path: none !important;
+  overflow: hidden;
+  min-height: 314px;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 18px;
+  background:
+    linear-gradient(150deg, rgba(113,128,255,.04), transparent 35%),
+    linear-gradient(165deg, var(--r14-panel-2), #0c1118 78%) !important;
+  box-shadow: var(--r14-shadow-soft);
+}
+.raku-visual-v140 .server-card.raku-server-card-v140::before { width: 100px; height: 2px; left: 18px; background: #485363; }
+.raku-visual-v140 .server-card.connected.raku-server-card-v140::before { background: linear-gradient(90deg,var(--r14-accent),transparent); box-shadow: 0 0 18px rgba(113,128,255,.24); }
+.raku-visual-v140 .server-card.raku-server-card-v140:hover {
+  transform: translateY(-4px);
+  border-color: rgba(113,128,255,.38) !important;
+  background:
+    linear-gradient(150deg, rgba(113,128,255,.075), transparent 36%),
+    linear-gradient(165deg, #151d29, #0d1219 78%) !important;
+  box-shadow: 0 24px 48px rgba(0,0,0,.22);
+}
+.raku-visual-v140 .server-card-topline { height: 46px; padding-inline: 18px; border-bottom-color: var(--r14-line); }
+.raku-visual-v140 .server-card-topline span,
+.raku-visual-v140 .server-card-topline b { font-size: 10px; }
+.raku-visual-v140 .server-card-main { padding: 24px 20px 19px; gap: 16px; }
+.raku-visual-v140 .server-icon { width: 72px; height: 72px; border-radius: 18px; border-color: var(--r14-line-strong); }
+.raku-visual-v140 .server-card-copy h3 { font-size: 21px; }
+.raku-visual-v140 .server-card-copy p { margin-top: 7px; font-size: 13px !important; color: var(--r14-muted); }
+.raku-visual-v140 .server-card-meter { padding: 0 20px 16px; }
+.raku-visual-v140 .server-card-meter > span,
+.raku-visual-v140 .server-card-meter > b { font-size: 9px; }
+.raku-server-status-v140 {
+  margin: 0 20px 18px;
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--r14-line);
+  border-radius: 10px;
+  background: rgba(255,255,255,.014);
+}
+.raku-server-status-v140 span { color: var(--r14-muted); font-size: 11px; }
+.raku-server-status-v140 b { color: #b8c0ff; font-size: 9px; letter-spacing: .12em; }
+.server-card.disconnected .raku-server-status-v140 b { color: #c8949b; }
+.raku-visual-v140 .ux-server-card-help { display: none; }
+.raku-visual-v140 .server-card-actions { border-top-color: var(--r14-line); padding: 8px; gap: 6px; background: rgba(0,0,0,.09); }
+.raku-visual-v140 .card-action {
+  height: 42px;
+  border: 1px solid transparent !important;
+  color: var(--r14-copy);
+  font-size: 11px !important;
+}
+.raku-visual-v140 .card-action:hover { background: rgba(255,255,255,.035); border-color: var(--r14-line) !important; }
+.raku-visual-v140 .card-action.primary { background: var(--r14-accent-soft) !important; color: #fff; }
+.raku-visual-v140 .card-action.primary:hover { background: rgba(113,128,255,.23) !important; border-color: rgba(113,128,255,.26) !important; }
+
+/* ---------- CONTROL DECK ---------- */
+.raku-visual-v140 .guild-screen { padding-top: 18px; }
+.raku-visual-v140 .guild-commandbar.raku-commandbar-v1 {
+  min-height: 82px;
+  padding: 12px 18px !important;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 16px !important;
+  background: rgba(10,14,20,.94) !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.15);
+}
+.raku-visual-v140 .command-server-icon { width: 48px; height: 48px; border-radius: 13px; border-color: var(--r14-line-strong); }
+.raku-visual-v140 .raku-commandbar-v1 .command-title > span { font-size: 10px; color: #6d798b; }
+.raku-visual-v140 .raku-commandbar-v1 .command-title h1 { font-size: 21px !important; }
+.raku-visual-v140 .raku-commandbar-v1 .command-status { padding: 8px 12px; border-radius: 999px; }
+.raku-visual-v140 .guild-deck {
+  grid-template-columns: 300px minmax(0,1fr) !important;
+  gap: 22px !important;
+  max-width: none !important;
+  padding: 22px 0 64px !important;
+}
+.raku-visual-v140 .deck-nav {
+  top: 100px;
+  padding: 13px !important;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 17px !important;
+  background: linear-gradient(180deg, rgba(14,19,27,.98), rgba(9,13,19,.98)) !important;
+  box-shadow: var(--r14-shadow-soft);
+}
+.raku-visual-v140 .deck-nav::before { left: 20px; right: 20px; background: linear-gradient(90deg,transparent,rgba(113,128,255,.7),transparent); }
+.raku-visual-v140 .deck-nav-label { margin: 0 9px 8px !important; font-size: 10px !important; color: #657184 !important; }
+.raku-visual-v140 .deck-nav-item {
+  min-height: 52px !important;
+  margin: 2px 0 !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+}
+.raku-visual-v140 .deck-nav-item > .icon { width: 31px !important; height: 31px !important; border-radius: 9px; }
+.raku-visual-v140 .deck-nav-item > span:not(.icon) { font-size: 14px !important; }
+.raku-visual-v140 .deck-nav-item small { font-size: 11px !important; }
+.raku-visual-v140 .deck-nav-item.active { background: linear-gradient(90deg, rgba(113,128,255,.17), rgba(113,128,255,.035)) !important; border-color: rgba(113,128,255,.18) !important; box-shadow: inset 3px 0 var(--r14-accent); }
+.raku-visual-v140 .deck-telemetry { border-color: var(--r14-line) !important; }
+.raku-visual-v140 .raku-nav-core { border-top: 0; }
+
+/* ---------- ONE MODULE HERO ---------- */
+.raku-visual-v140 .raku-unified-hero,
+.raku-visual-v140 .workspace-head,
+.raku-visual-v140 .flow-studio-toolbar,
+.raku-visual-v140 .role-studio-toolbar,
+.raku-visual-v140 .ticket-head,
+.raku-visual-v140 .creator-head,
+.raku-visual-v140 .voice-head,
+.raku-visual-v140 .analytics-head {
+  position: relative;
+  overflow: hidden;
+  min-height: 138px !important;
+  margin: 0 0 18px !important;
+  padding: 26px 28px !important;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(135deg, rgba(113,128,255,.095), transparent 42%),
+    linear-gradient(180deg, #111822, #0d1219) !important;
+  box-shadow: var(--r14-shadow-soft) !important;
+}
+.raku-visual-v140 .raku-unified-hero::after,
+.raku-visual-v140 .workspace-head::after,
+.raku-visual-v140 .flow-studio-toolbar::after,
+.raku-visual-v140 .role-studio-toolbar::after,
+.raku-visual-v140 .ticket-head::after,
+.raku-visual-v140 .creator-head::after,
+.raku-visual-v140 .voice-head::after,
+.raku-visual-v140 .analytics-head::after {
+  content: '';
+  position: absolute;
+  left: 28px;
+  bottom: 0;
+  width: 158px;
+  height: 2px;
+  background: linear-gradient(90deg,var(--r14-accent),transparent);
+  box-shadow: 0 0 18px rgba(113,128,255,.28);
+}
+.raku-visual-v140 .workspace-head h2,
+.raku-visual-v140 .ticket-head h2,
+.raku-visual-v140 .creator-head h2,
+.raku-visual-v140 .voice-head h2,
+.raku-visual-v140 .analytics-head h2 {
+  margin: 8px 0 10px !important;
+  font-size: clamp(32px,2.7vw,43px) !important;
+  line-height: 1 !important;
+  letter-spacing: -.035em !important;
+}
+.raku-visual-v140 .workspace-head p,
+.raku-visual-v140 .ticket-head p,
+.raku-visual-v140 .creator-head p,
+.raku-visual-v140 .voice-head p,
+.raku-visual-v140 .analytics-head p,
+.raku-visual-v140 .role-studio-title small {
+  color: var(--r14-copy) !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+}
+.raku-visual-v140 .role-studio-title b,
+.raku-visual-v140 .flow-studio-title b { font-size: 22px !important; letter-spacing: -.025em; }
+.raku-visual-v140 .role-studio-title > span,
+.raku-visual-v140 .flow-studio-title > span,
+.raku-visual-v140 .ticket-head>div:first-child>span,
+.raku-visual-v140 .creator-head>div:first-child>span,
+.raku-visual-v140 .voice-head-copy>span,
+.raku-visual-v140 .analytics-head>div:first-child>span {
+  color: #8f9bff !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  letter-spacing: .15em !important;
+}
+
+/* ---------- QUICK START / HELP ---------- */
+.raku-visual-v140 .ux-module-guide {
+  margin: 0 0 18px;
+  padding: 20px 22px;
+  border: 1px solid var(--r14-line) !important;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(113,128,255,.045), rgba(14,19,27,.88)) !important;
+  box-shadow: var(--r14-shadow-soft);
+}
+.raku-visual-v140 .ux-guide-copy > span { color: #8794ff; }
+.raku-visual-v140 .ux-guide-copy b { color: var(--r14-text); }
+.raku-visual-v140 .ux-guide-copy small { color: var(--r14-copy); }
+.raku-visual-v140 .ux-guide-step { border-left-color: var(--r14-line) !important; }
+.raku-visual-v140 .ux-guide-step > i { border-radius: 9px; border-color: rgba(113,128,255,.25); background: rgba(113,128,255,.055); color: #b9c1ff; }
+.raku-visual-v140 .ux-guide-glossary { border-top-color: var(--r14-line); }
+.raku-visual-v140 .ux-guide-glossary em { border-radius: 8px; border-color: var(--r14-line); background: rgba(255,255,255,.018); }
+.raku-visual-v140 .ux-context-note { border-radius: 10px; border-color: rgba(113,128,255,.15); background: rgba(113,128,255,.035); }
+
+/* ---------- SHARED MODULE SURFACES ---------- */
+.raku-visual-v140 .control-panel,
+.raku-visual-v140 .preview-console,
+.raku-visual-v140 .event-matrix,
+.raku-visual-v140 .coming-panel,
+.raku-visual-v140 .diagnostic-readout,
+.raku-visual-v140 .telemetry-card,
+.raku-visual-v140 .diagnostic-cta,
+.raku-visual-v140 .flow-studio-body,
+.raku-visual-v140 .role-studio-body,
+.raku-visual-v140 .role-config-card,
+.raku-visual-v140 .role-target-strip,
+.raku-visual-v140 .ticket-panels,
+.raku-visual-v140 .ticket-panelbar,
+.raku-visual-v140 .ticket-left > section,
+.raku-visual-v140 .ticket-workflows,
+.raku-visual-v140 .ticket-sticky,
+.raku-visual-v140 .creator-provider,
+.raku-visual-v140 .creator-runtime-strip,
+.raku-visual-v140 .creator-rules,
+.raku-visual-v140 .creator-onboard,
+.raku-visual-v140 .creator-editor-top,
+.raku-visual-v140 .creator-block,
+.raku-visual-v140 .creator-preview-console,
+.raku-visual-v140 .creator-tools,
+.raku-visual-v140 .creator-history,
+.raku-visual-v140 .voice-card,
+.raku-visual-v140 .voice-ready,
+.raku-visual-v140 .voice-live,
+.raku-visual-v140 .voice-advanced,
+.raku-visual-v140 .analytics-toolbar,
+.raku-visual-v140 .analytics-card,
+.raku-visual-v140 .analytics-settings,
+.raku-visual-v140 .analytics-kpis article,
+.raku-visual-v140 .analytics-ops article {
+  border-color: var(--r14-line) !important;
+  background: linear-gradient(165deg, rgba(17,24,35,.96), rgba(12,17,24,.98)) !important;
+  box-shadow: var(--r14-shadow-soft);
+}
+.raku-visual-v140 .control-panel,
+.raku-visual-v140 .preview-console,
+.raku-visual-v140 .event-matrix,
+.raku-visual-v140 .coming-panel,
+.raku-visual-v140 .diagnostic-readout,
+.raku-visual-v140 .telemetry-card,
+.raku-visual-v140 .diagnostic-cta,
+.raku-visual-v140 .role-config-card,
+.raku-visual-v140 .role-target-strip,
+.raku-visual-v140 .creator-provider,
+.raku-visual-v140 .creator-runtime-strip,
+.raku-visual-v140 .creator-onboard,
+.raku-visual-v140 .creator-editor-top,
+.raku-visual-v140 .creator-block,
+.raku-visual-v140 .creator-preview-console,
+.raku-visual-v140 .creator-tools,
+.raku-visual-v140 .creator-history,
+.raku-visual-v140 .voice-card,
+.raku-visual-v140 .voice-ready,
+.raku-visual-v140 .voice-live,
+.raku-visual-v140 .voice-advanced,
+.raku-visual-v140 .analytics-toolbar,
+.raku-visual-v140 .analytics-card,
+.raku-visual-v140 .analytics-settings,
+.raku-visual-v140 .analytics-kpis article,
+.raku-visual-v140 .analytics-ops article {
+  border-radius: 14px;
+  overflow: hidden;
+}
+.raku-visual-v140 .flow-studio-body,
+.raku-visual-v140 .role-studio-body {
+  border-radius: 16px;
+  overflow: hidden;
+}
+.raku-visual-v140 .ticket-panels,
+.raku-visual-v140 .ticket-workflows,
+.raku-visual-v140 .ticket-sticky,
+.raku-visual-v140 .creator-rules { border-radius: 14px; overflow: hidden; }
+
+/* Internal section headers share one hierarchy */
+.raku-visual-v140 .role-section-head,
+.raku-visual-v140 .flow-panel-head,
+.raku-visual-v140 .ticket-workflows > header,
+.raku-visual-v140 .ticket-left > section > header,
+.raku-visual-v140 .creator-block > header,
+.raku-visual-v140 .creator-tools header,
+.raku-visual-v140 .creator-history > header,
+.raku-visual-v140 .voice-card > header,
+.raku-visual-v140 .voice-ready > header,
+.raku-visual-v140 .voice-live > header,
+.raku-visual-v140 .analytics-card > header {
+  border-color: var(--r14-line) !important;
+  background: rgba(255,255,255,.013) !important;
+}
+.raku-visual-v140 .role-section-head b,
+.raku-visual-v140 .flow-panel-head b,
+.raku-visual-v140 .ticket-workflows > header b,
+.raku-visual-v140 .creator-block > header b,
+.raku-visual-v140 .voice-card > header b,
+.raku-visual-v140 .analytics-card > header b { color: var(--r14-text); }
+
+/* ---------- COMMAND BUILDER ---------- */
+.raku-visual-v140 .flow-command-sidebar,
+.raku-visual-v140 .flow-palette,
+.raku-visual-v140 .flow-preview-panel,
+.raku-visual-v140 .flow-canvas-panel { background: #0c1118 !important; }
+.raku-visual-v140 .flow-command-sidebar,
+.raku-visual-v140 .flow-palette { border-right-color: var(--r14-line) !important; }
+.raku-visual-v140 .flow-preview-panel { border-left-color: var(--r14-line) !important; }
+.raku-visual-v140 .flow-command-nav.active,
+.raku-visual-v140 .role-panel-nav.active,
+.raku-visual-v140 .ticket-panel.on,
+.raku-visual-v140 .creator-rule-item.on {
+  background: linear-gradient(90deg, rgba(113,128,255,.14), rgba(113,128,255,.035)) !important;
+  box-shadow: inset 3px 0 var(--r14-accent);
+}
+.raku-visual-v140 .flow-palette-item,
+.raku-visual-v140 .flow-block {
+  border-color: var(--r14-line) !important;
+  border-radius: 11px;
+  background: #0f151e !important;
+}
+.raku-visual-v140 .flow-palette-item:hover { border-color: rgba(113,128,255,.32) !important; background: #131b26 !important; }
+.raku-visual-v140 .flow-block-head { border-color: var(--r14-line) !important; background: #131a24 !important; }
+
+/* ---------- ROLE STUDIO ---------- */
+.raku-visual-v140 .role-panel-sidebar { background: #0b1017 !important; border-right-color: var(--r14-line) !important; }
+.raku-visual-v140 .role-panel-commandbar { background: #101721 !important; border-bottom-color: var(--r14-line) !important; }
+.raku-visual-v140 .role-editor-column,
+.raku-visual-v140 .role-preview-column { background: #0b1017 !important; border-color: var(--r14-line) !important; }
+.raku-visual-v140 .role-template-grid button { border-color: var(--r14-line) !important; border-radius: 11px; background: #0f151e !important; }
+.raku-visual-v140 .role-template-grid button:hover { border-color: rgba(113,128,255,.34) !important; background: #151e2a !important; }
+
+/* ---------- TICKET STUDIO ---------- */
+.raku-visual-v140 .ticket-body { gap: 16px; }
+.raku-visual-v140 .ticket-panels { background: #0c1118 !important; }
+.raku-visual-v140 .ticket-panelbar { margin-bottom: 16px; }
+.raku-visual-v140 .ticket-type-wrap > aside { background: #0b1017 !important; border-right-color: var(--r14-line) !important; }
+.raku-visual-v140 .ticket-type.on { background: rgba(113,128,255,.11) !important; }
+.raku-visual-v140 .ticket-q,
+.raku-visual-v140 .ticket-publish,
+.raku-visual-v140 .ticket-required { border-color: var(--r14-line) !important; border-radius: 10px; background: #0d131b !important; }
+.raku-visual-v140 .ticket-preview { border-radius: 11px; overflow: hidden; }
+
+/* ---------- CREATOR HUB ---------- */
+.raku-visual-v140 .creator-provider-grid { gap: 16px; }
+.raku-visual-v140 .creator-provider { padding: 18px; }
+.raku-visual-v140 .creator-rules > header,
+.raku-visual-v140 .creator-rules > footer,
+.raku-visual-v140 .creator-preview-bar { border-color: var(--r14-line) !important; }
+.raku-visual-v140 .creator-source-icon,
+.raku-visual-v140 .creator-platform-mark { border-radius: 9px; border-color: var(--r14-line-strong) !important; background: #151d29 !important; }
+.raku-visual-v140 .creator-source-result { border-radius: 10px; border-color: var(--r14-line) !important; background: #0d131b !important; }
+
+/* ---------- VOICE STUDIO ---------- */
+.raku-visual-v140 .voice-stat-strip,
+.raku-visual-v140 .voice-flow { border-color: var(--r14-line) !important; border-radius: 14px; overflow: hidden; background: rgba(12,17,24,.78) !important; }
+.raku-visual-v140 .voice-template-preview { border-radius: 10px; border-color: var(--r14-line) !important; background: #0b1017 !important; }
+.raku-visual-v140 .voice-room { border-color: var(--r14-line) !important; }
+
+/* ---------- ANALYTICS ---------- */
+.raku-visual-v140 .analytics-shell { gap: 18px; }
+.raku-visual-v140 .analytics-kpis { gap: 12px; }
+.raku-visual-v140 .analytics-kpis article { min-height: 150px; }
+.raku-visual-v140 .analytics-kpis article > span,
+.raku-visual-v140 .analytics-card > header span,
+.raku-visual-v140 .analytics-ops span { color: #6d798b; }
+.raku-visual-v140 .analytics-range { border-radius: 9px; border-color: var(--r14-line) !important; background: #090d13 !important; }
+.raku-visual-v140 .analytics-range button { border-radius: 7px; }
+.raku-visual-v140 .analytics-range button.active { background: var(--r14-accent-soft); color: #dce0ff; }
+.raku-visual-v140 .analytics-insights article,
+.raku-visual-v140 .analytics-command-list span { border-radius: 10px; border-color: var(--r14-line) !important; background: rgba(255,255,255,.014) !important; }
+
+/* ---------- PREVIEWS KEEP DISCORD CHARACTER ---------- */
+.raku-visual-v140 .discord-message,
+.raku-visual-v140 .ticket-preview,
+.raku-visual-v140 .creator-discord-msg { box-shadow: none; }
+
+/* ---------- FEEDBACK / EMPTY STATES ---------- */
+.raku-visual-v140 .empty-state,
+.raku-visual-v140 .flow-no-command,
+.raku-visual-v140 .role-onboarding,
+.raku-visual-v140 .ticket-empty,
+.raku-visual-v140 .creator-onboard,
+.raku-visual-v140 .voice-empty,
+.raku-visual-v140 .analytics-loading {
+  border-radius: 14px;
+}
+.raku-visual-v140 .toast {
+  border-radius: 12px;
+  border-color: var(--r14-line-strong);
+  background: #111822;
+  box-shadow: 0 18px 44px rgba(0,0,0,.3);
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 1380px) {
+  .raku-visual-v140 .main-shell { width: min(100% - 40px, 1600px); }
+  .raku-visual-v140 .guild-deck { grid-template-columns: 270px minmax(0,1fr) !important; }
+  .raku-visual-v140 .login-screen.raku-login-v140 { grid-template-columns: 1fr 480px !important; gap: 46px !important; }
+}
+@media (max-width: 1100px) {
+  .raku-visual-v140 .login-screen.raku-login-v140 { grid-template-columns: 1fr !important; }
+  .raku-login-stage-v140 { width: min(720px,100%); }
+  .raku-visual-v140 .server-screen .page-head { align-items: flex-start; flex-direction: column; }
+  .raku-visual-v140 .guild-deck { grid-template-columns: 1fr !important; }
+  .raku-visual-v140 .deck-nav { position: relative; top: auto; }
+}
+@media (max-width: 760px) {
+  .raku-visual-v140 .topbar { padding-inline: 16px; }
+  .raku-visual-v140 .main-shell { width: calc(100% - 24px); }
+  .raku-login-copy-v140 h1 { font-size: clamp(50px,15vw,76px); }
+  .raku-login-proof-v140 { grid-template-columns: 1fr; }
+  .raku-login-proof-v140 article { padding-left: 0; border-right: 0; border-bottom: 1px solid var(--r14-line); }
+  .raku-login-proof-v140 article:last-child { border-bottom: 0; }
+  .raku-login-matrix-v140 { grid-template-columns: 1fr 1fr; }
+  .raku-login-matrix-v140 article:first-child { grid-column: 1/-1; }
+  .raku-visual-v140 .server-card-grid { grid-template-columns: 1fr; }
+  .raku-visual-v140 .server-toolbar { align-items: stretch; flex-direction: column; }
+  .raku-visual-v140 .search-field { width: 100%; }
+  .raku-visual-v140 .workspace-head,
+  .raku-visual-v140 .flow-studio-toolbar,
+  .raku-visual-v140 .role-studio-toolbar,
+  .raku-visual-v140 .ticket-head,
+  .raku-visual-v140 .creator-head,
+  .raku-visual-v140 .voice-head,
+  .raku-visual-v140 .analytics-head { padding: 22px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .raku-visual-v140 *,
+  .raku-visual-v140 *::before,
+  .raku-visual-v140 *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
