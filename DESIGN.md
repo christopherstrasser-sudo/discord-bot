@@ -1,4 +1,4 @@
-# RAKU Discord Control — Orbit UI v6.1
+# RAKU Discord Control — Orbit UI v6.2
 
 ## Current architecture
 
@@ -18,61 +18,66 @@ Orbit stays structurally different from conventional admin dashboards:
 3. floating current-page capsule top-center
 4. floating action capsule top-right
 5. one free workspace canvas
-6. floating bottom navigation dock
-7. active dock item expands; inactive modules stay compact
+6. a **floating top command rail** directly below the capsules
+7. every command-rail item always exposes icon + text on desktop
 8. overview centers on a Module Constellation rather than a KPI/card wall
 
 Legacy hooks like `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` exist only for compatibility with feature code. They must never recreate the old sidebar layout.
 
-## v6.1 production polish
+## v6.2 command rail
 
-Orbit v6.1 is the finish-quality pass. It adds:
+The old bottom dock is retired.
+
+The authenticated dashboard now uses a labeled top command rail:
+
+- top position below the three context capsules
+- always-visible module labels on desktop
+- horizontal scrolling on narrower screens rather than icon-only ambiguity
+- unique SVG symbol for every module
+- subtle group separators
+- active item gets a glass highlight plus violet/cyan indicator line
+- module status remains visible as a small state point
+
+Do not move the primary module navigation back to the bottom of the viewport.
+
+## Overview / Orbit Navigator
+
+The overview uses an upgraded **Orbit Navigator**:
+
+- real Discord server in the illuminated center core
+- eight operational module nodes around the server
+- separate inner and outer orbit geometry
+- three orbital rings with restrained motion
+- visible connector paths from server core to module nodes
+- connector path brightens when its module node is hovered or focused
+- small orbital signal beacons and a subtle server activity signal
+- Activity, Health and Quick Actions remain separate glass islands
+- compact metrics stay secondary
+
+The primary nodes are Welcome, Auto-Roles, Roles, Tickets, Commands, Creator Alerts, Voice and Logs. Analytics and Diagnostics remain available in the top command rail and quick actions.
+
+On narrow screens, constellation nodes become a normal two-column/one-column module grid underneath the server core so the Orbit concept never causes overlap or horizontal clipping.
+
+## Typography and glass
 
 - Manrope for display/headline/navigation typography
 - Inter for working UI text
-- deeper but restrained multi-layer glass
-- consistent highlights, borders and shadows
-- a complete form/control visual system
-- dock hover labels and clearer active state
-- refined constellation depth and subtle orbital motion
-- glass treatment for the emoji picker
-- a corrected five-card server-gallery rhythm with `grid-auto-flow:dense`
-- hard anti-overflow rules for all editor modules
-- responsive restructuring for Commands, Roles, Tickets, Creator, Voice and Analytics
-- compatibility variables for legacy module CSS (`--surface-2`, `--green`, etc.) so inherited mechanics cannot silently lose styling
-
-## Readability contract
-
-- Headlines and navigation use Manrope.
-- Body, fields and controls use Inter.
-- Ordinary working text should normally be 10–14px.
-- Tiny 8–9px text is reserved for genuinely secondary metadata only.
-- Long server names, rule names and event strings must truncate or wrap safely instead of stretching grids.
-- Every grid/flex child that can contain dynamic content should be allowed to shrink with `min-width: 0`.
-
-## Glass contract
-
-Glass should feel like material, not a blur filter pasted over everything.
-
-Major surfaces use:
-- translucent dark fill
-- a restrained light edge
-- one inner highlight
-- controlled shadow depth
-- backdrop blur where supported
-
-Nested editor controls stay calmer than major floating surfaces. Discord message previews keep their Discord-like preview treatment so they remain visually distinct from the application chrome.
+- dark translucent material, restrained light edge, inner highlight and controlled shadow
+- violet primary accent and cyan secondary signal accent
+- ordinary working text normally 10–14px
+- dynamic names/messages must truncate or wrap safely
+- every dynamic grid/flex child must be shrinkable with `min-width: 0`
 
 ## Module layout contract
 
 Feature internals may have side lists/editor/preview columns when needed, but they must obey Orbit's outer geometry.
 
 Specific rules:
-- module toolbars must wrap rather than overflow
-- Role/Ticket/Creator side lists become non-sticky and horizontal/grid-like on narrower layouts
-- preview columns stop being sticky before they can collide with the floating header
-- Ticket panelbar and Role commandbar use wrapping layouts instead of old fixed grid columns
-- Commands must collapse the three-column builder progressively instead of forcing horizontal overflow
+- module toolbars wrap rather than overflow
+- Role/Ticket/Creator side lists become non-sticky on narrower layouts
+- desktop sticky editor/preview elements sit **below the top command rail**
+- Ticket panelbar and Role commandbar wrap instead of using old fixed grid columns
+- Commands progressively collapses from three columns to two to one
 - form grids collapse to one column on narrow screens
 
 ## Login
@@ -88,16 +93,7 @@ The desktop rhythm uses five-card cycles:
 - card 2: 5 columns
 - cards 3–5: 4 columns each
 
-This intentionally fills complete 12-column rows. Do not restore the old six-card `nth-child` pattern; it produced empty grid columns.
-
-## Overview
-
-The overview centers on the Module Constellation:
-- real server in the core
-- module nodes around it
-- subtle orbital geometry
-- Activity, Attention and Quick Actions as asymmetric glass islands
-- compact metrics remain secondary
+This fills complete 12-column rows with `grid-auto-flow:dense`. Do not restore the old six-card `nth-child` pattern.
 
 ## Screen contract
 
@@ -106,6 +102,7 @@ Login, server picker and guild dashboard are mutually exclusive screens. Visual 
 ## Retired architecture
 
 Do not restore or reference:
+- the Orbit bottom navigation dock layout
 - `raku-orbit-v600.css`
 - `raku-studio-v500.css`
 - `raku-workspace-v500.js`
@@ -120,4 +117,4 @@ Do not restore or reference:
 
 ## Rule
 
-Polish the Orbit architecture in place. If a change starts rebuilding a conventional admin dashboard or requires another global override file, the approach is wrong.
+Polish the Orbit architecture in place. If a change starts rebuilding a conventional admin dashboard, hides navigation behind ambiguous icons, moves the command rail back to the bottom, or requires another global override file, the approach is wrong.
