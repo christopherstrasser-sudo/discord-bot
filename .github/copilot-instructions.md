@@ -2,11 +2,12 @@
 
 ## Current release
 
-- Version: **0.23.0**
+- Version: **0.27.0**
 - Branch: `main`
-- UI generation: **Orbit UI v6.2**
+- UI generation: **Orbit UI v6.2 + Module Shell**
 - Global visual layer: `public/raku-orbit-v610.css`
 - Final dashboard shell renderer: `public/raku-orbit-v600.js`
+- Shared module shell: `public/raku-module-shell.js` + `public/raku-module-shell.css`
 
 ## Critical UI decision
 
@@ -25,21 +26,41 @@ The authenticated application uses the Orbit spatial layout:
 
 The old bottom dock layout is explicitly retired. Do not move primary navigation back to the bottom.
 
-## v0.23.0 Orbit v6.2
+## Current module-shell rules
 
-This pass upgrades navigation clarity and the overview's visual identity:
+All feature pages use the shared module shell and common width contract. Do not reintroduce module-specific outer widths.
 
-- top command rail replaces the bottom dock
-- every module remains visibly labeled on desktop
-- every module has its own SVG symbol instead of reusing ambiguous generic icons
-- narrow layouts horizontally scroll the labeled command rail
-- eight modules are represented directly in the Orbit Navigator
-- connector paths run from the server core to every module node
-- hovered/focused node brightens its connector
-- three orbit rings, subtle beacons and server activity signal add depth
-- narrow screens convert constellation nodes into a clean grid rather than overlapping
-- editor sticky positions are offset below the top command rail
-- asset cache version bumped to `0230`
+Each module may have its own internal editor layout, but the outer page width, hero entry and vertical rhythm are shared. Existing module headings can act as toolbars below the shared hero; do not duplicate the same title twice.
+
+## Creator Alerts / Social provider architecture — v0.27.0
+
+Supported Creator Hub platforms:
+
+- Twitch
+- YouTube
+- TikTok
+- Instagram
+- Bluesky
+- X
+
+Important provider rules:
+
+- **Bluesky:** direct public ATProto AppView; no credentials.
+- **X:** server-side read provider through `x.md` (`x.pcstyle.dev`) for public profile timelines. No X login or customer X API key.
+- **Instagram:** primary keyless path is browserless TLS/HTTP impersonation using `impit`. It may use a Chrome-compatible TLS/header fingerprint, but it does **not** launch Chrome/Edge/Brave, Puppeteer, Playwright or any local browser process.
+- Optional Instagram production fallbacks are `RAKU_SOCIAL_RELAY_URL` / `RAKU_SOCIAL_RELAY_TOKEN` or a backend-only `SCRAPECREATORS_API_KEY`.
+- Customer Discord servers must never be asked to provide Instagram/X API keys, cookies or browser sessions.
+- `src/creator-social-provider-router.js` is the provider entry point used by `creator-social-runtime.js`.
+- `src/creator-social-browser.js` and its browser test were intentionally deleted. **Do not recreate a local browser social fallback.**
+
+Instagram public Node `fetch` endpoints are currently unreliable/rate-limited. Do not solve that by adding more retries to `web_profile_info`/`feed/user` with the same Node TLS fingerprint. Use the browserless impersonated transport or central server-side provider infrastructure.
+
+For manual `Quelle prüfen`:
+
+- Instagram / Bluesky / X / YouTube upload / TikTok upload publish the current real content to Discord when the source check succeeds.
+- Twitch and TikTok Live only validate the source; they do not publish a current-content message.
+- Manual check publishing never role-pings.
+- A successful provider check remains successful even if the subsequent Discord send fails; Discord publishing errors are reported separately.
 
 ## Visual direction
 
@@ -80,6 +101,8 @@ Feature renderers still own functionality. `public/raku-orbit-v610.css` owns sha
 
 Do not recreate or reference:
 
+- local-browser Instagram/X social fallback
+- `src/creator-social-browser.js`
 - Orbit bottom navigation dock layout
 - `public/raku-orbit-v600.css`
 - `public/raku-studio-v500.css`
@@ -105,5 +128,6 @@ Avoid fake interface language such as CONTROL NODE, SERVER PULSE, CONTROL OS, fa
 5. Readability before visual effects.
 6. Glass should add material/depth without washing out text.
 7. Do not add a second product-wide stylesheet.
+8. Creator social monitoring must remain browserless for Instagram/X on customer machines.
 
 See `DESIGN.md` for the detailed visual contract.
