@@ -193,7 +193,7 @@ function instagramCandidate(node, source, profile = {}) {
   const owner = instagramOwner(node);
   if (owner && owner !== source) return null;
   const type = String(node?.product_type || node?.xdt_product_type || node?.media_type || '').toLowerCase();
-  const reel = type === 'clips' || type === 'reel' || type === 'video';
+  const reel = type === 'clips' || type === 'reel' || type === 'video' || type === '2';
   const creator = String(profile.full_name || profile.name || profile.username || owner || source);
   const publishedAt = new Date(publishedMs).toISOString();
   return {
@@ -229,6 +229,34 @@ function walkJson(value, visit, depth = 0) {
   for (const child of Object.values(value)) walkJson(child, visit, depth + 1);
 }
 
+function parseInstagramFeedPayload(data, source, profile = {}) {
+  const rawCandidates = [];
+  const seen = new Set();
+  const add = node => {
+    if (!node || typeof node !== 'object') return;
+    const marker = String(node.pk || node.id || node.code || node.shortcode || node.xdt_shortcode || '');
+    if (marker && seen.has(marker)) return;
+    if (marker) seen.add(marker);
+    rawCandidates.push(node);
+  };
+
+  for (const item of data?.items || []) add(item);
+  walkJson(data, node => {
+    const hasCode = node?.shortcode || node?.xdt_shortcode || node?.code;
+    const hasTime = node?.taken_at_timestamp ?? node?.xdt_taken_at_timestamp ?? node?.taken_at ?? node?.timestamp ?? node?.created_at;
+    if (hasCode && hasTime) add(node);
+  });
+
+  const discoveredProfile = data?.user || data?.data?.user || data?.items?.[0]?.user || profile || {};
+  if (discoveredProfile?.is_private) throw new Error('Instagram Profil ist privat.');
+  const candidates = rawCandidates
+    .map(node => instagramCandidate(node, source, discoveredProfile))
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+  if (!candidates.length) throw new Error('Instagram Feed enthielt keinen auswertbaren öffentlichen Post.');
+  return candidates[0];
+}
+
 function parseInstagramRelayHtml(html, source) {
   const payloads = [];
   const scriptRegex = /<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -246,7 +274,7 @@ function parseInstagramRelayHtml(html, source) {
   for (const payload of payloads) {
     walkJson(payload, node => {
       if (!profile && String(node?.username || '').toLowerCase() === source && (node?.profile_pic_url || node?.profile_pic_url_hd || node?.full_name)) profile = node;
-      if (node?.shortcode || node?.xdt_shortcode) rawCandidates.push(node);
+      if (node?.shortcode || node?.xdt_shortcode || node?.code) rawCandidates.push(node);
     });
   }
   const candidates = rawCandidates
@@ -257,6 +285,22 @@ function parseInstagramRelayHtml(html, source) {
   return candidates[0];
 }
 
+async function fetchInstagramFeedByUsername(source, headers) {
+  const endpoint = `https://www.instagram.com/api/v1/feed/user/${encodeURIComponent(source)}/username/?count=6`;
+  const response = await fetchResponse(endpoint, { headers, timeoutMs: 15000, redirect: 'follow' });
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('json') || !String(response.url || '').includes('/api/v1/feed/user/')) {
+    throw new Error('Instagram Feed-by-Username wurde auf die Web-App umgeleitet.');
+  }
+  let data;
+  try {
+    data = JSON.parse(await response.text());
+  } catch {
+    throw new Error('Instagram Feed-by-Username lieferte kein gültiges JSON.');
+  }
+  return parseInstagramFeedPayload(data, source, data?.user || data?.items?.[0]?.user || {});
+}
+
 async function fetchInstagramPublic(source) {
   const headers = {
     'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
@@ -265,19 +309,29 @@ async function fetchInstagramPublic(source) {
     'X-Requested-With': 'XMLHttpRequest',
     Referer: `https://www.instagram.com/${source}/`
   };
-  let firstError = null;
+  const errors = [];
+
+  try {
+    return await fetchInstagramFeedByUsername(source, headers);
+  } catch (error) {
+    errors.push(`feed: ${String(error?.message || error)}`);
+  }
+
   try {
     const data = await fetchJson(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(source)}`, { headers, timeoutMs: 15000 });
     return parseInstagramProfileInfo(data, source);
   } catch (error) {
-    firstError = error;
+    errors.push(`profile: ${String(error?.message || error)}`);
   }
+
   try {
     const html = await fetchText(`https://www.instagram.com/${encodeURIComponent(source)}/`, { headers, timeoutMs: 15000 });
     return parseInstagramRelayHtml(html, source);
   } catch (error) {
-    throw new Error(`Instagram öffentlicher Feed aktuell nicht abrufbar (${String(error?.message || firstError?.message || error).slice(0, 180)}).`);
+    errors.push(`html: ${String(error?.message || error)}`);
   }
+
+  throw new Error(`Instagram öffentlicher Feed aktuell nicht abrufbar (${errors.map(item => item.slice(0, 90)).join(' | ').slice(0, 260)}).`);
 }
 
 async function fetchInstagramGraphFallback(source) {
@@ -494,6 +548,7 @@ module.exports = {
   getSocialProviderHealth,
   normalizeSocialHandle,
   parseInstagramProfileInfo,
+  parseInstagramFeedPayload,
   parseInstagramRelayHtml,
   parseXSyndicationHtml,
   fetchInstagramPost,
