@@ -1,13 +1,16 @@
 const SOCIAL_PLATFORMS = new Set(['instagram', 'bluesky', 'x']);
 
 const providerHealth = {
-  instagram: { configured: false, ok: false, lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
-  bluesky: { configured: true, ok: true, lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
-  x: { configured: false, ok: false, lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
+  instagram: { configured: true, ok: true, mode: 'public-web', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
+  bluesky: { configured: true, ok: true, mode: 'public-appview', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
+  x: { configured: true, ok: true, mode: 'public-syndication', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
 };
 
+const publicCache = new Map();
+const inflight = new Map();
 const xUserCache = new Map();
 const X_USER_CACHE_MS = 24 * 60 * 60 * 1000;
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36';
 
 function nowIso() {
   return new Date().toISOString();
@@ -17,56 +20,80 @@ function optionalEnv(name) {
   return String(process.env[name] || '').trim();
 }
 
+function envSeconds(name, fallback, min, max) {
+  const value = Number(optionalEnv(name) || fallback);
+  return Number.isFinite(value) ? Math.max(min, Math.min(Math.floor(value), max)) : fallback;
+}
+
 function updateHealth(provider, patch) {
   providerHealth[provider] = {
     ...providerHealth[provider],
     ...patch,
+    configured: true,
     lastCheckedAt: nowIso()
   };
 }
 
-function success(provider) {
-  updateHealth(provider, { ok: true, lastSuccessAt: nowIso(), lastError: '' });
+function success(provider, mode) {
+  updateHealth(provider, { ok: true, mode: mode || providerHealth[provider]?.mode || '', lastSuccessAt: nowIso(), lastError: '' });
 }
 
 function failure(provider, error) {
-  updateHealth(provider, {
-    ok: false,
-    lastError: String(error?.message || error || 'Unbekannter Fehler').slice(0, 500)
-  });
+  updateHealth(provider, { ok: false, lastError: String(error?.message || error || 'Unbekannter Fehler').slice(0, 500) });
 }
 
 function getSocialProviderHealth() {
-  const instagramConfigured = Boolean(optionalEnv('INSTAGRAM_GRAPH_ACCESS_TOKEN') && optionalEnv('INSTAGRAM_GRAPH_IG_USER_ID'));
-  const xConfigured = Boolean(optionalEnv('X_BEARER_TOKEN'));
+  const instagramFallback = Boolean(optionalEnv('INSTAGRAM_GRAPH_ACCESS_TOKEN') && optionalEnv('INSTAGRAM_GRAPH_IG_USER_ID'));
+  const xFallback = Boolean(optionalEnv('X_BEARER_TOKEN'));
   return JSON.parse(JSON.stringify({
-    instagram: { ...providerHealth.instagram, configured: instagramConfigured },
+    instagram: { ...providerHealth.instagram, configured: true, optionalFallbackConfigured: instagramFallback },
     bluesky: { ...providerHealth.bluesky, configured: true },
-    x: { ...providerHealth.x, configured: xConfigured }
+    x: { ...providerHealth.x, configured: true, optionalFallbackConfigured: xFallback }
   }));
 }
 
-async function fetchJson(url, options = {}) {
+async function fetchResponse(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), Number(options.timeoutMs || 12000));
   try {
     const response = await fetch(url, {
       ...options,
       headers: {
-        Accept: 'application/json',
-        'User-Agent': 'RAKU-Creator-Hub/1.0',
+        'User-Agent': BROWSER_UA,
         ...(options.headers || {})
       },
       signal: controller.signal
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, 300)}` : ''}`);
+      const error = new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, 220)}` : ''}`);
+      error.status = response.status;
+      throw error;
     }
-    return response.json();
+    return response;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetchResponse(url, {
+    ...options,
+    headers: { Accept: 'application/json', ...(options.headers || {}) }
+  });
+  return response.json();
+}
+
+async function fetchText(url, options = {}) {
+  const response = await fetchResponse(url, {
+    ...options,
+    headers: { Accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8', ...(options.headers || {}) }
+  });
+  return response.text();
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function cleanPostText(value, fallback = 'Neuer Post') {
@@ -115,48 +142,182 @@ function normalizeSocialHandle(platform, value) {
   throw new Error(`Unbekannte Social-Plattform: ${platform}`);
 }
 
-function newestByTimestamp(items) {
-  return [...items].sort((a, b) => Date.parse(b?.timestamp || b?.created_at || b?.createdAt || 0) - Date.parse(a?.timestamp || a?.created_at || a?.createdAt || 0))[0] || null;
+function cachedSource(platform, source, ttlSeconds, loader) {
+  const key = `${platform}:${source}`;
+  const cached = publicCache.get(key);
+  if (cached && Date.now() - cached.at < ttlSeconds * 1000) return Promise.resolve(cached.value);
+  if (inflight.has(key)) return inflight.get(key);
+  const request = Promise.resolve()
+    .then(loader)
+    .then(value => {
+      publicCache.set(key, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => inflight.delete(key));
+  inflight.set(key, request);
+  return request;
+}
+
+function timestampMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value > 1e12 ? value : value * 1000;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric > 1e12 ? numeric : numeric * 1000;
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function instagramCaption(node) {
+  const edgeCaption = node?.edge_media_to_caption?.edges?.[0]?.node?.text;
+  const caption = node?.caption?.text ?? node?.caption;
+  return String(edgeCaption || caption || node?.text || '').trim();
+}
+
+function instagramImage(node) {
+  return String(
+    node?.display_url || node?.xdt_display_url || node?.thumbnail_src || node?.thumbnail_url ||
+    node?.image_versions2?.candidates?.[0]?.url || ''
+  );
+}
+
+function instagramOwner(node) {
+  return String(node?.owner?.username || node?.user?.username || node?.username || '').toLowerCase();
+}
+
+function instagramCandidate(node, source, profile = {}) {
+  const shortcode = String(node?.shortcode || node?.xdt_shortcode || node?.code || '');
+  const id = String(node?.id || node?.pk || node?.xdt_id || shortcode || '');
+  if (!shortcode || !id) return null;
+  const timestamp = node?.taken_at_timestamp ?? node?.xdt_taken_at_timestamp ?? node?.taken_at ?? node?.timestamp ?? node?.created_at;
+  const publishedMs = timestampMs(timestamp);
+  if (!publishedMs) return null;
+  const owner = instagramOwner(node);
+  if (owner && owner !== source) return null;
+  const type = String(node?.product_type || node?.xdt_product_type || node?.media_type || '').toLowerCase();
+  const reel = type === 'clips' || type === 'reel' || type === 'video';
+  const creator = String(profile.full_name || profile.name || profile.username || owner || source);
+  const publishedAt = new Date(publishedMs).toISOString();
+  return {
+    platform: 'instagram', source, creator, exists: true, live: false, id,
+    eventKey: `instagram:${source}:post:${id}`,
+    title: cleanPostText(instagramCaption(node), `${creator} hat einen neuen Instagram-Post veröffentlicht.`),
+    game: '',
+    url: `https://www.instagram.com/${reel ? 'reel' : 'p'}/${encodeURIComponent(shortcode)}/`,
+    thumbnail: instagramImage(node),
+    avatar: String(profile.profile_pic_url_hd || profile.profile_picture_url || profile.profile_pic_url || ''),
+    publishedAt, startedAt: publishedAt, viewers: 0
+  };
+}
+
+function parseInstagramProfileInfo(data, source) {
+  const profile = data?.data?.user || data?.user || null;
+  if (!profile) throw new Error('Instagram Profil wurde nicht gefunden.');
+  if (profile.is_private) throw new Error('Instagram Profil ist privat.');
+  const nodes = (profile?.edge_owner_to_timeline_media?.edges || []).map(edge => edge?.node).filter(Boolean);
+  const candidates = nodes.map(node => instagramCandidate(node, source, profile)).filter(Boolean).sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+  if (!candidates.length) throw new Error('Instagram Profil hat keine öffentlich abrufbaren Posts.');
+  return candidates[0];
+}
+
+function walkJson(value, visit, depth = 0) {
+  if (!value || depth > 18) return;
+  if (Array.isArray(value)) {
+    for (const item of value) walkJson(item, visit, depth + 1);
+    return;
+  }
+  if (typeof value !== 'object') return;
+  visit(value);
+  for (const child of Object.values(value)) walkJson(child, visit, depth + 1);
+}
+
+function parseInstagramRelayHtml(html, source) {
+  const payloads = [];
+  const scriptRegex = /<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  for (const match of String(html || '').matchAll(scriptRegex)) {
+    try { payloads.push(JSON.parse(match[1])); } catch {}
+  }
+  const next = String(html || '').match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (next) {
+    try { payloads.push(JSON.parse(next[1])); } catch {}
+  }
+  if (!payloads.length) throw new Error('Instagram Profil-Payload fehlt.');
+
+  let profile = null;
+  const rawCandidates = [];
+  for (const payload of payloads) {
+    walkJson(payload, node => {
+      if (!profile && String(node?.username || '').toLowerCase() === source && (node?.profile_pic_url || node?.profile_pic_url_hd || node?.full_name)) profile = node;
+      if (node?.shortcode || node?.xdt_shortcode) rawCandidates.push(node);
+    });
+  }
+  const candidates = rawCandidates
+    .map(node => instagramCandidate(node, source, profile || {}))
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+  if (!candidates.length) throw new Error('Instagram Profilseite enthielt keinen auswertbaren öffentlichen Post.');
+  return candidates[0];
+}
+
+async function fetchInstagramPublic(source) {
+  const headers = {
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'X-IG-App-ID': optionalEnv('INSTAGRAM_PUBLIC_APP_ID') || '936619743392459',
+    'X-ASBD-ID': optionalEnv('INSTAGRAM_PUBLIC_ASBD_ID') || '198387',
+    'X-Requested-With': 'XMLHttpRequest',
+    Referer: `https://www.instagram.com/${source}/`
+  };
+  let firstError = null;
+  try {
+    const data = await fetchJson(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(source)}`, { headers, timeoutMs: 15000 });
+    return parseInstagramProfileInfo(data, source);
+  } catch (error) {
+    firstError = error;
+  }
+  try {
+    const html = await fetchText(`https://www.instagram.com/${encodeURIComponent(source)}/`, { headers, timeoutMs: 15000 });
+    return parseInstagramRelayHtml(html, source);
+  } catch (error) {
+    throw new Error(`Instagram öffentlicher Feed aktuell nicht abrufbar (${String(error?.message || firstError?.message || error).slice(0, 180)}).`);
+  }
+}
+
+async function fetchInstagramGraphFallback(source) {
+  const token = optionalEnv('INSTAGRAM_GRAPH_ACCESS_TOKEN');
+  const igUserId = optionalEnv('INSTAGRAM_GRAPH_IG_USER_ID');
+  if (!token || !igUserId) throw new Error('Kein optionaler Meta Graph Fallback konfiguriert.');
+  const apiVersion = optionalEnv('INSTAGRAM_GRAPH_VERSION') || 'v26.0';
+  const fields = `business_discovery.username(${source}){username,name,profile_picture_url,media.limit(5){id,caption,media_type,media_url,permalink,thumbnail_url,timestamp}}`;
+  const data = await fetchJson(`https://graph.facebook.com/${encodeURIComponent(apiVersion)}/${encodeURIComponent(igUserId)}?${new URLSearchParams({ fields, access_token: token })}`);
+  const account = data?.business_discovery;
+  const media = [...(account?.media?.data || [])].sort((a, b) => timestampMs(b?.timestamp) - timestampMs(a?.timestamp))[0];
+  if (!account || !media?.id) throw new Error('Meta Graph Fallback lieferte keinen Post.');
+  const publishedAt = String(media.timestamp || '');
+  const creator = String(account.name || account.username || source);
+  return {
+    platform: 'instagram', source, creator, exists: true, live: false, id: String(media.id),
+    eventKey: `instagram:${source}:post:${media.id}`,
+    title: cleanPostText(media.caption, `${creator} hat einen neuen Instagram-Post veröffentlicht.`),
+    game: '', url: String(media.permalink || `https://www.instagram.com/${source}/`),
+    thumbnail: String(media.thumbnail_url || media.media_url || ''), avatar: String(account.profile_picture_url || ''),
+    publishedAt, startedAt: publishedAt, viewers: 0
+  };
 }
 
 async function fetchInstagramPost(value) {
   const source = normalizeSocialHandle('instagram', value);
-  const token = optionalEnv('INSTAGRAM_GRAPH_ACCESS_TOKEN');
-  const igUserId = optionalEnv('INSTAGRAM_GRAPH_IG_USER_ID');
-  const apiVersion = optionalEnv('INSTAGRAM_GRAPH_VERSION') || 'v26.0';
-  if (!token || !igUserId) throw new Error('Instagram Provider ist nicht konfiguriert. INSTAGRAM_GRAPH_ACCESS_TOKEN und INSTAGRAM_GRAPH_IG_USER_ID fehlen.');
-
+  const ttl = envSeconds('CREATOR_INSTAGRAM_MIN_FETCH_SECONDS', 600, 120, 3600);
   try {
-    const fields = `business_discovery.username(${source}){username,name,profile_picture_url,media.limit(5){id,caption,media_type,media_url,permalink,thumbnail_url,timestamp}}`;
-    const params = new URLSearchParams({ fields, access_token: token });
-    const data = await fetchJson(`https://graph.facebook.com/${encodeURIComponent(apiVersion)}/${encodeURIComponent(igUserId)}?${params.toString()}`);
-    const account = data?.business_discovery;
-    if (!account) throw new Error('Instagram Account nicht gefunden oder nicht als Professional Account über Business Discovery erreichbar.');
-    const media = newestByTimestamp(account?.media?.data || []);
-    if (!media?.id) throw new Error('Instagram Account hat keine abrufbaren Posts.');
-
-    const thumbnail = String(media.thumbnail_url || (media.media_type === 'IMAGE' ? media.media_url : '') || '');
-    const creator = String(account.name || account.username || source);
-    const publishedAt = String(media.timestamp || '');
-    const result = {
-      platform: 'instagram',
-      source,
-      creator,
-      exists: true,
-      live: false,
-      id: String(media.id),
-      eventKey: `instagram:${source}:post:${media.id}`,
-      title: cleanPostText(media.caption, `${creator} hat einen neuen Instagram-Post veröffentlicht.`),
-      game: '',
-      url: String(media.permalink || `https://www.instagram.com/${source}/`),
-      thumbnail,
-      avatar: String(account.profile_picture_url || ''),
-      publishedAt,
-      startedAt: publishedAt,
-      viewers: 0
-    };
-    success('instagram');
-    return result;
+    return await cachedSource('instagram', source, ttl, async () => {
+      try {
+        const result = await fetchInstagramPublic(source);
+        success('instagram', 'public-web');
+        return result;
+      } catch (publicError) {
+        if (!optionalEnv('INSTAGRAM_GRAPH_ACCESS_TOKEN') || !optionalEnv('INSTAGRAM_GRAPH_IG_USER_ID')) throw publicError;
+        const result = await fetchInstagramGraphFallback(source);
+        success('instagram', 'graph-fallback');
+        return result;
+      }
+    });
   } catch (error) {
     failure('instagram', error);
     throw error;
@@ -187,23 +348,13 @@ async function fetchBlueskyPost(value) {
     const creator = String(post.author?.displayName || post.author?.handle || source);
     const publishedAt = String(record.createdAt || post.indexedAt || '');
     const result = {
-      platform: 'bluesky',
-      source,
-      creator,
-      exists: true,
-      live: false,
-      id,
+      platform: 'bluesky', source, creator, exists: true, live: false, id,
       eventKey: `bluesky:${source}:post:${id}`,
       title: cleanPostText(record.text, `${creator} hat einen neuen Bluesky-Post veröffentlicht.`),
-      game: '',
-      url: blueskyPostUrl(post, source),
-      thumbnail: blueskyThumbnail(post.embed),
-      avatar: String(post.author?.avatar || ''),
-      publishedAt,
-      startedAt: publishedAt,
-      viewers: 0
+      game: '', url: blueskyPostUrl(post, source), thumbnail: blueskyThumbnail(post.embed), avatar: String(post.author?.avatar || ''),
+      publishedAt, startedAt: publishedAt, viewers: 0
     };
-    success('bluesky');
+    success('bluesky', 'public-appview');
     return result;
   } catch (error) {
     failure('bluesky', error);
@@ -211,62 +362,120 @@ async function fetchBlueskyPost(value) {
   }
 }
 
+function cleanXText(tweet) {
+  let text = String(tweet?.full_text || tweet?.text || '');
+  for (const item of tweet?.entities?.urls || []) {
+    if (item?.url && item?.display_url) text = text.split(item.url).join(item.display_url);
+  }
+  for (const item of tweet?.extended_entities?.media || tweet?.entities?.media || []) {
+    if (item?.url) text = text.split(item.url).join('');
+  }
+  return cleanPostText(text, 'Neuer Post auf X');
+}
+
+function xMedia(tweet) {
+  const media = tweet?.mediaDetails || tweet?.extended_entities?.media || tweet?.entities?.media || [];
+  return String(media?.[0]?.media_url_https || media?.[0]?.media_url || '');
+}
+
+function parseXSyndicationHtml(html, source) {
+  const match = String(html || '').match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) throw new Error('X Syndication Payload fehlt.');
+  const data = JSON.parse(match[1]);
+  const entries = data?.props?.pageProps?.timeline?.entries || [];
+  const posts = [];
+  for (const entry of entries) {
+    const tweet = entry?.content?.tweet;
+    if (!tweet?.id_str || tweet.retweeted_status || tweet.in_reply_to_status_id_str) continue;
+    const user = tweet.user || {};
+    const handle = String(user.screen_name || source || '').toLowerCase();
+    if (handle && handle !== source) continue;
+    const createdMs = timestampMs(tweet.created_at);
+    if (!createdMs) continue;
+    posts.push({ tweet, user, createdMs });
+  }
+  posts.sort((a, b) => b.createdMs - a.createdMs);
+  const current = posts[0];
+  if (!current) throw new Error('X Profil hat keine abrufbaren öffentlichen Posts.');
+  const { tweet, user, createdMs } = current;
+  const handle = String(user.screen_name || source);
+  const id = String(tweet.id_str);
+  const publishedAt = new Date(createdMs).toISOString();
+  return {
+    platform: 'x', source, creator: String(user.name || handle), exists: true, live: false, id,
+    eventKey: `x:${source}:post:${id}`,
+    title: cleanXText(tweet), game: '',
+    url: `https://x.com/${encodeURIComponent(handle)}/status/${encodeURIComponent(id)}`,
+    thumbnail: xMedia(tweet), avatar: String(user.profile_image_url_https || user.profile_image_url || ''),
+    publishedAt, startedAt: publishedAt, viewers: 0
+  };
+}
+
+async function fetchXSyndication(source) {
+  const url = `https://syndication.twitter.com/srv/timeline-profile/screen-name/${encodeURIComponent(source)}?showReplies=false`;
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const html = await fetchText(url, { timeoutMs: 15000, headers: { 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8' } });
+      return parseXSyndicationHtml(html, source);
+    } catch (error) {
+      lastError = error;
+      if (error?.status !== 429 || attempt === 2) break;
+      await sleep(1500 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('X Syndication Feed nicht erreichbar.');
+}
+
 async function resolveXUser(source) {
   const cached = xUserCache.get(source);
   if (cached && cached.expiresAt > Date.now()) return cached.user;
   const token = optionalEnv('X_BEARER_TOKEN');
-  if (!token) throw new Error('X Provider ist nicht konfiguriert. X_BEARER_TOKEN fehlt.');
-  const data = await fetchJson(`https://api.x.com/2/users/by/username/${encodeURIComponent(source)}?user.fields=name,username,profile_image_url`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  if (!token) throw new Error('Kein optionaler X API Fallback konfiguriert.');
+  const data = await fetchJson(`https://api.x.com/2/users/by/username/${encodeURIComponent(source)}?user.fields=name,username,profile_image_url`, { headers: { Authorization: `Bearer ${token}` } });
   if (!data?.data?.id) throw new Error('X Account wurde nicht gefunden.');
   xUserCache.set(source, { user: data.data, expiresAt: Date.now() + X_USER_CACHE_MS });
   return data.data;
 }
 
+async function fetchXApiFallback(source) {
+  const token = optionalEnv('X_BEARER_TOKEN');
+  if (!token) throw new Error('Kein optionaler X API Fallback konfiguriert.');
+  const user = await resolveXUser(source);
+  const params = new URLSearchParams({ max_results: '5', exclude: 'replies,retweets', 'tweet.fields': 'created_at,attachments', expansions: 'attachments.media_keys', 'media.fields': 'media_key,type,url,preview_image_url' });
+  const data = await fetchJson(`https://api.x.com/2/users/${encodeURIComponent(user.id)}/tweets?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+  const post = [...(data?.data || [])].sort((a, b) => timestampMs(b?.created_at) - timestampMs(a?.created_at))[0];
+  if (!post?.id) throw new Error('X API Fallback lieferte keinen Post.');
+  const mediaByKey = new Map((data?.includes?.media || []).map(media => [String(media.media_key), media]));
+  const media = (post.attachments?.media_keys || []).map(key => mediaByKey.get(String(key))).find(Boolean) || null;
+  const publishedAt = String(post.created_at || '');
+  const creator = String(user.name || user.username || source);
+  return {
+    platform: 'x', source, creator, exists: true, live: false, id: String(post.id),
+    eventKey: `x:${source}:post:${post.id}`,
+    title: cleanPostText(post.text, `${creator} hat einen neuen Post auf X veröffentlicht.`), game: '',
+    url: `https://x.com/${encodeURIComponent(user.username || source)}/status/${encodeURIComponent(post.id)}`,
+    thumbnail: String(media?.url || media?.preview_image_url || ''), avatar: String(user.profile_image_url || ''),
+    publishedAt, startedAt: publishedAt, viewers: 0
+  };
+}
+
 async function fetchXPost(value) {
   const source = normalizeSocialHandle('x', value);
-  const token = optionalEnv('X_BEARER_TOKEN');
-  if (!token) throw new Error('X Provider ist nicht konfiguriert. X_BEARER_TOKEN fehlt.');
-
+  const ttl = envSeconds('CREATOR_X_MIN_FETCH_SECONDS', 180, 60, 1800);
   try {
-    const user = await resolveXUser(source);
-    const params = new URLSearchParams({
-      max_results: '5',
-      exclude: 'replies,retweets',
-      'tweet.fields': 'created_at,attachments',
-      expansions: 'attachments.media_keys',
-      'media.fields': 'media_key,type,url,preview_image_url'
+    return await cachedSource('x', source, ttl, async () => {
+      try {
+        const result = await fetchXSyndication(source);
+        success('x', 'public-syndication');
+        return result;
+      } catch (publicError) {
+        if (!optionalEnv('X_BEARER_TOKEN')) throw new Error(`X öffentlicher Feed aktuell nicht abrufbar (${String(publicError?.message || publicError).slice(0, 180)}).`);
+        const result = await fetchXApiFallback(source);
+        success('x', 'api-fallback');
+        return result;
+      }
     });
-    const data = await fetchJson(`https://api.x.com/2/users/${encodeURIComponent(user.id)}/tweets?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const post = newestByTimestamp(data?.data || []);
-    if (!post?.id) throw new Error('X Account hat keine abrufbaren Posts.');
-
-    const mediaByKey = new Map((data?.includes?.media || []).map(media => [String(media.media_key), media]));
-    const media = (post.attachments?.media_keys || []).map(key => mediaByKey.get(String(key))).find(Boolean) || null;
-    const publishedAt = String(post.created_at || '');
-    const creator = String(user.name || user.username || source);
-    const result = {
-      platform: 'x',
-      source,
-      creator,
-      exists: true,
-      live: false,
-      id: String(post.id),
-      eventKey: `x:${source}:post:${post.id}`,
-      title: cleanPostText(post.text, `${creator} hat einen neuen Post auf X veröffentlicht.`),
-      game: '',
-      url: `https://x.com/${encodeURIComponent(user.username || source)}/status/${encodeURIComponent(post.id)}`,
-      thumbnail: String(media?.url || media?.preview_image_url || ''),
-      avatar: String(user.profile_image_url || ''),
-      publishedAt,
-      startedAt: publishedAt,
-      viewers: 0
-    };
-    success('x');
-    return result;
   } catch (error) {
     failure('x', error);
     throw error;
@@ -284,6 +493,9 @@ module.exports = {
   SOCIAL_PLATFORMS,
   getSocialProviderHealth,
   normalizeSocialHandle,
+  parseInstagramProfileInfo,
+  parseInstagramRelayHtml,
+  parseXSyndicationHtml,
   fetchInstagramPost,
   fetchBlueskyPost,
   fetchXPost,
