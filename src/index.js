@@ -9,6 +9,7 @@ const { attachTicketRuntime } = require('./ticket-studio-runtime');
 require('./creator-tiktok-provider-v097-patch');
 const { attachCreatorHubApi } = require('./creator-hub-api');
 const { startCreatorRuntime } = require('./creator-runtime');
+const { startCreatorSocialRuntime } = require('./creator-social-runtime');
 const { attachVoiceStudioApi } = require('./voice-studio-api');
 const { attachVoiceStudioRuntime } = require('./voice-studio-runtime');
 const { attachAnalyticsApi } = require('./analytics-api');
@@ -65,6 +66,7 @@ async function main() {
   try {
     await startDiscordBot();
     startCreatorRuntime(client);
+    startCreatorSocialRuntime(client);
   } catch (error) {
     if (!isDisallowedIntentError(error)) throw error;
 
