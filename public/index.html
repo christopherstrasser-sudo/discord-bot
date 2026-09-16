@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/voice-studio.css?v=0180">
   <link rel="stylesheet" href="/analytics-studio.css?v=0180">
 
-  <!-- One authoritative product-wide visual layer. -->
+  <!-- The one product-wide visual layer. -->
   <link rel="stylesheet" href="/raku-glass-v300.css?v=0180">
 </head>
 <body>
@@ -35,26 +35,27 @@
     <main class="main-shell">
       <section id="loggedOut" class="login-screen hidden">
         <div class="login-copy">
-          <span class="overline">DISCORD SERVER CONTROL</span>
-          <h1>Dein Bot.<br>Dein System.</h1>
-          <p>Verwalte mehrere Discord-Server, Module und Automationen in einem einzigen Control Center.</p>
-          <a class="button button-primary button-large" href="/auth/discord">Mit Discord anmelden</a>
+          <span class="overline">MULTI-SERVER CONTROL / DISCORD</span>
+          <h1>Dein Server.<br>Dein Control Deck.</h1>
+          <p>Community, Rollen, Tickets, Creator-Automationen, Voice und Analytics in einer Oberfläche – schnell erreichbar und klar nach Aufgaben organisiert.</p>
+          <a class="button button-primary button-large" href="/auth/discord">Mit Discord starten</a>
         </div>
         <div class="login-console" aria-hidden="true">
-          <div class="console-top"><span>RAKU / CONTROL NODE</span><b>ONLINE</b></div>
-          <div class="console-line"><span>OAuth</span><strong>READY</strong></div>
-          <div class="console-line"><span>Guild routing</span><strong>READY</strong></div>
-          <div class="console-line"><span>Server intelligence</span><strong>READY</strong></div>
-          <div class="console-foot">v0.18.0 · glass ui rebuild</div>
+          <div class="console-top"><span>RAKU / CONTROL DECK</span><b>READY</b></div>
+          <div class="console-line"><span>Community & Rollen</span><strong>CONNECTED</strong></div>
+          <div class="console-line"><span>Tickets & Automationen</span><strong>READY</strong></div>
+          <div class="console-line"><span>Voice & Analytics</span><strong>READY</strong></div>
+          <div class="console-line"><span>Multi-Server Routing</span><strong>ONLINE</strong></div>
+          <div class="console-foot">v0.18.0 · glass ui v3</div>
         </div>
       </section>
 
       <section id="serverList" class="server-screen hidden">
         <div class="page-head">
           <div>
-            <span class="overline">CONTROL DECK</span>
-            <h1>Server auswählen</h1>
-            <p>Direkter Zugriff auf deine Discord-Server, Module und Diagnosen.</p>
+            <span class="overline">SERVER NETWORK</span>
+            <h1>Deine Server.</h1>
+            <p>Wähle einen Server und spring direkt in sein Control Deck.</p>
           </div>
           <div id="serverStats" class="deck-stats"></div>
         </div>
@@ -104,12 +105,9 @@
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.29.1/index.js"></script>
   <script src="/emoji-picker-popup.js?v=0180"></script>
 
-  <!-- Product behavior/decorators. Loaded once, in a deterministic order. -->
+  <!-- Shared navigation/overview behavior. -->
   <script src="/raku-ui-v100.js?v=0180"></script>
   <script src="/voice-studio.js?v=0180"></script>
   <script src="/analytics-studio.js?v=0180"></script>
-  <script src="/raku-ux-v2-guides.js?v=0180"></script>
-  <script src="/raku-ux-v2-hints.js?v=0180"></script>
-  <script src="/raku-ux-v2.js?v=0180"></script>
 </body>
 </html>
