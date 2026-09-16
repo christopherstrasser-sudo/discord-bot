@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   normalizeSocialHandle,
   parseInstagramProfileInfo,
+  parseInstagramFeedPayload,
   parseInstagramRelayHtml,
   parseXSyndicationHtml,
   getSocialProviderHealth
@@ -52,6 +53,38 @@ test('parses newest Instagram post from public web profile info', () => {
   assert.equal(snapshot.title, 'Neuer Reel Post');
   assert.equal(snapshot.url, 'https://www.instagram.com/reel/NEW456/');
   assert.equal(snapshot.thumbnail, 'https://example.test/new.jpg');
+  assert.equal(snapshot.avatar, 'https://example.test/avatar.jpg');
+});
+
+test('parses newest Instagram post from public feed-by-username payload', () => {
+  const snapshot = parseInstagramFeedPayload({
+    user: { username: 'rakulein', full_name: 'Rakulein', profile_pic_url: 'https://example.test/avatar.jpg' },
+    items: [
+      {
+        pk: 'old-feed',
+        code: 'OLDFEED',
+        taken_at: 300,
+        media_type: 1,
+        user: { username: 'rakulein' },
+        caption: { text: 'Alter Feed Post' },
+        image_versions2: { candidates: [{ url: 'https://example.test/old-feed.jpg' }] }
+      },
+      {
+        pk: 'new-feed',
+        code: 'NEWFEED',
+        taken_at: 500,
+        media_type: 2,
+        product_type: 'clips',
+        user: { username: 'rakulein' },
+        caption: { text: 'Neuer Feed Reel' },
+        image_versions2: { candidates: [{ url: 'https://example.test/new-feed.jpg' }] }
+      }
+    ]
+  }, 'rakulein');
+  assert.equal(snapshot.id, 'new-feed');
+  assert.equal(snapshot.title, 'Neuer Feed Reel');
+  assert.equal(snapshot.url, 'https://www.instagram.com/reel/NEWFEED/');
+  assert.equal(snapshot.thumbnail, 'https://example.test/new-feed.jpg');
   assert.equal(snapshot.avatar, 'https://example.test/avatar.jpg');
 });
 
