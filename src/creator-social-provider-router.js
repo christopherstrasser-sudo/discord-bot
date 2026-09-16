@@ -2,11 +2,12 @@ const base = require('./creator-social-providers');
 
 const providerHealth = {
   x: { ok: true, mode: 'x-md', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
-  instagram: { ok: true, mode: 'public-web', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
+  instagram: { ok: true, mode: 'tls-http', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
 };
 
 const cache = new Map();
 const inflight = new Map();
+let impitPromise = null;
 
 function nowIso() {
   return new Date().toISOString();
@@ -143,6 +144,91 @@ async function fetchXMdPost(value) {
   });
 }
 
+async function getImpit() {
+  if (!impitPromise) {
+    impitPromise = import('impit')
+      .then(mod => {
+        if (!mod?.Impit) throw new Error('Impit HTTP transport konnte nicht geladen werden.');
+        return new mod.Impit({ browser: 'chrome' });
+      })
+      .catch(error => {
+        impitPromise = null;
+        throw error;
+      });
+  }
+  return impitPromise;
+}
+
+async function impitJson(client, url, headers = {}) {
+  const response = await client.fetch(url, {
+    headers: {
+      Accept: 'application/json, text/plain, */*',
+      'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+      ...headers
+    },
+    redirect: 'follow'
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    const error = new Error(`HTTP ${response.status}${text ? `: ${text.slice(0, 220)}` : ''}`);
+    error.status = response.status;
+    throw error;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Instagram HTTP transport lieferte kein JSON (${text.slice(0, 120)}).`);
+  }
+}
+
+async function fetchInstagramTls(value) {
+  const source = base.normalizeSocialHandle('instagram', value);
+  return cached('instagram-tls', source, 5 * 60 * 1000, async () => {
+    const client = await getImpit();
+    const profileUrl = `https://www.instagram.com/${encodeURIComponent(source)}/`;
+
+    // Seed the anonymous Instagram session/cookies using the same TLS/header profile.
+    await client.fetch(profileUrl, {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
+      },
+      redirect: 'follow'
+    }).catch(() => null);
+
+    const headers = {
+      'X-IG-App-ID': optionalEnv('INSTAGRAM_PUBLIC_APP_ID') || '936619743392459',
+      'X-ASBD-ID': optionalEnv('INSTAGRAM_PUBLIC_ASBD_ID') || '198387',
+      'X-Requested-With': 'XMLHttpRequest',
+      Referer: profileUrl
+    };
+
+    const errors = [];
+    try {
+      const feed = await impitJson(client, `https://www.instagram.com/api/v1/feed/user/${encodeURIComponent(source)}/username/?count=6`, headers);
+      const snapshot = base.parseInstagramFeedPayload(feed, source);
+      updateHealth('instagram', true, 'tls-http');
+      return snapshot;
+    } catch (error) {
+      errors.push(`feed: ${compactError(error)}`);
+    }
+
+    try {
+      const profile = await impitJson(client, `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(source)}`, headers);
+      const snapshot = base.parseInstagramProfileInfo(profile, source);
+      updateHealth('instagram', true, 'tls-http');
+      return snapshot;
+    } catch (error) {
+      errors.push(`profile: ${compactError(error)}`);
+    }
+
+    throw new Error(errors.join(' | '));
+  }).catch(error => {
+    updateHealth('instagram', false, 'tls-http', error);
+    throw error;
+  });
+}
+
 async function fetchInstagramScrapeCreators(value) {
   const source = base.normalizeSocialHandle('instagram', value);
   const apiKey = optionalEnv('SCRAPECREATORS_API_KEY');
@@ -163,37 +249,49 @@ async function fetchInstagramScrapeCreators(value) {
   });
 }
 
+async function fetchInstagramRelay(source, relayUrl, relayToken) {
+  return cached('instagram-relay', source, 5 * 60 * 1000, async () => {
+    const data = await fetchJson(`${relayUrl}/v1/instagram/latest?handle=${encodeURIComponent(source)}`, {
+      timeoutMs: 20000,
+      headers: relayToken ? { Authorization: `Bearer ${relayToken}` } : {}
+    });
+    const snapshot = data?.snapshot || data;
+    if (!snapshot?.id || !snapshot?.url) throw new Error('RAKU Social Relay lieferte keinen gültigen Instagram-Post.');
+    updateHealth('instagram', true, 'raku-relay');
+    return { ...snapshot, platform: 'instagram', source };
+  });
+}
+
 async function fetchInstagramPost(value) {
   const source = base.normalizeSocialHandle('instagram', value);
   const relayUrl = optionalEnv('RAKU_SOCIAL_RELAY_URL').replace(/\/+$/, '');
   const relayToken = optionalEnv('RAKU_SOCIAL_RELAY_TOKEN');
+  const errors = [];
+
+  // Browserless local path: real Chrome-like TLS/HTTP fingerprint, no browser process.
+  try {
+    return await fetchInstagramTls(source);
+  } catch (error) {
+    errors.push(`TLS-HTTP: ${compactError(error)}`);
+  }
 
   if (relayUrl) {
-    return cached('instagram-relay', source, 5 * 60 * 1000, async () => {
-      const data = await fetchJson(`${relayUrl}/v1/instagram/latest?handle=${encodeURIComponent(source)}`, {
-        timeoutMs: 20000,
-        headers: relayToken ? { Authorization: `Bearer ${relayToken}` } : {}
-      });
-      const snapshot = data?.snapshot || data;
-      if (!snapshot?.id || !snapshot?.url) throw new Error('RAKU Social Relay lieferte keinen gültigen Instagram-Post.');
-      updateHealth('instagram', true, 'raku-relay');
-      return { ...snapshot, platform: 'instagram', source };
-    }).catch(error => {
-      updateHealth('instagram', false, 'raku-relay', error);
-      throw error;
-    });
+    try {
+      return await fetchInstagramRelay(source, relayUrl, relayToken);
+    } catch (error) {
+      errors.push(`Relay: ${compactError(error)}`);
+    }
   }
 
-  if (optionalEnv('SCRAPECREATORS_API_KEY')) return fetchInstagramScrapeCreators(source);
-
-  try {
-    const result = await base.fetchInstagramPost(source);
-    updateHealth('instagram', true, 'public-web');
-    return result;
-  } catch (directError) {
-    updateHealth('instagram', false, 'public-web', directError);
-    throw new Error(`Instagram Direktabruf wird von Instagram blockiert. Für den produktiven Betrieb muss der zentrale RAKU Instagram Provider konfiguriert werden. (${compactError(directError)})`);
+  if (optionalEnv('SCRAPECREATORS_API_KEY')) {
+    try {
+      return await fetchInstagramScrapeCreators(source);
+    } catch (error) {
+      errors.push(`Provider: ${compactError(error)}`);
+    }
   }
+
+  throw new Error(`Instagram aktuell nicht abrufbar (${errors.join(' | ').slice(0, 520)}).`);
 }
 
 async function fetchSocialPost(platform, source) {
@@ -215,6 +313,8 @@ function getSocialProviderHealth() {
     ...providerHealth.instagram,
     configured: true,
     userCredentialsRequired: false,
+    browserRequired: false,
+    tlsImpersonation: true,
     serverProviderConfigured: Boolean(optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
   };
   return health;
