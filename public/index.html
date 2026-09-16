@@ -7,17 +7,26 @@
   <title>RAKU Discord Control</title>
 
   <!-- Component foundations: mechanics/layout local to each module. -->
-  <link rel="stylesheet" href="/styles.css?v=0180">
-  <link rel="stylesheet" href="/commands-editor.css?v=0180">
-  <link rel="stylesheet" href="/role-studio.css?v=0180">
-  <link rel="stylesheet" href="/ticket-studio.css?v=0180">
-  <link rel="stylesheet" href="/creator-hub.css?v=0180">
-  <link rel="stylesheet" href="/emoji-picker-popup.css?v=0180">
-  <link rel="stylesheet" href="/voice-studio.css?v=0180">
-  <link rel="stylesheet" href="/analytics-studio.css?v=0180">
+  <link rel="stylesheet" href="/styles.css?v=0181">
+  <link rel="stylesheet" href="/commands-editor.css?v=0181">
+  <link rel="stylesheet" href="/role-studio.css?v=0181">
+  <link rel="stylesheet" href="/ticket-studio.css?v=0181">
+  <link rel="stylesheet" href="/creator-hub.css?v=0181">
+  <link rel="stylesheet" href="/emoji-picker-popup.css?v=0181">
+  <link rel="stylesheet" href="/voice-studio.css?v=0181">
+  <link rel="stylesheet" href="/analytics-studio.css?v=0181">
 
   <!-- The one product-wide visual layer. -->
-  <link rel="stylesheet" href="/raku-glass-v300.css?v=0180">
+  <link rel="stylesheet" href="/raku-glass-v300.css?v=0181">
+
+  <!-- App-state contract: login, server picker and dashboard are mutually exclusive screens. -->
+  <style id="app-screen-state-contract">
+    #loggedOut.hidden,
+    #serverList.hidden,
+    #guildDashboard.hidden {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
   <div class="app-frame">
@@ -46,7 +55,7 @@
           <div class="console-line"><span>Tickets & Automationen</span><strong>READY</strong></div>
           <div class="console-line"><span>Voice & Analytics</span><strong>READY</strong></div>
           <div class="console-line"><span>Multi-Server Routing</span><strong>ONLINE</strong></div>
-          <div class="console-foot">v0.18.0 · glass ui v3</div>
+          <div class="console-foot">v0.18.1 · glass ui v3</div>
         </div>
       </section>
 
@@ -88,26 +97,26 @@
   <div id="toastHost" class="toast-host" aria-live="polite"></div>
 
   <!-- App and module behavior. -->
-  <script src="/app.js?v=0180"></script>
-  <script src="/save-button-fix.js?v=0180"></script>
-  <script src="/commands-editor.js?v=0180"></script>
-  <script src="/role-studio-observer-guard.js?v=0180"></script>
-  <script src="/role-studio.js?v=0180"></script>
-  <script src="/role-studio-observer-guard.js?restore=1&v=0180"></script>
-  <script src="/ticket-studio-core.js?v=0180"></script>
-  <script src="/ticket-studio-render.js?v=0180"></script>
-  <script src="/ticket-studio-actions.js?v=0180"></script>
-  <script src="/creator-hub-core.js?v=0180"></script>
-  <script src="/creator-hub-render.js?v=0180"></script>
-  <script src="/creator-hub-youtube-handle.js?v=0180"></script>
-  <script src="/creator-hub-tiktok-v092.js?v=0180"></script>
-  <script src="/creator-hub-actions.js?v=0180"></script>
+  <script src="/app.js?v=0181"></script>
+  <script src="/save-button-fix.js?v=0181"></script>
+  <script src="/commands-editor.js?v=0181"></script>
+  <script src="/role-studio-observer-guard.js?v=0181"></script>
+  <script src="/role-studio.js?v=0181"></script>
+  <script src="/role-studio-observer-guard.js?restore=1&v=0181"></script>
+  <script src="/ticket-studio-core.js?v=0181"></script>
+  <script src="/ticket-studio-render.js?v=0181"></script>
+  <script src="/ticket-studio-actions.js?v=0181"></script>
+  <script src="/creator-hub-core.js?v=0181"></script>
+  <script src="/creator-hub-render.js?v=0181"></script>
+  <script src="/creator-hub-youtube-handle.js?v=0181"></script>
+  <script src="/creator-hub-tiktok-v092.js?v=0181"></script>
+  <script src="/creator-hub-actions.js?v=0181"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.29.1/index.js"></script>
-  <script src="/emoji-picker-popup.js?v=0180"></script>
+  <script src="/emoji-picker-popup.js?v=0181"></script>
 
   <!-- Shared navigation/overview behavior. -->
-  <script src="/raku-ui-v100.js?v=0180"></script>
-  <script src="/voice-studio.js?v=0180"></script>
-  <script src="/analytics-studio.js?v=0180"></script>
+  <script src="/raku-ui-v100.js?v=0181"></script>
+  <script src="/voice-studio.js?v=0181"></script>
+  <script src="/analytics-studio.js?v=0181"></script>
 </body>
 </html>
