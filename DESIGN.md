@@ -1,140 +1,110 @@
-# RAKU Discord Control — Prism OS v4
+# RAKU Discord Control — Studio UI v5
 
-## Canonical visual layer
+## Current visual architecture
 
-`public/raku-prism-v400.css` is the **only** product-wide appearance layer.
+The product-wide UI is rebuilt around two files:
 
-The previous Glass UI v3 was retired. Do not restore it, import from it, or create a second global polish layer.
+- `public/raku-studio-v500.css` — the only global visual layer
+- `public/raku-workspace-v500.js` — the final dashboard shell and overview renderer
 
-Prism OS owns the visible product language for:
-- login
-- server picker
-- top bar
-- server command bar
-- navigation
-- overview
-- simple modules
-- Commands
-- Role Studio
-- Ticket Studio
-- Creator Hub
-- Voice Studio
-- Analytics
-- responsive layout
-- shared typography, spacing, surfaces, controls and visual hierarchy
+They are loaded after all module mechanics and module hooks.
 
-## Visual direction
+## Product direction
 
-Prism OS is a dark control-system interface with restrained translucent surfaces, clear white typography, violet/cyan signal accents and generous whitespace.
+This is a practical streamer/community administration tool, not a sci-fi control-panel demo.
 
-It should feel like one commercial desktop product, not a collection of unrelated admin pages.
+The UI must therefore avoid:
 
-The UI must prioritize:
-1. readability
-2. hierarchy
-3. consistent geometry
-4. obvious primary actions
-5. calm surfaces instead of visual noise
-6. individual server cards with real server icons
+- giant marketing hero cards inside the authenticated dashboard
+- fake system language such as `CONTROL NODE`, `SERVER PULSE`, `CONTROL OS`, `READY` dashboards
+- excessive gradients, glow, blur or decorative telemetry
+- uppercase microcopy everywhere
+- huge empty cards that exist only to look dramatic
+- nested card-inside-card-inside-card layouts
+- separate visual languages for different modules
 
-Do not add decorative generated imagery. Product identity comes from layout, typography, lighting, icons and motion.
+The target is restrained and professional:
 
-## Module CSS
+- compact application sidebar
+- one slim context bar
+- readable 10–14px working UI text
+- 18–30px page/module titles
+- real content density
+- translucent surfaces only where useful
+- dark neutral palette with a restrained violet accent
+- clear active/disabled/success/warning states
+- consistent forms, spacing and radii
 
-These files may keep component mechanics and module-specific internal structure:
+## Screen architecture
 
-- `public/styles.css`
-- `public/commands-editor.css`
-- `public/role-studio.css`
-- `public/ticket-studio.css`
-- `public/creator-hub.css`
-- `public/voice-studio.css`
-- `public/analytics-studio.css`
-- `public/emoji-picker-popup.css`
+Login, server picker and dashboard are mutually exclusive screens.
 
-They are not allowed to become a second product-wide design system.
+Dashboard structure:
 
-If a change affects page rhythm, cards, layout proportions, typography hierarchy, standard controls, navigation or responsiveness across modules, change `public/raku-prism-v400.css`.
+1. fixed application sidebar with current server
+2. grouped navigation
+3. one slim context bar
+4. one scrollable workspace
+5. module-specific content
 
-## Spacing contract
+There must not be a second global dashboard header above this shell.
 
-Canonical tokens are defined in `:root` inside `raku-prism-v400.css`:
+## Overview architecture
 
-- `--p-gap-xl: 30px`
-- `--p-gap: 22px`
-- `--p-gap-sm: 14px`
-- `--p-pad-xl: 30px`
-- `--p-pad: 22px`
-- `--p-control: 46px`
-- `--p-r-xl: 26px`
-- `--p-r-lg: 19px`
-- `--p-r-md: 14px`
-- `--p-r-sm: 10px`
+The overview is operational, not promotional:
 
-Do not invent a competing spacing scale in a module for outer layout.
+1. compact server heading + 3 summary values
+2. compact module shortcut strip
+3. activity + attention panels
+4. quick actions
 
-## Screen-state contract
+Do not restore the old giant server hero.
 
-Login, server picker and guild dashboard are three mutually exclusive app screens.
+## Module consistency
 
-Visibility is controlled by application state through the `.hidden` class. Design CSS must never override or reinterpret that state.
+Existing module CSS remains responsible for component mechanics only:
 
-`public/index.html` contains the hard visibility contract for:
-- `#loggedOut.hidden`
-- `#serverList.hidden`
-- `#guildDashboard.hidden`
+- `styles.css`
+- `commands-editor.css`
+- `role-studio.css`
+- `ticket-studio.css`
+- `creator-hub.css`
+- `voice-studio.css`
+- `analytics-studio.css`
+- `emoji-picker-popup.css`
 
-## Readability contract
+Outer module appearance and shared layout are owned by `raku-studio-v500.css`.
 
-- Normal interface text: roughly 12–15px.
-- Helper text: roughly 10–11px.
-- 8–9px is only for technical metadata, uppercase labels and counters.
-- Main module titles must be immediately scannable.
-- Text contrast must remain sufficient without backdrop blur support.
-- Primary actions must be identifiable by structure and contrast, not glow alone.
+Commands, Role Studio, Ticket Studio, Creator Alerts, Voice and Analytics must use the same spacing, surfaces, controls and responsive logic.
 
-## Complex module layout
+## Design tokens
 
-Role Studio, Ticket Studio, Creator Hub and Voice Studio share the same desktop logic:
+The canonical scale is in `:root` of `raku-studio-v500.css`:
 
-1. module hero
-2. optional module toolbar/status
-3. left-side list/navigation when required
-4. large primary work area
-5. secondary preview/status area
+- `--r5-gap: 18px`
+- `--r5-gap-sm: 12px`
+- `--r5-pad: 18px`
+- `--r5-control: 42px`
+- `--r5-radius-lg: 16px`
+- `--r5-radius: 12px`
+- `--r5-radius-sm: 9px`
 
-Their proportions should converge instead of drifting independently.
+Do not create another global spacing scale.
 
-## Loading rules
+## Retired architecture
 
-Design CSS is loaded synchronously in `public/index.html`.
+Do not restore or reference:
 
-Load order:
-1. base/component CSS
-2. `public/raku-prism-v400.css` last
+- `raku-ui-v100.js`
+- `raku-prism-v400.css`
+- `raku-glass-v300.css`
+- `raku-design-v200.css`
+- UX-v2 decorators/guides/hints
+- module-unification/readability/wide/fix layers
+- role/ticket version-specific polish stylesheets
 
-There must be exactly one final product-wide visual layer.
+Do not create another `fix`, `polish`, `override`, `wide`, `readability`, `glass`, `prism` or similar global stylesheet.
 
-Never dynamically inject design CSS from JavaScript. `public/save-button-fix.js` remains behavior-only.
+## Rule
 
-## Forbidden pattern
-
-Do not add files named or conceptually equivalent to:
-- `*-fix.css`
-- `*-polish.css`
-- `*-override.css`
-- `*-readability.css`
-- per-module versioned visual patches
-
-If Prism OS needs improvement, edit Prism OS.
-
-## Responsive contract
-
-Shared outer-layout breakpoints live in `raku-prism-v400.css`:
-- 1500px
-- 1240px
-- 1050px
-- 760px
-- 520px
-
-Module CSS may retain internal component breakpoints only where necessary.
+If the app starts looking like a generic AI-generated admin dashboard again, simplify the structure before adding visual effects.
