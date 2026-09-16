@@ -83,16 +83,16 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0261')) throw new Error('v0.26.1 cache key missing');
+          if (!html.includes('v=0262')) throw new Error('v0.26.2 cache key missing');
           for (const file of ['src/creator-social-providers.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
           const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
-          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', "rule.platform === 'youtube'", "rule.platform === 'tiktok' && rule.event === 'upload'", 'allowPing: false']) {
+          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'resolveCheckedPublishChannel', 'publishError', 'logCheckedPublishError', "rule.platform === 'youtube'", "rule.platform === 'tiktok' && rule.event === 'upload'", 'allowPing: false']) {
             if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
           }
           const providers = fs.readFileSync('src/creator-social-providers.js', 'utf8');
-          for (const token of ['syndication.twitter.com', '__NEXT_DATA__', 'web_profile_info', 'parseInstagramRelayHtml', "mode: 'public-syndication'", "mode: 'public-web'"]) {
+          for (const token of ['syndication.twitter.com', '__NEXT_DATA__', 'web_profile_info', 'feed/user/', 'parseInstagramFeedPayload', 'parseInstagramRelayHtml', "mode: 'public-syndication'", "mode: 'public-web'"]) {
             if (!providers.includes(token)) throw new Error(`Keyless provider token missing: ${token}`);
           }
           if (providers.includes('X Provider ist nicht konfiguriert. X_BEARER_TOKEN fehlt.')) throw new Error('X still hard-requires a bearer token');
@@ -102,8 +102,10 @@ jobs:
             if (!socialUi.includes(token)) throw new Error(`Creator Social UI token missing: ${token}`);
           }
           const actions = fs.readFileSync('public/creator-hub-actions.js', 'utf8');
-          if (!actions.includes('aktuellster Inhalt wurde in Discord gepostet')) throw new Error('Creator check publish feedback missing');
-          console.log('Orbit + Creator Social v0.26.1 contract verified');
+          for (const token of ['aktuellster Inhalt wurde in Discord gepostet', 'result.publishError', 'Quelle erfolgreich geprüft']) {
+            if (!actions.includes(token)) throw new Error(`Creator check feedback missing: ${token}`);
+          }
+          console.log('Orbit + Creator Social v0.26.2 contract verified');
           NODE
 
       - name: Install dependencies
