@@ -1,13 +1,13 @@
 const base = require('./creator-social-providers');
+const { fetchInstagramKeyless } = require('./creator-instagram-keyless');
 
 const providerHealth = {
   x: { ok: true, mode: 'x-md', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
-  instagram: { ok: true, mode: 'tls-http', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
+  instagram: { ok: true, mode: 'keyless-web', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
 };
 
 const cache = new Map();
 const inflight = new Map();
-let impitPromise = null;
 
 function nowIso() {
   return new Date().toISOString();
@@ -144,91 +144,6 @@ async function fetchXMdPost(value) {
   });
 }
 
-async function getImpit() {
-  if (!impitPromise) {
-    impitPromise = import('impit')
-      .then(mod => {
-        if (!mod?.Impit) throw new Error('Impit HTTP transport konnte nicht geladen werden.');
-        return new mod.Impit({ browser: 'chrome' });
-      })
-      .catch(error => {
-        impitPromise = null;
-        throw error;
-      });
-  }
-  return impitPromise;
-}
-
-async function impitJson(client, url, headers = {}) {
-  const response = await client.fetch(url, {
-    headers: {
-      Accept: 'application/json, text/plain, */*',
-      'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-      ...headers
-    },
-    redirect: 'follow'
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    const error = new Error(`HTTP ${response.status}${text ? `: ${text.slice(0, 220)}` : ''}`);
-    error.status = response.status;
-    throw error;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`Instagram HTTP transport lieferte kein JSON (${text.slice(0, 120)}).`);
-  }
-}
-
-async function fetchInstagramTls(value) {
-  const source = base.normalizeSocialHandle('instagram', value);
-  return cached('instagram-tls', source, 5 * 60 * 1000, async () => {
-    const client = await getImpit();
-    const profileUrl = `https://www.instagram.com/${encodeURIComponent(source)}/`;
-
-    // Seed the anonymous Instagram session/cookies using the same TLS/header profile.
-    await client.fetch(profileUrl, {
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
-      },
-      redirect: 'follow'
-    }).catch(() => null);
-
-    const headers = {
-      'X-IG-App-ID': optionalEnv('INSTAGRAM_PUBLIC_APP_ID') || '936619743392459',
-      'X-ASBD-ID': optionalEnv('INSTAGRAM_PUBLIC_ASBD_ID') || '198387',
-      'X-Requested-With': 'XMLHttpRequest',
-      Referer: profileUrl
-    };
-
-    const errors = [];
-    try {
-      const feed = await impitJson(client, `https://www.instagram.com/api/v1/feed/user/${encodeURIComponent(source)}/username/?count=6`, headers);
-      const snapshot = base.parseInstagramFeedPayload(feed, source);
-      updateHealth('instagram', true, 'tls-http');
-      return snapshot;
-    } catch (error) {
-      errors.push(`feed: ${compactError(error)}`);
-    }
-
-    try {
-      const profile = await impitJson(client, `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(source)}`, headers);
-      const snapshot = base.parseInstagramProfileInfo(profile, source);
-      updateHealth('instagram', true, 'tls-http');
-      return snapshot;
-    } catch (error) {
-      errors.push(`profile: ${compactError(error)}`);
-    }
-
-    throw new Error(errors.join(' | '));
-  }).catch(error => {
-    updateHealth('instagram', false, 'tls-http', error);
-    throw error;
-  });
-}
-
 async function fetchInstagramScrapeCreators(value) {
   const source = base.normalizeSocialHandle('instagram', value);
   const apiKey = optionalEnv('SCRAPECREATORS_API_KEY');
@@ -268,11 +183,12 @@ async function fetchInstagramPost(value) {
   const relayToken = optionalEnv('RAKU_SOCIAL_RELAY_TOKEN');
   const errors = [];
 
-  // Browserless local path: real Chrome-like TLS/HTTP fingerprint, no browser process.
   try {
-    return await fetchInstagramTls(source);
+    const result = await fetchInstagramKeyless(source);
+    updateHealth('instagram', true, result.mode || 'keyless-web');
+    return result.snapshot;
   } catch (error) {
-    errors.push(`TLS-HTTP: ${compactError(error)}`);
+    errors.push(`Keyless: ${compactError(error)}`);
   }
 
   if (relayUrl) {
@@ -291,7 +207,9 @@ async function fetchInstagramPost(value) {
     }
   }
 
-  throw new Error(`Instagram aktuell nicht abrufbar (${errors.join(' | ').slice(0, 520)}).`);
+  const message = `Instagram aktuell nicht abrufbar (${errors.join(' | ').slice(0, 650)}).`;
+  updateHealth('instagram', false, 'keyless-web', message);
+  throw new Error(message);
 }
 
 async function fetchSocialPost(platform, source) {
@@ -314,7 +232,7 @@ function getSocialProviderHealth() {
     configured: true,
     userCredentialsRequired: false,
     browserRequired: false,
-    tlsImpersonation: true,
+    keylessProfileFeed: true,
     serverProviderConfigured: Boolean(optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
   };
   return health;
