@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { recordAnalyticsEvent } = require('./analytics-store');
 
 const dataDir = path.join(__dirname, '..', 'data');
 const configFile = path.join(dataDir, 'ticket-config.json');
@@ -129,14 +130,25 @@ function listGuildTickets(guildId) {
 function updateTicketRecord(guildId, ticketId, patch) {
   const store = readStateStore();
   const guild = ensureGuildState(store, guildId);
-  if (!guild.tickets[ticketId]) return null;
+  const previous = guild.tickets[ticketId];
+  if (!previous) return null;
   guild.tickets[ticketId] = {
-    ...guild.tickets[ticketId],
+    ...previous,
     ...clone(patch),
     updatedAt: new Date().toISOString()
   };
+  const next = guild.tickets[ticketId];
   writeJson(stateFile, store);
-  return clone(guild.tickets[ticketId]);
+
+  if (!previous.channelId && next.channelId && next.status === 'open') {
+    recordAnalyticsEvent(guildId, 'ticket_open');
+  }
+  if (previous.status === 'open' && next.status === 'closed') {
+    const resolutionMinutes = previous.createdAt ? Math.max(0, (Date.parse(next.closedAt || next.updatedAt) - Date.parse(previous.createdAt)) / 60000) : 0;
+    recordAnalyticsEvent(guildId, 'ticket_close', { resolutionMinutes });
+  }
+
+  return clone(next);
 }
 
 function countOpenTickets(guildId, userId, panelId = null) {

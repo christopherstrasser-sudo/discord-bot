@@ -6,6 +6,7 @@ const {
   PermissionFlagsBits
 } = require('discord.js');
 const { getGuildSettings } = require('./store');
+const { recordAnalyticsEvent } = require('./analytics-store');
 
 const cooldowns = new Map();
 
@@ -179,6 +180,7 @@ async function handleCustomCommand(message) {
   try {
     if (command.delivery === 'reply') await message.reply(payload);
     else await message.channel.send(payload);
+    recordAnalyticsEvent(message.guild.id, 'command', { channelId: message.channelId, command: trigger });
     console.log(`[COMMANDS] ${trigger} used by ${message.author.tag} in ${message.guild.name}`);
   } catch (error) {
     console.warn(`[COMMANDS] Could not answer ${trigger} in ${message.guild.name}: ${error.message}`);

@@ -11,6 +11,8 @@ const { attachCreatorHubApi } = require('./creator-hub-api');
 const { startCreatorRuntime } = require('./creator-runtime');
 const { attachVoiceStudioApi } = require('./voice-studio-api');
 const { attachVoiceStudioRuntime } = require('./voice-studio-runtime');
+const { attachAnalyticsApi } = require('./analytics-api');
+const { attachAnalyticsRuntime } = require('./analytics-runtime');
 const { retryTransient, formatErrorDetails } = require('./startup-utils');
 
 function isDisallowedIntentError(error) {
@@ -26,6 +28,7 @@ function startDashboard() {
   attachTicketStudioApi(app);
   attachCreatorHubApi(app);
   attachVoiceStudioApi(app);
+  attachAnalyticsApi(app);
 
   return new Promise(resolve => {
     const server = app.listen(config.port, '0.0.0.0', () => {
@@ -57,6 +60,7 @@ async function main() {
 
   attachTicketRuntime(client);
   attachVoiceStudioRuntime(client);
+  attachAnalyticsRuntime(client);
 
   try {
     await startDiscordBot();

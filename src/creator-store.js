@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { recordAnalyticsEvent } = require('./analytics-store');
 
 const dataDir = path.join(__dirname, '..', 'data');
 const configFile = path.join(dataDir, 'creator-config.json');
@@ -120,6 +121,7 @@ function appendCreatorHistory(guildId, item) {
   });
   guild.history = guild.history.slice(0, 120);
   writeJson(stateFile, store);
+  if (item?.status === 'sent') recordAnalyticsEvent(guildId, 'creator_event');
   return clone(guild.history[0]);
 }
 
