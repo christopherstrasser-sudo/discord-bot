@@ -1,68 +1,89 @@
-# RAKU Discord Control — Studio UI v5
+# RAKU Discord Control — Orbit UI v6
 
-## Current visual architecture
+## Current architecture
 
-The product-wide UI is rebuilt around two files:
+The product-wide interface is built around exactly two final UI files:
 
-- `public/raku-studio-v500.css` — the only global visual layer
-- `public/raku-workspace-v500.js` — the final dashboard shell and overview renderer
+- `public/raku-orbit-v600.css` — the only product-wide visual layer
+- `public/raku-orbit-v600.js` — the final authenticated shell and overview renderer
 
-They are loaded after all module mechanics and module hooks.
+They load after all feature modules so existing bot functionality remains intact while the visible application structure is owned by Orbit.
 
-## Product direction
+## Why Orbit exists
 
-This is a practical streamer/community administration tool, not a sci-fi control-panel demo.
+Multiple earlier generations kept returning to the same admin-dashboard silhouette: left sidebar, top context bar, rectangular cards and a conventional content grid. That direction is retired.
 
-The UI must therefore avoid:
+Orbit must look structurally different before any color, blur or radius is considered.
 
-- giant marketing hero cards inside the authenticated dashboard
-- fake system language such as `CONTROL NODE`, `SERVER PULSE`, `CONTROL OS`, `READY` dashboards
-- excessive gradients, glow, blur or decorative telemetry
-- uppercase microcopy everywhere
-- huge empty cards that exist only to look dramatic
-- nested card-inside-card-inside-card layouts
-- separate visual languages for different modules
+## Dashboard silhouette
 
-The target is restrained and professional:
+The authenticated dashboard uses a spatial workspace:
 
-- compact application sidebar
-- one slim context bar
-- readable 10–14px working UI text
-- 18–30px page/module titles
-- real content density
-- translucent surfaces only where useful
-- dark neutral palette with a restrained violet accent
-- clear active/disabled/success/warning states
-- consistent forms, spacing and radii
+1. no fixed application sidebar
+2. a floating server capsule at the top left
+3. a small floating page capsule in the center
+4. a floating action capsule at the top right
+5. one large free workspace canvas
+6. a floating bottom navigation dock
+7. the active dock item expands to show its label
+8. inactive items stay compact and expose state through a small status point
 
-## Screen architecture
+Legacy `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` hooks may remain only because existing functional code expects them. They must not visually recreate the old sidebar shell.
 
-Login, server picker and dashboard are mutually exclusive screens.
+## Overview
 
-Dashboard structure:
+The overview is not a hero dashboard and not a KPI wall.
 
-1. fixed application sidebar with current server
-2. grouped navigation
-3. one slim context bar
-4. one scrollable workspace
-5. module-specific content
+Its central interaction is the **Module Constellation**:
 
-There must not be a second global dashboard header above this shell.
+- current Discord server in the center
+- clickable module nodes arranged around it
+- subtle orbital geometry used as navigation context
+- Activity, Attention and Quick Actions live in separate asymmetric glass islands
+- summary numbers stay compact and secondary
 
-## Overview architecture
+The overview should feel like a control surface, not a template marketplace dashboard.
 
-The overview is operational, not promotional:
+## Login
 
-1. compact server heading + 3 summary values
-2. compact module shortcut strip
-3. activity + attention panels
-4. quick actions
+Login is a centered authentication portal, not a left-text/right-console split.
 
-Do not restore the old giant server hero.
+It uses:
 
-## Module consistency
+- one central glass sign-in surface
+- subtle ambient gradient light
+- a few floating feature chips around it
+- no fake telemetry, fake terminals or READY boards
 
-Existing module CSS remains responsible for component mechanics only:
+## Server picker
+
+The server picker is an asymmetric workspace gallery.
+
+- real Discord server icons remain visible
+- cards intentionally use different spans on desktop
+- the page should not look like a repeated equal-card admin grid
+- search and filtering remain simple and readable
+
+## Visual direction
+
+Orbit may use more glass than Studio v5, but glass must still support hierarchy.
+
+Target qualities:
+
+- dark spatial background
+- translucent floating surfaces
+- violet as the primary accent and cyan only as a secondary signal
+- high text contrast
+- subtle blur and depth
+- restrained glow
+- readable working text (normally 10–15px)
+- animated motion only where it reinforces floating/spatial behavior
+- no generated images
+- no fake sci-fi system copy
+
+## Feature modules
+
+Existing module CSS keeps internal mechanics only:
 
 - `styles.css`
 - `commands-editor.css`
@@ -73,38 +94,32 @@ Existing module CSS remains responsible for component mechanics only:
 - `analytics-studio.css`
 - `emoji-picker-popup.css`
 
-Outer module appearance and shared layout are owned by `raku-studio-v500.css`.
+Orbit owns shared outer surfaces, form styling, spacing, glass treatment and responsive behavior.
 
-Commands, Role Studio, Ticket Studio, Creator Alerts, Voice and Analytics must use the same spacing, surfaces, controls and responsive logic.
+Internal editor sidebars or preview columns are allowed when the feature itself requires them. They are not application navigation.
 
-## Design tokens
+## Screen contract
 
-The canonical scale is in `:root` of `raku-studio-v500.css`:
-
-- `--r5-gap: 18px`
-- `--r5-gap-sm: 12px`
-- `--r5-pad: 18px`
-- `--r5-control: 42px`
-- `--r5-radius-lg: 16px`
-- `--r5-radius: 12px`
-- `--r5-radius-sm: 9px`
-
-Do not create another global spacing scale.
+Login, server picker and guild dashboard are mutually exclusive app screens. Visual CSS must never override the `.hidden` state.
 
 ## Retired architecture
 
 Do not restore or reference:
 
-- `raku-ui-v100.js`
+- `raku-studio-v500.css`
+- `raku-workspace-v500.js`
+- the Studio v5 fixed application sidebar
+- the Studio v5 slim context bar layout
 - `raku-prism-v400.css`
+- `raku-ui-v100.js`
 - `raku-glass-v300.css`
 - `raku-design-v200.css`
 - UX-v2 decorators/guides/hints
 - module-unification/readability/wide/fix layers
 - role/ticket version-specific polish stylesheets
 
-Do not create another `fix`, `polish`, `override`, `wide`, `readability`, `glass`, `prism` or similar global stylesheet.
+Do not add another global fix/polish/override stylesheet. Shared visual changes belong directly in `raku-orbit-v600.css`.
 
 ## Rule
 
-If the app starts looking like a generic AI-generated admin dashboard again, simplify the structure before adding visual effects.
+If a proposed redesign can be achieved by merely moving the old sidebar or recoloring the old cards, it is not a new design. Preserve the Orbit silhouette first: floating capsules, free canvas, bottom dock and constellation-based overview.
