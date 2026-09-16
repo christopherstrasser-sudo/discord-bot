@@ -83,7 +83,7 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0250')) throw new Error('v0.25 cache key missing');
+          if (!html.includes('v=0260')) throw new Error('v0.26 cache key missing');
           for (const file of ['src/creator-social-providers.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
@@ -91,11 +91,17 @@ jobs:
           for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])"]) {
             if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
           }
+          const providers = fs.readFileSync('src/creator-social-providers.js', 'utf8');
+          for (const token of ['syndication.twitter.com', '__NEXT_DATA__', 'web_profile_info', 'parseInstagramRelayHtml', "mode: 'public-syndication'", "mode: 'public-web'"]) {
+            if (!providers.includes(token)) throw new Error(`Keyless provider token missing: ${token}`);
+          }
+          if (providers.includes('X Provider ist nicht konfiguriert. X_BEARER_TOKEN fehlt.')) throw new Error('X still hard-requires a bearer token');
+          if (providers.includes('INSTAGRAM_GRAPH_ACCESS_TOKEN und INSTAGRAM_GRAPH_IG_USER_ID fehlen.')) throw new Error('Instagram still hard-requires Graph credentials');
           const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
-          for (const token of ['instagram', 'bluesky', "platform === 'x'", 'appendProviderCards']) {
+          for (const token of ['PUBLIC POST INDEX', 'PUBLIC SYNDICATION', 'kein API-Key nötig', 'appendProviderCards']) {
             if (!socialUi.includes(token)) throw new Error(`Creator Social UI token missing: ${token}`);
           }
-          console.log('Orbit + Creator Social v0.25 contract verified');
+          console.log('Orbit + keyless Creator Social v0.26 contract verified');
           NODE
 
       - name: Install dependencies
