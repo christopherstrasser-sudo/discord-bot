@@ -2,9 +2,9 @@
 
 ## Current release
 
-- Version: **0.22.0**
+- Version: **0.23.0**
 - Branch: `main`
-- UI generation: **Orbit UI v6.1**
+- UI generation: **Orbit UI v6.2**
 - Global visual layer: `public/raku-orbit-v610.css`
 - Final dashboard shell renderer: `public/raku-orbit-v600.js`
 
@@ -18,33 +18,69 @@ The authenticated application uses the Orbit spatial layout:
 - floating page capsule top-center
 - floating action capsule top-right
 - large free content canvas
-- floating bottom navigation dock
-- active dock item expands to show its label
+- **floating labeled top command rail** below the capsules
+- unique icon + visible text label for every module
 - Module Constellation overview with the current Discord server in the center
-- Activity, Attention and Quick Actions as asymmetric glass islands
+- Activity, Health and Quick Actions as asymmetric glass islands
 
-This silhouette is intentional and must survive future polish.
+The old bottom dock layout is explicitly retired. Do not move primary navigation back to the bottom.
 
-## v0.22.0 production polish
+## v0.23.0 Orbit v6.2
 
-The v6.1 pass keeps the Orbit concept but upgrades finish quality across the full product:
+This pass upgrades navigation clarity and the overview's visual identity:
 
-- Manrope display/navigation typography + Inter working UI typography
-- stronger, more consistent glass material
-- unified controls/forms/focus states
-- refined dock with hover labels
-- improved constellation depth and subtle motion
-- corrected asymmetric server gallery without empty grid holes
-- responsive anti-overflow rules for all complex modules
-- flexible/wrapping Role, Ticket and Creator toolbars
-- progressive collapse for Commands editor
-- Orbit-styled emoji modal
-- compatibility CSS variables for legacy module mechanics
+- top command rail replaces the bottom dock
+- every module remains visibly labeled on desktop
+- every module has its own SVG symbol instead of reusing ambiguous generic icons
+- narrow layouts horizontally scroll the labeled command rail
+- eight modules are represented directly in the Orbit Navigator
+- connector paths run from the server core to every module node
+- hovered/focused node brightens its connector
+- three orbit rings, subtle beacons and server activity signal add depth
+- narrow screens convert constellation nodes into a clean grid rather than overlapping
+- editor sticky positions are offset below the top command rail
+- asset cache version bumped to `0230`
+
+## Visual direction
+
+Orbit should feel premium and modern:
+
+- deep dark spatial background
+- real translucent glass with restrained edge highlights
+- violet primary accent and cyan secondary signal accent
+- strong readable contrast
+- Manrope/Inter typography hierarchy
+- subtle motion where it supports the spatial concept
+- real Discord server icons
+- no generated images
+- no generic AI-admin-template structure
+
+## Runtime architecture
+
+`public/raku-orbit-v600.js` loads after Role/Ticket/Creator/Voice/Analytics hooks and owns the final authenticated shell.
+
+Legacy hooks such as `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` remain only for functional compatibility. They must not visually become the old sidebar layout again.
+
+Feature renderers still own functionality. `public/raku-orbit-v610.css` owns shared product appearance, outer module layout, responsive rules and design tokens.
+
+## Known layout rules to preserve
+
+- top command rail remains beneath the three floating capsules
+- command rail items keep visible labels on desktop
+- all module icons stay visually distinct
+- desktop sticky Role/Ticket/Creator/Voice columns sit below the top rail
+- Server gallery uses a five-card 7/5 + 4/4/4 rhythm with `grid-auto-flow:dense`
+- all dynamic grid/flex children remain shrinkable with `min-width:0`
+- Role/Ticket/Creator side lists become non-sticky before narrow layouts collide
+- Commands progressively collapses from three columns to two to one
+- Orbit Navigator collapses into a normal module grid on narrow screens
+- Login, server picker and guild dashboard remain mutually exclusive screens; never override `.hidden`
 
 ## Retired files/concepts
 
 Do not recreate or reference:
 
+- Orbit bottom navigation dock layout
 - `public/raku-orbit-v600.css`
 - `public/raku-studio-v500.css`
 - `public/raku-workspace-v500.js`
@@ -60,45 +96,14 @@ Do not recreate or reference:
 
 Avoid fake interface language such as CONTROL NODE, SERVER PULSE, CONTROL OS, fake READY boards or decorative fake telemetry.
 
-## Visual direction
-
-Orbit v6.1 should feel premium and modern rather than basic:
-
-- deep dark spatial background
-- real translucent glass with restrained edge highlights
-- violet primary accent, cyan secondary signal accent
-- strong readable contrast
-- clean Manrope/Inter typography hierarchy
-- subtle motion only where it supports the spatial concept
-- real Discord server icons
-- no generated images
-- no generic AI-admin-template structure
-
-## Runtime architecture
-
-`public/raku-orbit-v600.js` loads after Role/Ticket/Creator/Voice/Analytics hooks and owns the final authenticated shell.
-
-Legacy hooks such as `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` remain only for functional compatibility. They must not visually become the old sidebar layout again.
-
-Feature renderers still own functionality. `public/raku-orbit-v610.css` owns shared product appearance, outer module layout, responsive rules and design tokens.
-
-## Known layout rules to preserve
-
-- Server gallery uses a five-card 7/5 + 4/4/4 rhythm with `grid-auto-flow:dense`; do not restore the old six-card pattern that left empty columns.
-- All dynamic grid/flex children must be shrinkable (`min-width:0`) where long names/messages can appear.
-- Role/Ticket/Creator side lists become non-sticky before narrow layouts collide.
-- Role and Ticket command bars wrap instead of forcing fixed columns.
-- Commands editor progressively collapses from three columns to two to one.
-- Preview columns lose sticky positioning before they can overlap the floating header.
-- Login, server picker and guild dashboard remain mutually exclusive screens; never override `.hidden`.
-
 ## Priorities
 
 1. Preserve the genuinely different Orbit architecture.
-2. Keep every feature functional.
-3. Fix layout/overflow bugs at the canonical source, not with new override layers.
-4. Readability before visual effects.
-5. Glass should add material/depth without washing out text.
-6. Do not add a second product-wide stylesheet.
+2. Keep primary navigation obvious through label + icon.
+3. Keep every feature functional.
+4. Fix layout/overflow bugs at the canonical source, not with new override layers.
+5. Readability before visual effects.
+6. Glass should add material/depth without washing out text.
+7. Do not add a second product-wide stylesheet.
 
 See `DESIGN.md` for the detailed visual contract.
