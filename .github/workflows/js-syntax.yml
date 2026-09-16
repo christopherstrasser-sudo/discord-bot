@@ -83,9 +83,9 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0270')) throw new Error('v0.27.0 cache key missing');
+          if (!html.includes('v=0270')) throw new Error('v0.27 UI cache key missing');
 
-          for (const file of ['src/creator-social-providers.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
+          for (const file of ['src/creator-social-providers.js', 'src/creator-instagram-keyless.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
           if (fs.existsSync('src/creator-social-browser.js')) throw new Error('Local browser social fallback must stay retired');
@@ -100,13 +100,19 @@ jobs:
           if (!runtime.includes("require('./creator-social-provider-router')")) throw new Error('Creator social runtime must use provider router');
 
           const router = fs.readFileSync('src/creator-social-provider-router.js', 'utf8');
-          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "import('impit')", "browser: 'chrome'", 'parseInstagramFeedPayload', 'tlsImpersonation: true', 'SCRAPECREATORS_API_KEY', 'RAKU_SOCIAL_RELAY_URL']) {
+          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-keyless')", 'SCRAPECREATORS_API_KEY', 'RAKU_SOCIAL_RELAY_URL']) {
             if (!router.includes(token)) throw new Error(`Provider router token missing: ${token}`);
           }
           if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use a local browser');
 
+          const instagram = fs.readFileSync('src/creator-instagram-keyless.js', 'utf8');
+          for (const token of ["import('impit')", "browser: 'chrome'", '/web/search/topsearch/', '/api/v1/feed/user/', '7950326061742207', '/graphql/query/', 'parseGraphqlTimeline']) {
+            if (!instagram.includes(token)) throw new Error(`Instagram keyless resolver token missing: ${token}`);
+          }
+          if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(instagram)) throw new Error('Instagram keyless resolver must not use a local browser');
+
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          if (pkg.version !== '0.27.0') throw new Error(`Expected package version 0.27.0, got ${pkg.version}`);
+          if (pkg.version !== '0.27.1') throw new Error(`Expected package version 0.27.1, got ${pkg.version}`);
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
 
           const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
@@ -118,7 +124,7 @@ jobs:
           for (const token of ['aktuellster Inhalt wurde in Discord gepostet', 'result.publishError', 'Quelle erfolgreich geprüft']) {
             if (!actions.includes(token)) throw new Error(`Creator check feedback missing: ${token}`);
           }
-          console.log('Orbit + Creator Social v0.27.0 contract verified');
+          console.log('Orbit + Creator Social v0.27.1 contract verified');
           NODE
 
       - name: Install dependencies
@@ -126,7 +132,7 @@ jobs:
 
       - name: Load creator social modules
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); console.log('Creator social modules loaded')"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); console.log('Creator social modules loaded')"
           node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
 
       - name: Run automated tests
