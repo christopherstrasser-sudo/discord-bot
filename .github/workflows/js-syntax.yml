@@ -83,12 +83,12 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0260')) throw new Error('v0.26 cache key missing');
+          if (!html.includes('v=0261')) throw new Error('v0.26.1 cache key missing');
           for (const file of ['src/creator-social-providers.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
           const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
-          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])"]) {
+          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', "rule.platform === 'youtube'", "rule.platform === 'tiktok' && rule.event === 'upload'", 'allowPing: false']) {
             if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
           }
           const providers = fs.readFileSync('src/creator-social-providers.js', 'utf8');
@@ -101,7 +101,9 @@ jobs:
           for (const token of ['PUBLIC POST INDEX', 'PUBLIC SYNDICATION', 'kein API-Key nötig', 'appendProviderCards']) {
             if (!socialUi.includes(token)) throw new Error(`Creator Social UI token missing: ${token}`);
           }
-          console.log('Orbit + keyless Creator Social v0.26 contract verified');
+          const actions = fs.readFileSync('public/creator-hub-actions.js', 'utf8');
+          if (!actions.includes('aktuellster Inhalt wurde in Discord gepostet')) throw new Error('Creator check publish feedback missing');
+          console.log('Orbit + Creator Social v0.26.1 contract verified');
           NODE
 
       - name: Install dependencies
