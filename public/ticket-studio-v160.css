@@ -1,0 +1,858 @@
+/* RAKU Ticket Studio v0.16.0 polish
+   Presentation only. Keeps Ticket Studio behavior untouched while aligning it with the v0.15 Role Studio quality bar. */
+
+.raku-visual-v140 .ticket-shell {
+  min-width: 0;
+}
+
+/* Header */
+.raku-visual-v140 .ticket-head {
+  min-height: 116px;
+  display: grid !important;
+  grid-template-columns: minmax(320px,1fr) auto !important;
+  align-items: center !important;
+  gap: 20px !important;
+  margin-bottom: 20px !important;
+  padding: 20px 22px !important;
+  border: 1px solid var(--r142-line);
+  border-radius: var(--r142-radius);
+  background: var(--r142-surface);
+  box-shadow: var(--r142-shadow);
+}
+
+.raku-visual-v140 .ticket-head > div:first-child > span {
+  color: #8290a3 !important;
+  font-size: 10px !important;
+  letter-spacing: .14em !important;
+}
+
+.raku-visual-v140 .ticket-head h2 {
+  margin: 6px 0 5px !important;
+  font-size: 28px !important;
+  line-height: 1 !important;
+  letter-spacing: -.035em !important;
+}
+
+.raku-visual-v140 .ticket-head p {
+  max-width: 720px;
+  color: var(--r142-copy) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child {
+  display: grid !important;
+  grid-template-columns: repeat(2,minmax(92px,auto)) minmax(138px,auto) !important;
+  gap: 8px !important;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child > span,
+.raku-visual-v140 .ticket-head > div:last-child > label {
+  min-height: 58px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: 10px;
+  background: rgba(7,11,17,.72) !important;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child > span {
+  min-width: 96px !important;
+  padding: 10px 13px !important;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child > span b {
+  font-size: 17px !important;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child > label {
+  height: auto !important;
+  padding: 0 13px !important;
+  justify-content: center;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child > label:hover {
+  border-color: rgba(154,168,192,.30) !important;
+  background: rgba(255,255,255,.025) !important;
+}
+
+.raku-visual-v140 .ticket-head > div:last-child > label b {
+  font-size: 11px !important;
+  letter-spacing: .06em;
+}
+
+/* Studio frame */
+.raku-visual-v140 .ticket-body {
+  grid-template-columns: 258px minmax(0,1fr) !important;
+  gap: 18px !important;
+}
+
+.raku-visual-v140 .ticket-panels {
+  top: 98px !important;
+  min-height: 620px !important;
+  padding: 9px !important;
+  align-self: start;
+  overflow: hidden;
+}
+
+.raku-visual-v140 .ticket-panels > header {
+  min-height: 48px !important;
+  height: auto !important;
+  padding: 0 11px 7px !important;
+  border-bottom-color: var(--r142-line) !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-panels > header b {
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-panel {
+  min-height: 72px !important;
+  grid-template-columns: 36px minmax(0,1fr) 10px !important;
+  gap: 11px !important;
+  margin-top: 6px !important;
+  padding: 11px 12px !important;
+  border-left: 0 !important;
+  border-radius: 9px;
+  box-shadow: inset 3px 0 transparent;
+}
+
+.raku-visual-v140 .ticket-panel:hover {
+  background: rgba(255,255,255,.025) !important;
+}
+
+.raku-visual-v140 .ticket-panel.on {
+  background: linear-gradient(90deg, rgba(113,128,255,.14), rgba(113,128,255,.035)) !important;
+  box-shadow: inset 3px 0 #7180ff;
+}
+
+.raku-visual-v140 .ticket-panel > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(154,168,192,.09);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-panel > div b {
+  font-size: 13px !important;
+}
+
+.raku-visual-v140 .ticket-panel > div small {
+  margin-top: 4px !important;
+  color: var(--r142-muted) !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-new {
+  min-height: 42px !important;
+  height: auto !important;
+  margin-top: 10px !important;
+  border-color: rgba(154,168,192,.20) !important;
+  border-radius: 9px;
+  background: rgba(255,255,255,.012) !important;
+  color: var(--r142-copy) !important;
+  font-size: 11px;
+}
+
+.raku-visual-v140 .ticket-new:hover {
+  border-color: rgba(113,128,255,.52) !important;
+  background: rgba(113,128,255,.055) !important;
+  color: #fff !important;
+}
+
+.raku-visual-v140 .ticket-body > main {
+  min-width: 0;
+  container-type: inline-size;
+  container-name: ticket-stage;
+}
+
+/* Panel command bar */
+.raku-visual-v140 .ticket-panelbar {
+  min-height: 82px !important;
+  grid-template-columns: 180px minmax(280px,1fr) auto !important;
+  gap: 14px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 18px !important;
+  align-items: center !important;
+}
+
+.raku-visual-v140 .ticket-live {
+  min-width: 0 !important;
+}
+
+.raku-visual-v140 .ticket-live > i {
+  width: 9px !important;
+  height: 9px !important;
+  box-shadow: 0 0 0 5px rgba(112,125,146,.05);
+}
+
+.raku-visual-v140 .ticket-live.on > i {
+  box-shadow: 0 0 0 5px rgba(72,217,162,.08), 0 0 18px rgba(72,217,162,.14) !important;
+}
+
+.raku-visual-v140 .ticket-live span b {
+  font-size: 11px !important;
+}
+
+.raku-visual-v140 .ticket-live span small {
+  font-size: 10px !important;
+  line-height: 1.35;
+}
+
+.raku-visual-v140 .ticket-panelbar > label {
+  grid-template-columns: auto minmax(180px,1fr) !important;
+  gap: 9px !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-panelbar > label input {
+  height: 42px !important;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+}
+
+.raku-visual-v140 .ticket-panelbar > button {
+  min-height: 42px !important;
+  height: auto !important;
+  padding: 0 13px !important;
+  font-size: 11px;
+}
+
+/* Editor composition: one large work area + live preview */
+.raku-visual-v140 .ticket-grid {
+  grid-template-columns: minmax(0,1.42fr) minmax(330px,.78fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+.raku-visual-v140 .ticket-left {
+  grid-column: 1;
+  grid-row: 1;
+  gap: 14px !important;
+}
+
+.raku-visual-v140 .ticket-center {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.raku-visual-v140 .ticket-right {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 0;
+}
+
+.raku-visual-v140 .ticket-left > section,
+.raku-visual-v140 .ticket-workflows,
+.raku-visual-v140 .ticket-sticky {
+  overflow: hidden;
+  border-color: var(--r142-line) !important;
+}
+
+.raku-visual-v140 .ticket-left > section {
+  padding: 16px !important;
+}
+
+.raku-visual-v140 .ticket-left > section > header,
+.raku-visual-v140 .ticket-workflows > header,
+.raku-visual-v140 .ticket-form-head,
+.raku-visual-v140 .ticket-editor-title,
+.raku-visual-v140 .ticket-preview-title,
+.raku-visual-v140 .ticket-readiness > header {
+  gap: 12px !important;
+}
+
+.raku-visual-v140 .ticket-left > section > header > span,
+.raku-visual-v140 .ticket-workflows > header > div:first-child > span,
+.raku-visual-v140 .ticket-form-head > div > span,
+.raku-visual-v140 .ticket-editor-title > div > span,
+.raku-visual-v140 .ticket-readiness > header > span,
+.raku-visual-v140 .ticket-preview-title > span {
+  color: #8290a3 !important;
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-left > section > header > b,
+.raku-visual-v140 .ticket-workflows > header > div:first-child > b,
+.raku-visual-v140 .ticket-form-head > div > b {
+  font-size: 13px !important;
+}
+
+.raku-visual-v140 .ticket-left > section > header > label {
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--r142-line);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+  font-size: 10px !important;
+}
+
+/* Forms */
+.raku-visual-v140 .ticket-form-grid {
+  gap: 12px !important;
+  margin-top: 14px !important;
+}
+
+.raku-visual-v140 .ticket-form-grid > label {
+  gap: 7px !important;
+  color: #8290a3 !important;
+  font-size: 9px !important;
+  letter-spacing: .09em !important;
+}
+
+.raku-visual-v140 .ticket-form-grid input,
+.raku-visual-v140 .ticket-form-grid select {
+  height: 42px !important;
+  padding: 0 11px !important;
+  font-size: 13px !important;
+}
+
+.raku-visual-v140 .ticket-form-grid textarea {
+  min-height: 112px !important;
+  padding: 11px 12px !important;
+  font-size: 13px !important;
+  line-height: 1.45;
+}
+
+.raku-visual-v140 .ticket-required {
+  min-height: 42px !important;
+  padding: 0 10px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: 9px;
+  background: rgba(255,255,255,.012) !important;
+  font-size: 11px !important;
+}
+
+/* Support roles */
+.raku-visual-v140 .ticket-roles {
+  gap: 7px !important;
+  max-height: 210px !important;
+  margin-top: 14px !important;
+  padding-right: 3px;
+}
+
+.raku-visual-v140 .ticket-role {
+  min-height: 36px;
+  padding: 7px 10px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: 8px;
+  background: rgba(255,255,255,.012) !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-role:hover {
+  border-color: rgba(154,168,192,.30) !important;
+  background: rgba(255,255,255,.025) !important;
+}
+
+.raku-visual-v140 .ticket-role.on,
+.raku-visual-v140 .ticket-role:has(input:checked) {
+  border-color: rgba(113,128,255,.40) !important;
+  background: rgba(113,128,255,.10) !important;
+}
+
+/* Workflows */
+.raku-visual-v140 .ticket-workflows > header {
+  min-height: 70px;
+  padding: 14px 15px !important;
+  align-items: center !important;
+  border-bottom-color: var(--r142-line) !important;
+  background: rgba(255,255,255,.012);
+}
+
+.raku-visual-v140 .ticket-workflows > header > div:last-child {
+  gap: 6px !important;
+}
+
+.raku-visual-v140 .ticket-workflows > header button,
+.raku-visual-v140 .ticket-form-head button,
+.raku-visual-v140 .ticket-editor-title > button,
+.raku-visual-v140 .ticket-q > div:first-child button {
+  min-height: 34px;
+  border-color: var(--r142-line) !important;
+  border-radius: 8px;
+  background: rgba(255,255,255,.014) !important;
+  color: var(--r142-copy) !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-workflows > header button {
+  height: 34px !important;
+  padding: 0 10px !important;
+}
+
+.raku-visual-v140 .ticket-workflows > header button:hover,
+.raku-visual-v140 .ticket-form-head button:hover {
+  border-color: rgba(113,128,255,.45) !important;
+  background: rgba(113,128,255,.07) !important;
+}
+
+.raku-visual-v140 .ticket-type-wrap {
+  grid-template-columns: 210px minmax(0,1fr) !important;
+  min-height: 560px !important;
+}
+
+.raku-visual-v140 .ticket-type-wrap > aside {
+  padding: 9px !important;
+  border-right-color: var(--r142-line) !important;
+  background: rgba(6,10,16,.58) !important;
+}
+
+.raku-visual-v140 .ticket-type {
+  min-height: 66px;
+  grid-template-columns: 36px minmax(0,1fr) !important;
+  gap: 10px !important;
+  padding: 10px 11px !important;
+  border-radius: 9px;
+}
+
+.raku-visual-v140 .ticket-type:hover {
+  background: rgba(255,255,255,.025) !important;
+}
+
+.raku-visual-v140 .ticket-type.on {
+  background: linear-gradient(90deg, rgba(113,128,255,.13), rgba(113,128,255,.035)) !important;
+  box-shadow: inset 3px 0 #7180ff;
+}
+
+.raku-visual-v140 .ticket-type > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(154,168,192,.09);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+  font-size: 18px !important;
+}
+
+.raku-visual-v140 .ticket-type b {
+  font-size: 12px !important;
+}
+
+.raku-visual-v140 .ticket-type small {
+  margin-top: 4px !important;
+  color: var(--r142-muted) !important;
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-type-editor {
+  padding: 17px !important;
+}
+
+.raku-visual-v140 .ticket-editor-title {
+  min-height: 44px;
+  align-items: center !important;
+  margin-bottom: 14px !important;
+}
+
+.raku-visual-v140 .ticket-editor-title h3 {
+  margin-top: 5px !important;
+  font-size: 18px !important;
+}
+
+.raku-visual-v140 .ticket-editor-title > button {
+  height: 34px !important;
+  padding: 0 10px !important;
+  color: #f18b99 !important;
+}
+
+.raku-visual-v140 .ticket-form-head {
+  margin-top: 22px !important;
+  padding-top: 16px !important;
+  border-top-color: var(--r142-line) !important;
+  align-items: center !important;
+}
+
+.raku-visual-v140 .ticket-form-head > button {
+  height: 34px !important;
+  padding: 0 10px !important;
+}
+
+/* Question cards */
+.raku-visual-v140 .ticket-qs {
+  gap: 9px !important;
+  margin-top: 10px !important;
+}
+
+.raku-visual-v140 .ticket-q {
+  grid-template-columns: minmax(0,1fr) 130px !important;
+  gap: 9px !important;
+  padding: 12px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: 10px;
+  background: rgba(9,14,21,.78) !important;
+}
+
+.raku-visual-v140 .ticket-q:hover {
+  border-color: rgba(154,168,192,.24) !important;
+}
+
+.raku-visual-v140 .ticket-q > div:first-child {
+  margin-bottom: 2px !important;
+}
+
+.raku-visual-v140 .ticket-q > div:first-child > b {
+  color: #8290a3 !important;
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-q > div:first-child button {
+  width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+}
+
+.raku-visual-v140 .ticket-q > label {
+  gap: 6px !important;
+  color: #8290a3 !important;
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-q input,
+.raku-visual-v140 .ticket-q select {
+  height: 38px !important;
+  padding: 0 9px !important;
+  font-size: 12px !important;
+}
+
+.raku-visual-v140 .ticket-noq,
+.raku-visual-v140 .ticket-empty {
+  min-height: 150px !important;
+  border-color: rgba(154,168,192,.18) !important;
+  border-radius: 10px;
+  background: rgba(255,255,255,.008);
+  color: var(--r142-muted) !important;
+  font-size: 11px !important;
+}
+
+.raku-visual-v140 .ticket-empty {
+  min-height: 420px !important;
+  margin: 16px !important;
+}
+
+/* Preview / publish */
+.raku-visual-v140 .ticket-sticky {
+  top: 98px !important;
+  padding: 15px !important;
+}
+
+.raku-visual-v140 .ticket-preview-title {
+  align-items: center !important;
+  margin-bottom: 11px !important;
+}
+
+.raku-visual-v140 .ticket-preview-title > b {
+  font-size: 11px !important;
+}
+
+.raku-visual-v140 .ticket-preview {
+  overflow: hidden;
+  border-color: #3f4147 !important;
+  border-radius: 10px;
+  box-shadow: 0 14px 30px rgba(0,0,0,.16);
+}
+
+.raku-visual-v140 .ticket-preview-bar {
+  min-height: 38px !important;
+  height: auto !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-msg {
+  grid-template-columns: 40px minmax(0,1fr) !important;
+  gap: 10px !important;
+  padding: 15px 12px 17px !important;
+}
+
+.raku-visual-v140 .ticket-avatar {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+.raku-visual-v140 .ticket-embed {
+  margin-top: 8px !important;
+  padding: 11px !important;
+}
+
+.raku-visual-v140 .ticket-embed > p {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+.raku-visual-v140 .ticket-flow {
+  margin-top: 12px !important;
+  padding: 11px 8px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: 9px;
+  background: rgba(7,11,17,.72) !important;
+}
+
+.raku-visual-v140 .ticket-flow span {
+  font-size: 8px !important;
+}
+
+.raku-visual-v140 .ticket-readiness {
+  margin-top: 12px !important;
+  padding-top: 12px !important;
+  border-top-color: var(--r142-line) !important;
+}
+
+.raku-visual-v140 .ticket-readiness > header {
+  margin-bottom: 7px !important;
+}
+
+.raku-visual-v140 .ticket-readiness > header > b {
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-check {
+  min-height: 38px;
+  grid-template-columns: 22px minmax(0,1fr) !important;
+  gap: 8px !important;
+  padding: 7px 2px !important;
+  border-top-color: rgba(154,168,192,.08) !important;
+  color: var(--r142-muted) !important;
+  font-size: 10px !important;
+}
+
+.raku-visual-v140 .ticket-check i {
+  width: 19px !important;
+  height: 19px !important;
+}
+
+.raku-visual-v140 .ticket-publish {
+  margin-top: 12px !important;
+  padding: 14px !important;
+  border-color: rgba(113,128,255,.22) !important;
+  border-radius: 10px;
+  background: linear-gradient(150deg, rgba(113,128,255,.08), rgba(113,128,255,.02)) !important;
+}
+
+.raku-visual-v140 .ticket-publish.on {
+  border-color: rgba(72,217,162,.26) !important;
+  background: linear-gradient(150deg, rgba(72,217,162,.075), rgba(72,217,162,.018)) !important;
+}
+
+.raku-visual-v140 .ticket-publish > b {
+  font-size: 13px !important;
+}
+
+.raku-visual-v140 .ticket-publish > small {
+  margin-top: 4px !important;
+  font-size: 10px !important;
+  line-height: 1.4;
+}
+
+.raku-visual-v140 .ticket-publish > button {
+  min-height: 46px !important;
+  height: auto !important;
+  margin-top: 11px !important;
+  border-radius: 9px;
+  font-size: 12px !important;
+}
+
+.raku-visual-v140 .ticket-publish > div {
+  margin-top: 9px !important;
+}
+
+.raku-visual-v140 .ticket-publish a,
+.raku-visual-v140 .ticket-publish > div button {
+  font-size: 10px !important;
+}
+
+/* Empty onboarding */
+.raku-visual-v140 .ticket-onboard {
+  min-height: 620px !important;
+  padding: 48px 32px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: var(--r142-radius);
+  background: var(--r142-surface) !important;
+  box-shadow: var(--r142-shadow);
+}
+
+.raku-visual-v140 .ticket-onboard > span {
+  font-size: 9px !important;
+}
+
+.raku-visual-v140 .ticket-onboard h3 {
+  margin: 8px 0 7px !important;
+  font-size: 28px !important;
+}
+
+.raku-visual-v140 .ticket-onboard p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.raku-visual-v140 .ticket-onboard button {
+  width: 210px !important;
+  min-height: 48px;
+  padding: 12px 16px !important;
+  border-color: var(--r142-line) !important;
+  border-radius: 9px;
+  background: rgba(255,255,255,.018) !important;
+  font-size: 11px;
+}
+
+.raku-visual-v140 .ticket-onboard button:hover {
+  border-color: rgba(113,128,255,.45) !important;
+  background: rgba(113,128,255,.07) !important;
+}
+
+/* Container-aware responsiveness */
+@container ticket-stage (max-width: 1080px) {
+  .raku-visual-v140 .ticket-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .raku-visual-v140 .ticket-left,
+  .raku-visual-v140 .ticket-center,
+  .raku-visual-v140 .ticket-right {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  .raku-visual-v140 .ticket-sticky {
+    position: static !important;
+    display: grid;
+    grid-template-columns: minmax(360px,1.1fr) minmax(280px,.9fr);
+    gap: 12px;
+  }
+
+  .raku-visual-v140 .ticket-preview-title {
+    grid-column: 1 / -1;
+  }
+
+  .raku-visual-v140 .ticket-preview {
+    grid-column: 1;
+    grid-row: 2 / span 4;
+  }
+
+  .raku-visual-v140 .ticket-flow,
+  .raku-visual-v140 .ticket-readiness,
+  .raku-visual-v140 .ticket-publish {
+    grid-column: 2;
+    margin-top: 0 !important;
+  }
+}
+
+@container ticket-stage (max-width: 760px) {
+  .raku-visual-v140 .ticket-panelbar {
+    grid-template-columns: 1fr auto !important;
+  }
+
+  .raku-visual-v140 .ticket-live {
+    grid-column: 1;
+  }
+
+  .raku-visual-v140 .ticket-panelbar > label {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .raku-visual-v140 .ticket-panelbar > button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .raku-visual-v140 .ticket-sticky {
+    display: block;
+  }
+
+  .raku-visual-v140 .ticket-flow,
+  .raku-visual-v140 .ticket-readiness,
+  .raku-visual-v140 .ticket-publish {
+    margin-top: 12px !important;
+  }
+
+  .raku-visual-v140 .ticket-type-wrap {
+    grid-template-columns: 1fr !important;
+  }
+
+  .raku-visual-v140 .ticket-type-wrap > aside {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--r142-line);
+  }
+
+  .raku-visual-v140 .ticket-type {
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 980px) {
+  .raku-visual-v140 .ticket-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  .raku-visual-v140 .ticket-panels {
+    position: static !important;
+    min-height: 0 !important;
+  }
+
+  .raku-visual-v140 .ticket-panels > header {
+    min-height: 38px !important;
+  }
+
+  .raku-visual-v140 .ticket-panel {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .raku-visual-v140 .ticket-head {
+    grid-template-columns: 1fr !important;
+    padding: 18px !important;
+  }
+
+  .raku-visual-v140 .ticket-head > div:last-child {
+    grid-template-columns: repeat(2,1fr) !important;
+  }
+
+  .raku-visual-v140 .ticket-head > div:last-child > label {
+    grid-column: 1 / -1;
+  }
+
+  .raku-visual-v140 .ticket-form-grid,
+  .raku-visual-v140 .ticket-q {
+    grid-template-columns: 1fr !important;
+  }
+
+  .raku-visual-v140 .ticket-form-grid > label.wide,
+  .raku-visual-v140 .ticket-q > div:first-child,
+  .raku-visual-v140 .ticket-q > .wide,
+  .raku-visual-v140 .ticket-q .ticket-required {
+    grid-column: auto !important;
+  }
+
+  .raku-visual-v140 .ticket-workflows > header {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
+
+  .raku-visual-v140 .ticket-workflows > header > div:last-child {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  .raku-visual-v140 .ticket-onboard > div {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .raku-visual-v140 .ticket-onboard button {
+    width: 100% !important;
+  }
+}
