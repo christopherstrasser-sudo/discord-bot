@@ -64,7 +64,7 @@ jobs:
           for (const file of walk('public').filter(file => file.endsWith('.css'))) checkCss(file);
           NODE
 
-      - name: Check Orbit and Creator Social contract
+      - name: Check Orbit, Creator Social and Bot Profile contract
         shell: bash
         run: |
           set -euo pipefail
@@ -77,13 +77,15 @@ jobs:
             '/raku-module-shell.css',
             '/raku-module-shell.js',
             '/creator-social-extension.css',
-            '/creator-social-extension.js'
+            '/creator-social-extension.js',
+            '/bot-profile.css',
+            '/bot-profile.js'
           ];
           for (const asset of required) {
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0272')) throw new Error('v0.27.2 UI cache key missing');
+          if (!html.includes('v=0280')) throw new Error('v0.28.0 UI cache key missing');
 
           for (const file of ['src/creator-social-providers.js', 'src/creator-instagram-keyless.js', 'src/creator-instagram-imginn.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
@@ -116,8 +118,27 @@ jobs:
           }
           if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(instagram)) throw new Error('Instagram direct resolver must not use a local browser');
 
+          for (const file of ['src/bot-profile-api.js', 'src/bot-profile-utils.js', 'public/bot-profile.js', 'public/bot-profile.css']) {
+            if (!fs.existsSync(file)) throw new Error(`Bot Profile file missing: ${file}`);
+          }
+          const profileApi = fs.readFileSync('src/bot-profile-api.js', 'utf8');
+          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname', 'activity', "scope: 'global'"]) {
+            if (!profileApi.includes(token)) throw new Error(`Bot Profile API token missing: ${token}`);
+          }
+          const profileUi = fs.readFileSync('public/bot-profile.js', 'utf8');
+          for (const token of ["data-tab = 'profile'", 'Bot-Profil', 'Server-Avatar', 'GLOBAL · GESPERRT', 'separaten Custom Bot', 'prepareAvatar']) {
+            if (!profileUi.includes(token)) throw new Error(`Bot Profile UI token missing: ${token}`);
+          }
+          if (/setPresence\s*\(|setActivity\s*\(/.test(profileUi) || /setPresence\s*\(|setActivity\s*\(/.test(profileApi)) {
+            throw new Error('Shared Bot Profile must never fake per-guild presence/activity');
+          }
+          const index = fs.readFileSync('src/index.js', 'utf8');
+          if (!index.includes('attachBotProfileApi(app)')) throw new Error('Bot Profile API is not attached');
+          const store = fs.readFileSync('src/store.js', 'utf8');
+          if (!store.includes('botProfile:')) throw new Error('Bot Profile settings are not persisted');
+
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          if (pkg.version !== '0.27.2') throw new Error(`Expected package version 0.27.2, got ${pkg.version}`);
+          if (pkg.version !== '0.28.0') throw new Error(`Expected package version 0.28.0, got ${pkg.version}`);
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
 
           const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
@@ -129,15 +150,15 @@ jobs:
           for (const token of ['aktuellster Inhalt wurde in Discord gepostet', 'result.publishError', 'Quelle erfolgreich geprüft']) {
             if (!actions.includes(token)) throw new Error(`Creator check feedback missing: ${token}`);
           }
-          console.log('Orbit + Creator Social v0.27.2 contract verified');
+          console.log('Orbit + Creator Social + Bot Profile v0.28.0 contract verified');
           NODE
 
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Load creator social modules
+      - name: Load core modules
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); console.log('Creator social modules loaded')"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/bot-profile-utils'); console.log('Core modules loaded')"
           node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
 
       - name: Run automated tests
