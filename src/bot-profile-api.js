@@ -61,12 +61,7 @@ function profilePayload(guild, member, stored = {}) {
     avatarUrl: guildMemberAvatarUrl(guild.id, userId, serverAvatarHash) || globalAvatarUrl(),
     globalAvatarUrl: globalAvatarUrl(),
     hasServerAvatar: Boolean(serverAvatarHash),
-    canChangeNickname,
-    activity: {
-      editable: false,
-      scope: 'global',
-      reason: 'Discord-Presence ist bei einem Shared Bot global und kann nicht pro Server gesetzt werden.'
-    }
+    canChangeNickname
   };
 }
 
