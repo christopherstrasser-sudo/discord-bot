@@ -54,12 +54,14 @@
     if (window.__rakuUxV2Loaded) return;
     window.__rakuUxV2Loaded = true;
     try {
-      await appendAsset('link', { rel: 'stylesheet', href: '/raku-ux-v2.css?v=0121' });
-      await appendAsset('link', { rel: 'stylesheet', href: '/raku-ux-v2-login.css?v=0121' });
-      await appendAsset('link', { rel: 'stylesheet', href: '/raku-readability-v121.css?v=0121' });
-      await appendAsset('script', { src: '/raku-ux-v2-guides.js?v=0121' });
-      await appendAsset('script', { src: '/raku-ux-v2-hints.js?v=0121' });
-      await appendAsset('script', { src: '/raku-ux-v2.js?v=0121' });
+      await appendAsset('link', { rel: 'stylesheet', href: '/raku-ux-v2.css?v=0140' });
+      await appendAsset('link', { rel: 'stylesheet', href: '/raku-ux-v2-login.css?v=0140' });
+      await appendAsset('link', { rel: 'stylesheet', href: '/raku-readability-v121.css?v=0140' });
+      await appendAsset('script', { src: '/raku-ux-v2-guides.js?v=0140' });
+      await appendAsset('script', { src: '/raku-ux-v2-hints.js?v=0140' });
+      await appendAsset('script', { src: '/raku-ux-v2.js?v=0140' });
+      await appendAsset('link', { rel: 'stylesheet', href: '/raku-visual-system-v140.css?v=0140' });
+      await appendAsset('script', { src: '/raku-visual-system-v140.js?v=0140' });
     } catch (error) {
       console.warn('[UX V2] Optional UI layer could not be loaded:', error);
     }
