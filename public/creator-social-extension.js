@@ -8,12 +8,8 @@
   const PLATFORM_NAMES = { instagram: 'Instagram', bluesky: 'Bluesky', x: 'X' };
   const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X' };
   const SUBTITLES = {
-    twitch: 'HELIX LIVE',
-    youtube: 'UPLOAD FEED',
-    tiktok: 'LIVE / UPLOAD',
-    instagram: 'GRAPH POSTS',
-    bluesky: 'ATPROTO FEED',
-    x: 'API POSTS'
+    twitch: 'HELIX LIVE', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
+    instagram: 'PUBLIC POST INDEX', bluesky: 'ATPROTO FEED', x: 'PUBLIC SYNDICATION'
   };
 
   const originalPlatform = C.platform;
@@ -54,21 +50,22 @@
   function providerState(platform) {
     const health = C.providerHealth(platform);
     if (!health.configured) {
-      if (platform === 'instagram') return { cls: 'missing', label: 'META LOGIN FEHLT', copy: 'Graph Access Token und Professional IG User ID in .env hinterlegen.' };
-      if (platform === 'x') return { cls: 'missing', label: 'X TOKEN FEHLT', copy: 'X_BEARER_TOKEN aus dem X Developer Portal hinterlegen.' };
       if (platform === 'twitch') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'Twitch App-Zugangsdaten hinterlegen.' };
       if (platform === 'tiktok') return { cls: 'missing', label: 'ADAPTER FEHLT', copy: 'Kein zuverlässiger TikTok-Provider verbunden.' };
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
     }
+    if (health.lastError && !health.ok) return { cls: 'bad', label: 'DEGRADED', copy: health.lastError };
+    if (!health.lastCheckedAt) {
+      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher Profil-Indexer · kein API-Key nötig.' };
+      if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
+      if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher X-Syndication-Feed · kein API-Key nötig.' };
+    }
     if (health.ok) return {
-      cls: 'ok',
-      label: 'HEALTHY',
-      copy: health.lastSuccessAt ? `Letzter Erfolg ${new Date(health.lastSuccessAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : (platform === 'bluesky' ? 'Öffentlicher ATProto Feed bereit.' : 'Provider bereit.')
+      cls: 'ok', label: 'HEALTHY',
+      copy: health.lastSuccessAt ? `Letzter Erfolg ${new Date(health.lastSuccessAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : 'Provider bereit.'
     };
-    if (health.lastError) return { cls: 'bad', label: 'DEGRADED', copy: health.lastError };
     if (platform === 'youtube') return { cls: 'ready', label: 'READY', copy: 'RSS Feed · kein API-Key nötig.' };
-    if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
-    return { cls: 'ready', label: 'READY', copy: 'Wartet auf ersten Provider-Check.' };
+    return { cls: 'ready', label: 'READY', copy: 'Wartet auf den ersten Provider-Check.' };
   }
 
   C.providerCard = platform => {
@@ -77,7 +74,7 @@
     return `<article class="creator-provider ${C.platformClass(platform)} ${state.cls}" data-provider="${platform}">
       <div class="creator-provider-top"><span class="creator-platform-mark">${MARKS[platform] || '?'}</span><div><b>${C.platform(platform)}</b><small>${SUBTITLES[platform] || 'CREATOR FEED'}</small></div><i></i></div>
       <strong>${state.label}</strong><p>${E(state.copy)}</p>
-      <footer><span>${health.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span><span>${health.lastCheckedAt ? new Date(health.lastCheckedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'NO CHECK'}</span></footer>
+      <footer><span>${health.configured ? 'READY' : 'NOT CONFIGURED'}</span><span>${health.lastCheckedAt ? new Date(health.lastCheckedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'NO CHECK'}</span></footer>
     </article>`;
   };
 
@@ -112,7 +109,7 @@
     const data = {
       instagram: {
         title: 'Instagram Handle', placeholder: 'rakulein',
-        help: 'Business-/Creator-Account. @Handle oder instagram.com/handle URL möglich; persönliche Accounts sind über die offizielle API nicht abrufbar.'
+        help: 'Öffentliches Profil. @Handle oder instagram.com/handle URL; kein API-Key nötig. Private oder login-gated Profile können nicht zuverlässig gelesen werden.'
       },
       bluesky: {
         title: 'Bluesky Handle', placeholder: 'rakulein.bsky.social',
@@ -120,7 +117,7 @@
       },
       x: {
         title: 'X Handle', placeholder: 'rakulein',
-        help: 'Ohne @ oder als x.com/handle URL. Benötigt einen X API Bearer Token.'
+        help: 'Öffentliches Profil. @Handle oder x.com/handle URL; kein API-Key nötig.'
       }
     }[rule.platform];
     if (title) title.textContent = data.title;
@@ -128,9 +125,9 @@
     input.placeholder = data.placeholder;
   }
 
-  function addRule(rulePlatform) {
+  function addRule(platform) {
     if (S.cfg.rules.length >= 30) return toast('Maximal 30 Creator-Regeln pro Server.', 'error');
-    const rule = C.makeRule(rulePlatform);
+    const rule = C.makeRule(platform);
     S.cfg.rules.push(rule);
     S.ruleId = rule.id;
     S.check = null;
@@ -151,7 +148,6 @@
         footer.appendChild(button);
       }
     }
-
     const onboard = document.querySelector('.creator-onboard > div');
     if (onboard) {
       for (const platform of SOCIAL) {
@@ -170,9 +166,7 @@
     const grid = document.querySelector('.creator-provider-grid');
     if (!grid) return;
     for (const platform of SOCIAL) {
-      if (!grid.querySelector(`[data-provider="${platform}"]`)) {
-        grid.insertAdjacentHTML('beforeend', C.providerCard(platform));
-      }
+      if (!grid.querySelector(`[data-provider="${platform}"]`)) grid.insertAdjacentHTML('beforeend', C.providerCard(platform));
     }
   }
 
