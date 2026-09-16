@@ -2,41 +2,50 @@
 
 ## Current release
 
-- Version: **0.21.0**
+- Version: **0.22.0**
 - Branch: `main`
-- UI generation: **Orbit UI v6**
-- Global visual layer: `public/raku-orbit-v600.css`
+- UI generation: **Orbit UI v6.1**
+- Global visual layer: `public/raku-orbit-v610.css`
 - Final dashboard shell renderer: `public/raku-orbit-v600.js`
 
 ## Critical UI decision
 
-The previous Studio v5 layout was explicitly rejected because it still reused the same conventional admin-dashboard architecture.
+The previous conventional admin-dashboard generations are retired. Do not restore a fixed application sidebar + top context bar + rectangular KPI grid.
 
-Do not restore a fixed application sidebar + conventional top context bar + rectangular dashboard grid.
+The authenticated application uses the Orbit spatial layout:
 
-The authenticated application now uses a spatial layout:
-
-- floating server capsule at the top left
-- floating page capsule in the top center
-- floating action capsule at the top right
+- floating server capsule top-left
+- floating page capsule top-center
+- floating action capsule top-right
 - large free content canvas
 - floating bottom navigation dock
 - active dock item expands to show its label
 - Module Constellation overview with the current Discord server in the center
 - Activity, Attention and Quick Actions as asymmetric glass islands
 
-This silhouette is intentional and is the main architectural break from all previous generations.
+This silhouette is intentional and must survive future polish.
 
-## Login and server picker
+## v0.22.0 production polish
 
-Login is a centered glass authentication portal with a few floating feature chips. Do not restore a two-column text/console login.
+The v6.1 pass keeps the Orbit concept but upgrades finish quality across the full product:
 
-Server selection is an asymmetric workspace gallery with real Discord server icons. Do not restore a uniform equal-card grid if a more editorial composition works.
+- Manrope display/navigation typography + Inter working UI typography
+- stronger, more consistent glass material
+- unified controls/forms/focus states
+- refined dock with hover labels
+- improved constellation depth and subtle motion
+- corrected asymmetric server gallery without empty grid holes
+- responsive anti-overflow rules for all complex modules
+- flexible/wrapping Role, Ticket and Creator toolbars
+- progressive collapse for Commands editor
+- Orbit-styled emoji modal
+- compatibility CSS variables for legacy module mechanics
 
 ## Retired files/concepts
 
 Do not recreate or reference:
 
+- `public/raku-orbit-v600.css`
 - `public/raku-studio-v500.css`
 - `public/raku-workspace-v500.js`
 - Studio v5 fixed app sidebar
@@ -45,7 +54,7 @@ Do not recreate or reference:
 - `public/raku-ui-v100.js`
 - `public/raku-glass-v300.css`
 - `public/raku-design-v200.css`
-- UX-v2 decorators/guides/hints
+- UX-v2 runtime decorators/guides/hints
 - module unification/readability/wide/fix layers
 - role/ticket version-specific polish stylesheets
 
@@ -53,37 +62,43 @@ Avoid fake interface language such as CONTROL NODE, SERVER PULSE, CONTROL OS, fa
 
 ## Visual direction
 
-Orbit is allowed to have a stronger visual identity than Studio v5:
+Orbit v6.1 should feel premium and modern rather than basic:
 
-- modern glass surfaces
-- dark spatial background
-- violet primary accent and restrained cyan signal accent
-- readable contrast
-- depth and blur without washing out text
-- subtle floating motion where useful
+- deep dark spatial background
+- real translucent glass with restrained edge highlights
+- violet primary accent, cyan secondary signal accent
+- strong readable contrast
+- clean Manrope/Inter typography hierarchy
+- subtle motion only where it supports the spatial concept
 - real Discord server icons
 - no generated images
-- no generic AI-admin-template layout
+- no generic AI-admin-template structure
 
 ## Runtime architecture
 
 `public/raku-orbit-v600.js` loads after Role/Ticket/Creator/Voice/Analytics hooks and owns the final authenticated shell.
 
-Legacy hooks such as `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` may remain only for functional compatibility. They must not visually become the old sidebar layout again.
+Legacy hooks such as `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` remain only for functional compatibility. They must not visually become the old sidebar layout again.
 
-Feature renderers still own their internal functionality. `raku-orbit-v600.css` owns the product-wide appearance and shared outer layout.
+Feature renderers still own functionality. `public/raku-orbit-v610.css` owns shared product appearance, outer module layout, responsive rules and design tokens.
 
-## Screen contract
+## Known layout rules to preserve
 
-Login, server picker and guild dashboard are mutually exclusive screens. Never let design CSS override `.hidden`.
+- Server gallery uses a five-card 7/5 + 4/4/4 rhythm with `grid-auto-flow:dense`; do not restore the old six-card pattern that left empty columns.
+- All dynamic grid/flex children must be shrinkable (`min-width:0`) where long names/messages can appear.
+- Role/Ticket/Creator side lists become non-sticky before narrow layouts collide.
+- Role and Ticket command bars wrap instead of forcing fixed columns.
+- Commands editor progressively collapses from three columns to two to one.
+- Preview columns lose sticky positioning before they can overlap the floating header.
+- Login, server picker and guild dashboard remain mutually exclusive screens; never override `.hidden`.
 
 ## Priorities
 
 1. Preserve the genuinely different Orbit architecture.
 2. Keep every feature functional.
-3. Readability before visual effects.
-4. Glass and motion should create depth, not clutter.
-5. Do not add a second product-wide fix/override stylesheet.
-6. If a new design proposal resembles a normal admin sidebar dashboard, reject the structure before polishing it.
+3. Fix layout/overflow bugs at the canonical source, not with new override layers.
+4. Readability before visual effects.
+5. Glass should add material/depth without washing out text.
+6. Do not add a second product-wide stylesheet.
 
 See `DESIGN.md` for the detailed visual contract.
