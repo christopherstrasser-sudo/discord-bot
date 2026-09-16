@@ -5,12 +5,15 @@ const {
   getCreatorConfig,
   setCreatorConfig,
   getCreatorHistory,
+  setCreatorRuleState,
+  appendCreatorHistory,
   pruneCreatorRuleState
 } = require('./creator-store');
 const {
   checkCreatorRule,
   sendCreatorTest,
-  getRuntimeStatus
+  getRuntimeStatus,
+  buildNotificationPayload
 } = require('./creator-runtime');
 const {
   checkSocialRule,
@@ -249,6 +252,64 @@ function publicSnapshot(snapshot) {
   };
 }
 
+function shouldPublishCheckedRule(rule) {
+  return SOCIAL_PLATFORMS.has(rule.platform)
+    || rule.platform === 'youtube'
+    || (rule.platform === 'tiktok' && rule.event === 'upload');
+}
+
+function checkedEventKey(rule, snapshot) {
+  const kind = SOCIAL_PLATFORMS.has(rule.platform) ? 'post' : 'upload';
+  return `${rule.platform}:${String(rule.source || '').replace(/^@/, '').toLowerCase()}:${kind}:${snapshot.id}`;
+}
+
+async function publishCheckedSnapshot(guild, rule, snapshot) {
+  if (!snapshot?.id) throw new Error('Die Quelle wurde gefunden, hat aber keinen veröffentlichbaren aktuellen Inhalt geliefert.');
+  validateRuleAgainstGuild(rule, guild, true);
+  const channel = guild.channels.cache.get(rule.channelId);
+  if (!channel?.send) throw new Error(`${rule.name}: Zielkanal ist nicht mehr verfügbar.`);
+
+  const payload = buildNotificationPayload(rule, snapshot, { allowPing: false });
+  const message = await channel.send(payload);
+  const now = new Date().toISOString();
+  const eventKey = checkedEventKey(rule, snapshot);
+  setCreatorRuleState(guild.id, rule.id, {
+    initialized: true,
+    lastObservedAt: now,
+    lastProviderError: '',
+    lastProviderErrorAt: null,
+    lastTitle: snapshot.title || '',
+    lastGame: snapshot.game || '',
+    lastLiveId: '',
+    lastEventKey: eventKey,
+    lastSentAt: now,
+    lastSentMessageId: message.id,
+    lastSentChannelId: message.channelId,
+    lastSnapshot: {
+      creator: snapshot.creator || '',
+      live: false,
+      id: snapshot.id || '',
+      title: snapshot.title || '',
+      game: snapshot.game || '',
+      url: snapshot.url || '',
+      viewers: Number(snapshot.viewers || 0),
+      startedAt: snapshot.startedAt || snapshot.publishedAt || ''
+    }
+  });
+  appendCreatorHistory(guild.id, {
+    ruleId: rule.id,
+    ruleName: rule.name,
+    platform: rule.platform,
+    source: String(rule.source || ''),
+    event: rule.event,
+    status: 'sent',
+    message: 'Aktuellsten Inhalt nach manueller Quellenprüfung gesendet – ohne Rollen-Ping.',
+    title: String(snapshot.title || '').slice(0, 200),
+    url: String(snapshot.url || '').slice(0, 500)
+  });
+  return { messageId: message.id, channelId: message.channelId, eventKey };
+}
+
 function attachCreatorHubApi(app) {
   app.get('/api/guilds/:guildId/creator-hub', access, (req, res) => {
     const guild = client.guilds.cache.get(req.params.guildId);
@@ -268,6 +329,7 @@ function attachCreatorHubApi(app) {
   });
 
   app.post('/api/guilds/:guildId/creator-hub/:ruleId/check', access, async (req, res) => {
+    const guild = client.guilds.cache.get(req.params.guildId);
     try {
       const config = getCreatorConfig(req.params.guildId);
       const rule = config.rules.find(item => item.id === req.params.ruleId);
@@ -275,7 +337,18 @@ function attachCreatorHubApi(app) {
       if (!rule.source) throw new Error('Trage zuerst eine Creator-Quelle ein und speichere sie.');
       const snapshot = SOCIAL_PLATFORMS.has(rule.platform) ? await checkSocialRule(rule) : await checkCreatorRule(rule);
       if (snapshot?.error) throw new Error(snapshot.error);
-      res.json({ ok: true, snapshot: publicSnapshot(snapshot), runtime: metaForGuild(client.guilds.cache.get(req.params.guildId)).runtime });
+
+      const published = shouldPublishCheckedRule(rule)
+        ? await publishCheckedSnapshot(guild, rule, snapshot)
+        : null;
+
+      res.json({
+        ok: true,
+        snapshot: publicSnapshot(snapshot),
+        published,
+        history: getCreatorHistory(guild.id, 50),
+        runtime: metaForGuild(guild).runtime
+      });
     } catch (error) {
       res.status(400).json({ error: 'creator_check_failed', message: error.message, runtime: getRuntimeStatus() });
     }
