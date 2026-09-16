@@ -181,28 +181,13 @@
     </div>`;
   }
 
-  function activityMarkup() {
-    return `<section class="bp-activity o6-island">
-      <div class="bp-activity-icon"><span></span><i></i></div>
-      <div class="bp-activity-copy">
-        <div class="bp-section-head"><div><span>PRESENCE</span><h2>Aktivität</h2></div><strong>GLOBAL · GESPERRT</strong></div>
-        <p>„Spielt …“, „Hört …“ oder ein eigener Status sehen zwar wie eine Server-Einstellung aus, Discord behandelt die Bot-Presence aber <b>global für die Bot-Verbindung</b>.</p>
-        <div class="bp-activity-mock">
-          <label><span>Aktivitätstyp</span><select disabled><option>Spielt</option></select></label>
-          <label><span>Aktivitätstext</span><input disabled value="Nicht serverbezogen verfügbar"></label>
-        </div>
-        <div class="bp-activity-info"><span>i</span><p><b>Warum ist das gesperrt?</b><small>Wenn ein Serveradmin hier etwas ändern würde, sähen es Nutzer auf allen Servern des Shared Bots. Eine wirklich eigene Aktivität pro Server ist erst mit einem separaten Custom Bot möglich.</small></p></div>
-      </div>
-    </section>`;
-  }
-
   function renderProfile() {
     const root = document.querySelector('#guildWorkspace');
     if (!root) return;
     root.className = 'deck-workspace o6-canvas o6-module-canvas bp-canvas';
     root.dataset.page = 'profile';
     root.dataset.module = 'profile';
-    root.innerHTML = `${profileHero()}${S.loading && !S.loaded ? loadingMarkup() : S.error && !S.loaded ? errorMarkup() : S.loaded ? `<div class="bp-grid">${editorMarkup()}${previewMarkup()}</div>${activityMarkup()}` : loadingMarkup()}`;
+    root.innerHTML = `${profileHero()}${S.loading && !S.loaded ? loadingMarkup() : S.error && !S.loaded ? errorMarkup() : S.loaded ? `<div class="bp-grid">${editorMarkup()}${previewMarkup()}</div>` : loadingMarkup()}`;
     wireProfile();
     if (!S.loaded && !S.loading && !S.error) loadProfile();
   }
