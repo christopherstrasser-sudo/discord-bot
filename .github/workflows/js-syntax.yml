@@ -85,7 +85,7 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
-          if (!html.includes('v=0280')) throw new Error('v0.28.0 UI cache key missing');
+          if (!html.includes('v=0281')) throw new Error('v0.28.1 UI cache key missing');
 
           for (const file of ['src/creator-social-providers.js', 'src/creator-instagram-keyless.js', 'src/creator-instagram-imginn.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
@@ -122,12 +122,16 @@ jobs:
             if (!fs.existsSync(file)) throw new Error(`Bot Profile file missing: ${file}`);
           }
           const profileApi = fs.readFileSync('src/bot-profile-api.js', 'utf8');
-          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname', 'activity', "scope: 'global'"]) {
+          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname']) {
             if (!profileApi.includes(token)) throw new Error(`Bot Profile API token missing: ${token}`);
           }
           const profileUi = fs.readFileSync('public/bot-profile.js', 'utf8');
-          for (const token of ["dataset.tab = 'profile'", 'Bot-Profil', 'Server-Avatar', 'GLOBAL · GESPERRT', 'separaten Custom Bot', 'prepareAvatar']) {
+          const profileCss = fs.readFileSync('public/bot-profile.css', 'utf8');
+          for (const token of ["dataset.tab = 'profile'", 'Bot-Profil', 'Server-Avatar', 'prepareAvatar']) {
             if (!profileUi.includes(token)) throw new Error(`Bot Profile UI token missing: ${token}`);
+          }
+          if (/GLOBAL · GESPERRT|function activityMarkup|bp-activity/.test(profileUi) || /\.bp-activity/.test(profileCss)) {
+            throw new Error('Retired activity section still exists in Bot Profile UI');
           }
           if (/setPresence\s*\(|setActivity\s*\(/.test(profileUi) || /setPresence\s*\(|setActivity\s*\(/.test(profileApi)) {
             throw new Error('Shared Bot Profile must never fake per-guild presence/activity');
@@ -138,7 +142,7 @@ jobs:
           if (!store.includes('botProfile:')) throw new Error('Bot Profile settings are not persisted');
 
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          if (pkg.version !== '0.28.0') throw new Error(`Expected package version 0.28.0, got ${pkg.version}`);
+          if (pkg.version !== '0.28.1') throw new Error(`Expected package version 0.28.1, got ${pkg.version}`);
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
 
           const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
@@ -150,7 +154,7 @@ jobs:
           for (const token of ['aktuellster Inhalt wurde in Discord gepostet', 'result.publishError', 'Quelle erfolgreich geprüft']) {
             if (!actions.includes(token)) throw new Error(`Creator check feedback missing: ${token}`);
           }
-          console.log('Orbit + Creator Social + Bot Profile v0.28.0 contract verified');
+          console.log('Orbit + Creator Social + Bot Profile v0.28.1 contract verified');
           NODE
 
       - name: Install dependencies
