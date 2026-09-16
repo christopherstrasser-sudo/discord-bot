@@ -78,20 +78,22 @@ jobs:
           for (const file of walk('public').filter(file => file.endsWith('.css'))) checkCss(file);
           NODE
 
-      - name: Check Studio UI contract
+      - name: Check Orbit UI contract
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('public/index.html', 'utf8');
-          const required = ['/raku-studio-v500.css', '/raku-workspace-v500.js'];
+          const required = ['/raku-orbit-v600.css', '/raku-orbit-v600.js'];
           for (const asset of required) {
             const count = html.split(asset).length - 1;
             if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
           }
 
-          const forbidden = [
+          const retired = [
+            'raku-studio-v500.css',
+            'raku-workspace-v500.js',
             'raku-prism-v400.css',
             'raku-ui-v100.js',
             'raku-glass-v300.css',
@@ -103,30 +105,31 @@ jobs:
             'role-studio-v150.css',
             'ticket-studio-v160.css'
           ];
-          for (const name of forbidden) {
+          for (const name of retired) {
             if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
             if (fs.existsSync(`public/${name}`)) throw new Error(`Retired UI asset still exists: public/${name}`);
           }
 
-          if (!fs.existsSync('public/raku-studio-v500.css')) throw new Error('Studio UI stylesheet missing');
-          if (!fs.existsSync('public/raku-workspace-v500.js')) throw new Error('Studio shell renderer missing');
-
-          const bannedCopy = ['CONTROL NODE', 'SERVER PULSE', 'CONTROL OS', 'Prism OS'];
-          for (const phrase of bannedCopy) {
-            if (html.includes(phrase)) throw new Error(`Retired fake-system copy still present in index.html: ${phrase}`);
-          }
+          if (!fs.existsSync('public/raku-orbit-v600.css')) throw new Error('Orbit UI stylesheet missing');
+          if (!fs.existsSync('public/raku-orbit-v600.js')) throw new Error('Orbit shell renderer missing');
 
           const screenContract = ['#loggedOut.hidden', '#serverList.hidden', '#guildDashboard.hidden', 'display:none !important'];
           for (const token of screenContract) {
             if (!html.includes(token)) throw new Error(`App screen-state contract missing: ${token}`);
           }
 
-          const shell = fs.readFileSync('public/raku-workspace-v500.js', 'utf8');
-          for (const token of ['r5-shell', 'r5-sidebar', 'r5-contextbar', 'r5-overview']) {
-            if (!shell.includes(token)) throw new Error(`Studio shell architecture token missing: ${token}`);
+          const shell = fs.readFileSync('public/raku-orbit-v600.js', 'utf8');
+          for (const token of ['o6-stage', 'o6-dock', 'o6-floating-head', 'o6-constellation', 'o6-orbit-map']) {
+            if (!shell.includes(token)) throw new Error(`Orbit architecture token missing: ${token}`);
+          }
+          if (shell.includes('r5-sidebar') || shell.includes('r5-contextbar')) throw new Error('Retired sidebar architecture leaked into Orbit shell');
+
+          const css = fs.readFileSync('public/raku-orbit-v600.css', 'utf8');
+          for (const token of ['.o6-dock', '.o6-floating-head', '.o6-orbit-map', '.o6-login-stage']) {
+            if (!css.includes(token)) throw new Error(`Orbit visual token missing: ${token}`);
           }
 
-          console.log('Studio UI v5 contract verified');
+          console.log('Orbit UI v6 contract verified');
           NODE
 
       - name: Install dependencies
