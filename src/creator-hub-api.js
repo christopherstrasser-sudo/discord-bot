@@ -12,13 +12,22 @@ const {
   sendCreatorTest,
   getRuntimeStatus
 } = require('./creator-runtime');
+const {
+  checkSocialRule,
+  sendSocialTest,
+  getSocialRuntimeStatus
+} = require('./creator-social-runtime');
+const { SOCIAL_PLATFORMS, normalizeSocialHandle } = require('./creator-social-providers');
 
 const MAX_RULES = 30;
-const PLATFORMS = new Set(['twitch', 'youtube', 'tiktok']);
+const PLATFORMS = new Set(['twitch', 'youtube', 'tiktok', 'instagram', 'bluesky', 'x']);
 const EVENTS = {
   twitch: new Set(['live', 'title_change', 'category_change']),
   youtube: new Set(['upload']),
-  tiktok: new Set(['live', 'upload'])
+  tiktok: new Set(['live', 'upload']),
+  instagram: new Set(['post']),
+  bluesky: new Set(['post']),
+  x: new Set(['post'])
 };
 
 function access(req, res, next) {
@@ -106,6 +115,7 @@ function normalizeTikTokSource(value) {
 function normalizeSource(platform, value) {
   if (platform === 'youtube') return normalizeYouTubeSource(value);
   if (platform === 'tiktok') return normalizeTikTokSource(value);
+  if (SOCIAL_PLATFORMS.has(platform)) return normalizeSocialHandle(platform, str(value, 300));
   const source = str(value, 100);
   if (!source) return '';
   if (!/^[A-Za-z0-9_]{3,25}$/.test(source)) throw new Error('Twitch: Bitte den Kanalnamen ohne URL eintragen.');
@@ -201,11 +211,22 @@ function metaForGuild(guild) {
     .map(role => ({ id: role.id, name: role.name, color: role.hexColor, mentionable: role.mentionable, position: role.position }))
     .sort((a, b) => b.position - a.position);
 
+  const runtime = getRuntimeStatus();
+  const socialRuntime = getSocialRuntimeStatus();
+  runtime.providers = { ...(runtime.providers || {}), ...(socialRuntime.providers || {}) };
+  runtime.social = {
+    running: socialRuntime.running,
+    polling: socialRuntime.polling,
+    lastPollStartedAt: socialRuntime.lastPollStartedAt,
+    lastPollFinishedAt: socialRuntime.lastPollFinishedAt,
+    lastPollError: socialRuntime.lastPollError
+  };
+
   return {
     channels,
     roles,
     capabilities: { canMentionEveryone, writableChannels: channels.length, pingRoles: roles.length },
-    runtime: getRuntimeStatus()
+    runtime
   };
 }
 
@@ -252,9 +273,9 @@ function attachCreatorHubApi(app) {
       const rule = config.rules.find(item => item.id === req.params.ruleId);
       if (!rule) throw new Error('Creator-Regel nicht gefunden.');
       if (!rule.source) throw new Error('Trage zuerst eine Creator-Quelle ein und speichere sie.');
-      const snapshot = await checkCreatorRule(rule);
+      const snapshot = SOCIAL_PLATFORMS.has(rule.platform) ? await checkSocialRule(rule) : await checkCreatorRule(rule);
       if (snapshot?.error) throw new Error(snapshot.error);
-      res.json({ ok: true, snapshot: publicSnapshot(snapshot), runtime: getRuntimeStatus() });
+      res.json({ ok: true, snapshot: publicSnapshot(snapshot), runtime: metaForGuild(client.guilds.cache.get(req.params.guildId)).runtime });
     } catch (error) {
       res.status(400).json({ error: 'creator_check_failed', message: error.message, runtime: getRuntimeStatus() });
     }
@@ -267,7 +288,9 @@ function attachCreatorHubApi(app) {
       const rule = config.rules.find(item => item.id === req.params.ruleId);
       if (!rule) throw new Error('Creator-Regel nicht gefunden.');
       validateRuleAgainstGuild(rule, guild, true);
-      const result = await sendCreatorTest(client, guild.id, rule);
+      const result = SOCIAL_PLATFORMS.has(rule.platform)
+        ? await sendSocialTest(client, guild.id, rule)
+        : await sendCreatorTest(client, guild.id, rule);
       res.json({ ok: true, ...result, history: getCreatorHistory(guild.id, 50) });
     } catch (error) {
       res.status(400).json({ error: 'creator_test_failed', message: error.message });
