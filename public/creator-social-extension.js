@@ -9,7 +9,7 @@
   const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X' };
   const SUBTITLES = {
     twitch: 'HELIX LIVE', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
-    instagram: 'PUBLIC POST INDEX', bluesky: 'ATPROTO FEED', x: 'PUBLIC SYNDICATION'
+    instagram: 'RAKU SOCIAL RELAY', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY'
   };
 
   const originalPlatform = C.platform;
@@ -54,11 +54,20 @@
       if (platform === 'tiktok') return { cls: 'missing', label: 'ADAPTER FEHLT', copy: 'Kein zuverlässiger TikTok-Provider verbunden.' };
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
     }
+
+    if (platform === 'instagram' && health.serverProviderConfigured === false) {
+      return {
+        cls: 'missing',
+        label: 'BACKEND PROVIDER FEHLT',
+        copy: 'Der zentrale RAKU Instagram-Provider ist noch nicht verbunden. Nutzer brauchen später trotzdem nur den Handle – keine eigenen API-Keys.'
+      };
+    }
+
     if (health.lastError && !health.ok) return { cls: 'bad', label: 'DEGRADED', copy: health.lastError };
     if (!health.lastCheckedAt) {
-      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher Profil-Indexer · kein API-Key nötig.' };
+      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Zentraler RAKU Provider · keine Zugangsdaten pro Discord-Server.' };
       if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
-      if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher X-Syndication-Feed · kein API-Key nötig.' };
+      if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Serverseitiger X-Read-Relay · kein X-Login oder API-Key nötig.' };
     }
     if (health.ok) return {
       cls: 'ok', label: 'HEALTHY',
@@ -74,7 +83,7 @@
     return `<article class="creator-provider ${C.platformClass(platform)} ${state.cls}" data-provider="${platform}">
       <div class="creator-provider-top"><span class="creator-platform-mark">${MARKS[platform] || '?'}</span><div><b>${C.platform(platform)}</b><small>${SUBTITLES[platform] || 'CREATOR FEED'}</small></div><i></i></div>
       <strong>${state.label}</strong><p>${E(state.copy)}</p>
-      <footer><span>${health.configured ? 'READY' : 'NOT CONFIGURED'}</span><span>${health.lastCheckedAt ? new Date(health.lastCheckedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'NO CHECK'}</span></footer>
+      <footer><span>${state.cls === 'missing' ? 'SETUP REQUIRED' : 'READY'}</span><span>${health.lastCheckedAt ? new Date(health.lastCheckedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'NO CHECK'}</span></footer>
     </article>`;
   };
 
@@ -109,7 +118,7 @@
     const data = {
       instagram: {
         title: 'Instagram Handle', placeholder: 'rakulein',
-        help: 'Öffentliches Profil. @Handle oder instagram.com/handle URL; kein API-Key nötig. Private oder login-gated Profile können nicht zuverlässig gelesen werden.'
+        help: 'Nur öffentliches Profil angeben. Der Discord-Server selbst braucht keine Instagram-Zugangsdaten; der Abruf läuft über den zentralen RAKU Provider.'
       },
       bluesky: {
         title: 'Bluesky Handle', placeholder: 'rakulein.bsky.social',
@@ -117,7 +126,7 @@
       },
       x: {
         title: 'X Handle', placeholder: 'rakulein',
-        help: 'Öffentliches Profil. @Handle oder x.com/handle URL; kein API-Key nötig.'
+        help: 'Öffentliches Profil. @Handle oder x.com/handle URL. Der Abruf läuft serverseitig; kein X-Login oder eigener API-Key nötig.'
       }
     }[rule.platform];
     if (title) title.textContent = data.title;
