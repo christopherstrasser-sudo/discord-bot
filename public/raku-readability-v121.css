@@ -1,0 +1,227 @@
+/* RAKU readability pass v0.12.1
+   Comfort typography for every dashboard module without changing module logic. */
+
+body.raku-ux-v2 {
+  font-size: 16px;
+}
+
+/* Global chrome / navigation */
+.raku-ux-v2 .deck-nav-label {
+  font-size: 10px !important;
+  line-height: 1.3;
+}
+.raku-ux-v2 .deck-nav-item > span:not(.icon) {
+  font-size: 14px !important;
+  line-height: 1.25;
+}
+.raku-ux-v2 .deck-nav-item small {
+  font-size: 11px !important;
+  line-height: 1.3;
+}
+.raku-ux-v2 .raku-nav-core b { font-size: 10px !important; }
+.raku-ux-v2 .raku-nav-core small { font-size: 10px !important; line-height: 1.35; }
+.raku-ux-v2 .deck-telemetry span { font-size: 10px !important; }
+
+/* Module quick-start: the smallest text in the screenshots */
+.raku-ux-v2 .ux-module-guide {
+  padding: 21px 22px 20px;
+}
+.raku-ux-v2 .ux-guide-top {
+  gap: 32px;
+}
+.raku-ux-v2 .ux-guide-copy {
+  gap: 7px;
+}
+.raku-ux-v2 .ux-guide-copy > span {
+  font-size: 10px;
+  line-height: 1.3;
+}
+.raku-ux-v2 .ux-guide-copy b {
+  font-size: 17px;
+  line-height: 1.3;
+}
+.raku-ux-v2 .ux-guide-copy small {
+  font-size: 12px;
+  line-height: 1.62;
+}
+.raku-ux-v2 .ux-guide-step {
+  grid-template-columns: 30px 1fr;
+  gap: 11px;
+  padding: 6px 17px;
+}
+.raku-ux-v2 .ux-guide-step > i {
+  width: 26px;
+  height: 26px;
+  font-size: 9px;
+}
+.raku-ux-v2 .ux-guide-step div {
+  gap: 4px;
+}
+.raku-ux-v2 .ux-guide-step b {
+  font-size: 12px;
+  line-height: 1.35;
+}
+.raku-ux-v2 .ux-guide-step small {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.raku-ux-v2 .ux-guide-glossary {
+  margin-top: 16px;
+  padding-top: 15px;
+  gap: 9px;
+}
+.raku-ux-v2 .ux-guide-glossary > span {
+  font-size: 9px;
+}
+.raku-ux-v2 .ux-guide-glossary em {
+  padding: 6px 9px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.raku-ux-v2 .ux-context-note {
+  padding: 13px 14px;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.raku-ux-v2 .ux-section-caption {
+  font-size: 11px;
+  line-height: 1.55;
+}
+.raku-ux-v2 .ux-field-help {
+  font-size: 11px !important;
+  line-height: 1.55 !important;
+}
+
+/* Form controls across simple and complex modules */
+.raku-ux-v2 .deck-workspace label > span,
+.raku-ux-v2 .deck-workspace .field > span,
+.raku-ux-v2 .role-inline-field > span,
+.raku-ux-v2 .role-field > span,
+.raku-ux-v2 .flow-field > span,
+.raku-ux-v2 .flow-meta-field > span,
+.raku-ux-v2 .ticket-form-grid label > span,
+.raku-ux-v2 .creator-form-grid label > span,
+.raku-ux-v2 .voice-field > span {
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+.raku-ux-v2 .deck-workspace input,
+.raku-ux-v2 .deck-workspace textarea,
+.raku-ux-v2 .deck-workspace select {
+  font-size: 14px !important;
+  line-height: 1.45;
+}
+.raku-ux-v2 .deck-workspace button,
+.raku-ux-v2 .deck-workspace .button,
+.raku-ux-v2 .deck-workspace a.button {
+  font-size: 12px;
+}
+
+/* Minimum readable secondary type inside every module */
+.raku-ux-v2 .role-studio small,
+.raku-ux-v2 .flow-studio small,
+.raku-ux-v2 .ticket-studio small,
+.raku-ux-v2 .ticket-shell small,
+.raku-ux-v2 .creator-shell small,
+.raku-ux-v2 .creator-studio small,
+.raku-ux-v2 .voice-shell small,
+.raku-ux-v2 .control-panel small,
+.raku-ux-v2 .preview-console small,
+.raku-ux-v2 .diagnostics-grid small {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+/* Role Studio */
+.raku-ux-v2 .role-studio-title > span,
+.raku-ux-v2 .role-sidebar-head span,
+.raku-ux-v2 .role-section-head > div > span,
+.raku-ux-v2 .role-readiness-head span,
+.raku-ux-v2 .role-choice-block > span {
+  font-size: 10px !important;
+}
+.raku-ux-v2 .role-studio-title b { font-size: 20px; }
+.raku-ux-v2 .role-studio-title small { font-size: 13px !important; }
+.raku-ux-v2 .role-studio-stats span { font-size: 11px; padding: 11px 13px; }
+.raku-ux-v2 .role-studio-stats b { font-size: 15px; }
+.raku-ux-v2 .role-master-switch b,
+.raku-ux-v2 .role-inline-switch > b { font-size: 12px; }
+.raku-ux-v2 .role-panel-nav-copy b { font-size: 14px; }
+.raku-ux-v2 .role-panel-nav-copy small { font-size: 11px !important; }
+.raku-ux-v2 .role-panel-state b { font-size: 11px; }
+.raku-ux-v2 .role-small-button,
+.raku-ux-v2 .role-section-actions button,
+.raku-ux-v2 .role-items-empty button { font-size: 11px; min-height: 37px; }
+.raku-ux-v2 .role-section-head b { font-size: 13px; }
+.raku-ux-v2 .role-section-head small { font-size: 11px !important; }
+.raku-ux-v2 .role-mode-grid b { font-size: 13px; }
+.raku-ux-v2 .role-mode-grid small { font-size: 11px !important; }
+.raku-ux-v2 .role-choice-block b { font-size: 12px; }
+.raku-ux-v2 .role-choice-block small { font-size: 10px !important; }
+.raku-ux-v2 .role-target-hint small { font-size: 10px !important; }
+
+/* Role Studio panel-stage continuity: removes the visible strip below the commandbar. */
+.raku-ux-v2 .role-panel-stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: transparent !important;
+}
+.raku-ux-v2 .role-panel-commandbar {
+  flex: 0 0 auto;
+  margin: 0 !important;
+}
+.raku-ux-v2 .role-panel-commandbar + .role-builder-grid {
+  flex: 1 1 auto;
+  margin: 0 !important;
+  border-top: 0;
+}
+.raku-ux-v2 .role-builder-grid {
+  align-items: stretch;
+}
+
+/* Command Builder */
+.raku-ux-v2 .flow-studio-title span,
+.raku-ux-v2 .flow-panel-head span,
+.raku-ux-v2 .flow-meta-field > span,
+.raku-ux-v2 .flow-delivery > span {
+  font-size: 10px !important;
+}
+.raku-ux-v2 .flow-studio-title b { font-size: 19px; }
+.raku-ux-v2 .flow-command-copy b { font-size: 14px; }
+.raku-ux-v2 .flow-command-copy small { font-size: 11px !important; }
+.raku-ux-v2 .flow-palette-item b { font-size: 13px; }
+.raku-ux-v2 .flow-palette-item small { font-size: 11px !important; }
+.raku-ux-v2 .flow-block-head > div:nth-child(3) b { font-size: 13px; }
+.raku-ux-v2 .flow-block-head > div:nth-child(3) small { font-size: 10px !important; }
+.raku-ux-v2 .flow-charcount { font-size: 10px; }
+
+/* Overview / server cards / generic status text */
+.raku-ux-v2 .server-card-copy p { font-size: 14px; }
+.raku-ux-v2 .ux-server-card-help { font-size: 11px; line-height: 1.55; }
+.raku-ux-v2 .server-card-actions .card-action { font-size: 12px; }
+.raku-ux-v2 .module-row > div:nth-child(2) span { font-size: 13px; line-height: 1.45; }
+.raku-ux-v2 .telemetry-card small,
+.raku-ux-v2 .diagnostic-cta small { font-size: 11px; }
+.raku-ux-v2 .toast small { font-size: 11px; line-height: 1.45; }
+
+/* Login and server picker stay elegant but no micro-type. */
+.raku-ux-v2 .ux-login-eyebrow { font-size: 10px; }
+.raku-ux-v2 .ux-login-note { font-size: 12px; }
+.raku-ux-v2 .ux-login-step > span { font-size: 10px; }
+.raku-ux-v2 .ux-login-step b { font-size: 13px; }
+.raku-ux-v2 .ux-login-step small { font-size: 11px; }
+.raku-ux-v2 .ux-server-path b { font-size: 12px; }
+.raku-ux-v2 .ux-server-path small { font-size: 11px; }
+.raku-ux-v2 .ux-product-top span,
+.raku-ux-v2 .ux-product-top b,
+.raku-ux-v2 .ux-product-foot { font-size: 10px; }
+.raku-ux-v2 .ux-product-pulse span { font-size: 9px; }
+.raku-ux-v2 .ux-product-pulse small,
+.raku-ux-v2 .ux-feature-row small { font-size: 10px; }
+.raku-ux-v2 .ux-feature-row b { font-size: 13px; }
+.raku-ux-v2 .ux-feature-row em { font-size: 9px; }
+
+@media (max-width: 1180px) {
+  .raku-ux-v2 .ux-guide-step { padding: 9px 12px; }
+}
