@@ -24,6 +24,84 @@ jobs:
             echo "Checking $file"
             node --check "$file"
           done < <(find src public tests -type f -name '*.js' -print0)
+      - name: Check CSS syntax sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          function walk(dir) {
+            return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+              const full = path.join(dir, entry.name);
+              return entry.isDirectory() ? walk(full) : [full];
+            });
+          }
+
+          function checkCss(file) {
+            const text = fs.readFileSync(file, 'utf8');
+            let braces = 0;
+            let quote = null;
+            let comment = false;
+            let escape = false;
+
+            for (let i = 0; i < text.length; i += 1) {
+              const ch = text[i];
+              const next = text[i + 1];
+
+              if (comment) {
+                if (ch === '*' && next === '/') { comment = false; i += 1; }
+                continue;
+              }
+
+              if (quote) {
+                if (escape) { escape = false; continue; }
+                if (ch === '\\') { escape = true; continue; }
+                if (ch === quote) quote = null;
+                continue;
+              }
+
+              if (ch === '/' && next === '*') { comment = true; i += 1; continue; }
+              if (ch === '"' || ch === "'") { quote = ch; continue; }
+              if (ch === '{') braces += 1;
+              if (ch === '}') braces -= 1;
+              if (braces < 0) throw new Error(`${file}: unexpected closing brace near offset ${i}`);
+            }
+
+            if (comment) throw new Error(`${file}: unclosed comment`);
+            if (quote) throw new Error(`${file}: unclosed string`);
+            if (braces !== 0) throw new Error(`${file}: unbalanced braces (${braces})`);
+            console.log(`CSS OK ${file}`);
+          }
+
+          for (const file of walk('public').filter(file => file.endsWith('.css'))) checkCss(file);
+          NODE
+      - name: Check UI design contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const required = '/raku-glass-v300.css';
+          const count = html.split(required).length - 1;
+          if (count !== 1) throw new Error(`Expected exactly one ${required} reference, found ${count}`);
+          const forbidden = [
+            'raku-design-v200.css',
+            'raku-ux-v2.js',
+            'raku-ux-v2-guides.js',
+            'raku-ux-v2-hints.js',
+            'raku-module-unification-v142.css',
+            'role-studio-v150.css',
+            'ticket-studio-v160.css'
+          ];
+          for (const name of forbidden) {
+            if (html.includes(name)) throw new Error(`Retired UI asset referenced by index.html: ${name}`);
+          }
+          if (!fs.existsSync('public/raku-glass-v300.css')) throw new Error('Canonical Glass UI stylesheet missing');
+          console.log('UI design contract verified');
+          NODE
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Load critical backend modules
