@@ -1,115 +1,115 @@
-# RAKU Discord Control — Orbit UI v6
+# RAKU Discord Control — Orbit UI v6.1
 
 ## Current architecture
 
-The product-wide interface is built around exactly two final UI files:
+The product-wide interface has exactly two final UI authorities:
 
-- `public/raku-orbit-v600.css` — the only product-wide visual layer
-- `public/raku-orbit-v600.js` — the final authenticated shell and overview renderer
+- `public/raku-orbit-v610.css` — the **only** product-wide visual layer
+- `public/raku-orbit-v600.js` — the authenticated shell and constellation overview renderer
 
-They load after all feature modules so existing bot functionality remains intact while the visible application structure is owned by Orbit.
+Feature CSS remains loaded only for component mechanics. Do not add a second global fix, polish, override, readability or glass stylesheet.
 
-## Why Orbit exists
+## Core silhouette
 
-Multiple earlier generations kept returning to the same admin-dashboard silhouette: left sidebar, top context bar, rectangular cards and a conventional content grid. That direction is retired.
-
-Orbit must look structurally different before any color, blur or radius is considered.
-
-## Dashboard silhouette
-
-The authenticated dashboard uses a spatial workspace:
+Orbit stays structurally different from conventional admin dashboards:
 
 1. no fixed application sidebar
-2. a floating server capsule at the top left
-3. a small floating page capsule in the center
-4. a floating action capsule at the top right
-5. one large free workspace canvas
-6. a floating bottom navigation dock
-7. the active dock item expands to show its label
-8. inactive items stay compact and expose state through a small status point
+2. floating server capsule top-left
+3. floating current-page capsule top-center
+4. floating action capsule top-right
+5. one free workspace canvas
+6. floating bottom navigation dock
+7. active dock item expands; inactive modules stay compact
+8. overview centers on a Module Constellation rather than a KPI/card wall
 
-Legacy `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` hooks may remain only because existing functional code expects them. They must not visually recreate the old sidebar shell.
+Legacy hooks like `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` exist only for compatibility with feature code. They must never recreate the old sidebar layout.
 
-## Overview
+## v6.1 production polish
 
-The overview is not a hero dashboard and not a KPI wall.
+Orbit v6.1 is the finish-quality pass. It adds:
 
-Its central interaction is the **Module Constellation**:
+- Manrope for display/headline/navigation typography
+- Inter for working UI text
+- deeper but restrained multi-layer glass
+- consistent highlights, borders and shadows
+- a complete form/control visual system
+- dock hover labels and clearer active state
+- refined constellation depth and subtle orbital motion
+- glass treatment for the emoji picker
+- a corrected five-card server-gallery rhythm with `grid-auto-flow:dense`
+- hard anti-overflow rules for all editor modules
+- responsive restructuring for Commands, Roles, Tickets, Creator, Voice and Analytics
+- compatibility variables for legacy module CSS (`--surface-2`, `--green`, etc.) so inherited mechanics cannot silently lose styling
 
-- current Discord server in the center
-- clickable module nodes arranged around it
-- subtle orbital geometry used as navigation context
-- Activity, Attention and Quick Actions live in separate asymmetric glass islands
-- summary numbers stay compact and secondary
+## Readability contract
 
-The overview should feel like a control surface, not a template marketplace dashboard.
+- Headlines and navigation use Manrope.
+- Body, fields and controls use Inter.
+- Ordinary working text should normally be 10–14px.
+- Tiny 8–9px text is reserved for genuinely secondary metadata only.
+- Long server names, rule names and event strings must truncate or wrap safely instead of stretching grids.
+- Every grid/flex child that can contain dynamic content should be allowed to shrink with `min-width: 0`.
+
+## Glass contract
+
+Glass should feel like material, not a blur filter pasted over everything.
+
+Major surfaces use:
+- translucent dark fill
+- a restrained light edge
+- one inner highlight
+- controlled shadow depth
+- backdrop blur where supported
+
+Nested editor controls stay calmer than major floating surfaces. Discord message previews keep their Discord-like preview treatment so they remain visually distinct from the application chrome.
+
+## Module layout contract
+
+Feature internals may have side lists/editor/preview columns when needed, but they must obey Orbit's outer geometry.
+
+Specific rules:
+- module toolbars must wrap rather than overflow
+- Role/Ticket/Creator side lists become non-sticky and horizontal/grid-like on narrower layouts
+- preview columns stop being sticky before they can collide with the floating header
+- Ticket panelbar and Role commandbar use wrapping layouts instead of old fixed grid columns
+- Commands must collapse the three-column builder progressively instead of forcing horizontal overflow
+- form grids collapse to one column on narrow screens
 
 ## Login
 
-Login is a centered authentication portal, not a left-text/right-console split.
-
-It uses:
-
-- one central glass sign-in surface
-- subtle ambient gradient light
-- a few floating feature chips around it
-- no fake telemetry, fake terminals or READY boards
+Login is a centered glass portal with subtle ambient light and a few floating feature chips. Do not restore a text-left / fake-console-right layout.
 
 ## Server picker
 
-The server picker is an asymmetric workspace gallery.
+The server picker is an asymmetric gallery with real Discord server icons.
 
-- real Discord server icons remain visible
-- cards intentionally use different spans on desktop
-- the page should not look like a repeated equal-card admin grid
-- search and filtering remain simple and readable
+The desktop rhythm uses five-card cycles:
+- card 1: 7 columns
+- card 2: 5 columns
+- cards 3–5: 4 columns each
 
-## Visual direction
+This intentionally fills complete 12-column rows. Do not restore the old six-card `nth-child` pattern; it produced empty grid columns.
 
-Orbit may use more glass than Studio v5, but glass must still support hierarchy.
+## Overview
 
-Target qualities:
-
-- dark spatial background
-- translucent floating surfaces
-- violet as the primary accent and cyan only as a secondary signal
-- high text contrast
-- subtle blur and depth
-- restrained glow
-- readable working text (normally 10–15px)
-- animated motion only where it reinforces floating/spatial behavior
-- no generated images
-- no fake sci-fi system copy
-
-## Feature modules
-
-Existing module CSS keeps internal mechanics only:
-
-- `styles.css`
-- `commands-editor.css`
-- `role-studio.css`
-- `ticket-studio.css`
-- `creator-hub.css`
-- `voice-studio.css`
-- `analytics-studio.css`
-- `emoji-picker-popup.css`
-
-Orbit owns shared outer surfaces, form styling, spacing, glass treatment and responsive behavior.
-
-Internal editor sidebars or preview columns are allowed when the feature itself requires them. They are not application navigation.
+The overview centers on the Module Constellation:
+- real server in the core
+- module nodes around it
+- subtle orbital geometry
+- Activity, Attention and Quick Actions as asymmetric glass islands
+- compact metrics remain secondary
 
 ## Screen contract
 
-Login, server picker and guild dashboard are mutually exclusive app screens. Visual CSS must never override the `.hidden` state.
+Login, server picker and guild dashboard are mutually exclusive screens. Visual CSS must never override `.hidden`.
 
 ## Retired architecture
 
 Do not restore or reference:
-
+- `raku-orbit-v600.css`
 - `raku-studio-v500.css`
 - `raku-workspace-v500.js`
-- the Studio v5 fixed application sidebar
-- the Studio v5 slim context bar layout
+- Studio v5 fixed sidebar/context-bar layout
 - `raku-prism-v400.css`
 - `raku-ui-v100.js`
 - `raku-glass-v300.css`
@@ -118,8 +118,6 @@ Do not restore or reference:
 - module-unification/readability/wide/fix layers
 - role/ticket version-specific polish stylesheets
 
-Do not add another global fix/polish/override stylesheet. Shared visual changes belong directly in `raku-orbit-v600.css`.
-
 ## Rule
 
-If a proposed redesign can be achieved by merely moving the old sidebar or recoloring the old cards, it is not a new design. Preserve the Orbit silhouette first: floating capsules, free canvas, bottom dock and constellation-based overview.
+Polish the Orbit architecture in place. If a change starts rebuilding a conventional admin dashboard or requires another global override file, the approach is wrong.
