@@ -94,7 +94,7 @@ jobs:
 
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           if (pkg.name !== 'orbit-discord-control') throw new Error(`Unexpected package name: ${pkg.name}`);
-          if (pkg.version !== '0.30.1') throw new Error(`Expected package version 0.30.1, got ${pkg.version}`);
+          if (pkg.version !== '0.31.0') throw new Error(`Expected package version 0.31.0, got ${pkg.version}`);
 
           const readme = fs.readFileSync('README.md', 'utf8');
           const launcher = fs.readFileSync('start.cmd', 'utf8');
@@ -113,7 +113,13 @@ jobs:
             'src/creator-social-provider-router.js',
             'src/creator-social-runtime.js',
             'src/creator-twitch-clips.js',
-            'tests/creator-twitch-clips.test.js'
+            'tests/creator-twitch-clips.test.js',
+            'src/custom-bot-store.js',
+            'src/custom-bot-manager.js',
+            'src/custom-bot-api.js',
+            'public/custom-bot.js',
+            'public/custom-bot.css',
+            'tests/custom-bot-manager.test.js'
           ]) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
@@ -164,8 +170,28 @@ jobs:
             if (!profileUi.includes(token)) throw new Error(`Bot Profile observer loop guard missing: ${token}`);
           }
 
+          const customStore = fs.readFileSync('src/custom-bot-store.js', 'utf8');
+          for (const token of ['aes-256-gcm', 'scryptSync', 'ciphertext', 'getAuthTag', 'SESSION_SECRET']) {
+            if (!customStore.includes(token)) throw new Error(`Custom Bot credential security token missing: ${token}`);
+          }
+          if (/token\s*:\s*String\(|JSON\.stringify\([^)]*token/i.test(customStore)) {
+            throw new Error('Custom Bot store must not persist plaintext token fields');
+          }
+          const customManager = fs.readFileSync('src/custom-bot-manager.js', 'utf8');
+          for (const token of ['new Client', 'GatewayIntentBits.Guilds', 'setPresence', 'applications.commands', 'reconnectStoredCustomBot']) {
+            if (!customManager.includes(token)) throw new Error(`Custom Bot runtime token missing: ${token}`);
+          }
+          const customUi = fs.readFileSync('public/custom-bot.js', 'utf8');
+          for (const token of ['Custom Bot verbinden', 'Aktivität & Status', 'Token ersetzen', 'data-cb-save-presence']) {
+            if (!customUi.includes(token)) throw new Error(`Custom Bot UI token missing: ${token}`);
+          }
+          const profileOrbit = fs.readFileSync('public/bot-profile-orbit.js', 'utf8');
+          for (const token of ['/custom-bot.css?v=0310', '/custom-bot.js?v=0310']) {
+            if (!profileOrbit.includes(token)) throw new Error(`Custom Bot asset loader missing: ${token}`);
+          }
+
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
-          console.log('ORBIT v0.30.1 product contract verified');
+          console.log('ORBIT v0.31.0 product contract verified');
           NODE
 
       - name: Install dependencies
@@ -173,7 +199,7 @@ jobs:
 
       - name: Load core modules
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); console.log('Core modules loaded')"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); require('./src/custom-bot-store'); require('./src/custom-bot-manager'); require('./src/custom-bot-api'); console.log('Core modules loaded')"
           node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
 
       - name: Run automated tests
