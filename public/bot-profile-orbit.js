@@ -1,6 +1,23 @@
 (() => {
   const PROFILE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="13" rx="4"/><path d="M9 6V4.5M15 6V4.5M8.5 12h.01M15.5 12h.01M9 16h6"/></svg>';
 
+  function ensureCustomBotAssets() {
+    if (!document.querySelector('link[data-orbit-custom-bot]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/custom-bot.css?v=0310';
+      link.dataset.orbitCustomBot = '1';
+      document.head.appendChild(link);
+    }
+    if (!document.querySelector('script[data-orbit-custom-bot]')) {
+      const script = document.createElement('script');
+      script.src = '/custom-bot.js?v=0310';
+      script.defer = true;
+      script.dataset.orbitCustomBot = '1';
+      document.body.appendChild(script);
+    }
+  }
+
   function profileIsCustomized() {
     const profile = workingSettings?.botProfile || {};
     return Boolean(
@@ -119,5 +136,6 @@
     };
   }
 
+  ensureCustomBotAssets();
   requestAnimationFrame(enhanceOverview);
 })();
