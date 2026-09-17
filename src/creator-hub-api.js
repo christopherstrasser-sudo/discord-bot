@@ -25,7 +25,7 @@ const { SOCIAL_PLATFORMS, normalizeSocialHandle } = require('./creator-social-pr
 const MAX_RULES = 30;
 const PLATFORMS = new Set(['twitch', 'youtube', 'tiktok', 'instagram', 'bluesky', 'x']);
 const EVENTS = {
-  twitch: new Set(['live', 'title_change', 'category_change']),
+  twitch: new Set(['live', 'clip', 'title_change', 'category_change']),
   youtube: new Set(['upload']),
   tiktok: new Set(['live', 'upload']),
   instagram: new Set(['post']),
@@ -239,6 +239,7 @@ function publicSnapshot(snapshot) {
     platform: snapshot.platform,
     source: snapshot.source,
     creator: snapshot.creator,
+    clipper: snapshot.clipper || '',
     exists: snapshot.exists !== false,
     live: Boolean(snapshot.live),
     id: snapshot.id || '',
@@ -248,18 +249,23 @@ function publicSnapshot(snapshot) {
     thumbnail: snapshot.thumbnail || '',
     avatar: snapshot.avatar || '',
     startedAt: snapshot.startedAt || snapshot.publishedAt || '',
-    viewers: Number(snapshot.viewers || 0)
+    viewers: Number(snapshot.viewers || 0),
+    views: Number(snapshot.views || 0),
+    duration: Number(snapshot.duration || 0)
   };
 }
 
 function shouldPublishCheckedRule(rule) {
   return SOCIAL_PLATFORMS.has(rule.platform)
     || rule.platform === 'youtube'
-    || (rule.platform === 'tiktok' && rule.event === 'upload');
+    || (rule.platform === 'tiktok' && rule.event === 'upload')
+    || (rule.platform === 'twitch' && rule.event === 'clip');
 }
 
 function checkedEventKey(rule, snapshot) {
-  const kind = SOCIAL_PLATFORMS.has(rule.platform) ? 'post' : 'upload';
+  const kind = SOCIAL_PLATFORMS.has(rule.platform)
+    ? 'post'
+    : (rule.platform === 'twitch' && rule.event === 'clip' ? 'clip' : 'upload');
   return `${rule.platform}:${String(rule.source || '').replace(/^@/, '').toLowerCase()}:${kind}:${snapshot.id}`;
 }
 
@@ -284,7 +290,7 @@ async function publishCheckedSnapshot(guild, rule, snapshot) {
   const message = await channel.send(payload);
   const now = new Date().toISOString();
   const eventKey = checkedEventKey(rule, snapshot);
-  setCreatorRuleState(guild.id, rule.id, {
+  const statePatch = {
     initialized: true,
     lastObservedAt: now,
     lastProviderError: '',
@@ -306,7 +312,9 @@ async function publishCheckedSnapshot(guild, rule, snapshot) {
       viewers: Number(snapshot.viewers || 0),
       startedAt: snapshot.startedAt || snapshot.publishedAt || ''
     }
-  });
+  };
+  if (rule.platform === 'twitch' && rule.event === 'clip') statePatch.seenClipIds = [snapshot.id];
+  setCreatorRuleState(guild.id, rule.id, statePatch);
   appendCreatorHistory(guild.id, {
     ruleId: rule.id,
     ruleName: rule.name,
