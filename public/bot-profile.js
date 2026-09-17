@@ -57,7 +57,7 @@
   }
 
   function displayName() {
-    return S.nickname.trim() || S.profile?.effectiveName || 'RAKU Bot';
+    return S.nickname.trim() || S.profile?.effectiveName || 'ORBIT Bot';
   }
 
   function updateDirty() {
@@ -124,7 +124,7 @@
       <div class="bp-discord-card">
         <div class="bp-discord-banner"></div>
         <div class="bp-preview-avatar-wrap">
-          ${avatar ? `<img class="bp-preview-avatar" src="${safe(avatar)}" alt="">` : `<span class="bp-preview-avatar bp-avatar-fallback">R</span>`}
+          ${avatar ? `<img class="bp-preview-avatar" src="${safe(avatar)}" alt="">` : `<span class="bp-preview-avatar bp-avatar-fallback">O</span>`}
           <i></i>
         </div>
         <div class="bp-discord-profile-copy">
@@ -147,7 +147,7 @@
 
       <div class="bp-avatar-row">
         <div class="bp-avatar-stage">
-          ${avatar ? `<img src="${safe(avatar)}" alt="Aktueller Bot-Avatar">` : '<span>R</span>'}
+          ${avatar ? `<img src="${safe(avatar)}" alt="Aktueller Bot-Avatar">` : '<span>O</span>'}
         </div>
         <div class="bp-avatar-copy">
           <b>Server-Avatar</b>
@@ -163,7 +163,7 @@
       <div class="bp-fields">
         <label class="bp-field ${p.canChangeNickname === false ? 'locked' : ''}">
           <span><b>Bot-Name auf diesem Server</b><em><span data-bp-name-count>${S.nickname.length}</span>/32</em></span>
-          <input data-bp-name type="text" maxlength="32" value="${safe(S.nickname)}" placeholder="${safe(p.effectiveName || 'RAKU Bot')}" ${p.canChangeNickname === false ? 'disabled' : ''}>
+          <input data-bp-name type="text" maxlength="32" value="${safe(S.nickname)}" placeholder="${safe(p.effectiveName || 'ORBIT Bot')}" ${p.canChangeNickname === false ? 'disabled' : ''}>
           <small>${p.canChangeNickname === false ? 'Der Bot-Rolle fehlt aktuell „Nickname ändern“. Avatar und Bio kannst du trotzdem bearbeiten.' : 'Leer lassen, um den globalen Bot-Namen zu verwenden.'}</small>
         </label>
 
@@ -321,6 +321,11 @@
     if (description) description.textContent = 'Name, Avatar und Serverprofil deines Bots.';
   }
 
+  function ensureRailItem() {
+    injectRailItem();
+    updatePageCapsule();
+  }
+
   if (typeof getInitialTab === 'function') {
     const previousInitialTab = getInitialTab;
     getInitialTab = function getInitialTabWithBotProfile() {
@@ -345,8 +350,7 @@
     const previousShell = renderGuildShell;
     renderGuildShell = function renderGuildShellWithBotProfile() {
       previousShell();
-      injectRailItem();
-      updatePageCapsule();
+      ensureRailItem();
     };
   }
 
@@ -354,9 +358,19 @@
     const previousSwitch = switchTab;
     switchTab = function switchTabWithBotProfile(tab) {
       previousSwitch(tab);
-      injectRailItem();
+      ensureRailItem();
       document.querySelectorAll('.o6-command-rail [data-tab]').forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
-      updatePageCapsule();
     };
   }
+
+  // The Orbit shell is rendered asynchronously during the initial guild load.
+  // Observe that one dashboard subtree so Bot-Profil is present even when the
+  // command rail is created after this module has already executed.
+  const dashboardRoot = document.querySelector('#guildDashboard');
+  if (dashboardRoot && typeof MutationObserver !== 'undefined') {
+    const railObserver = new MutationObserver(() => ensureRailItem());
+    railObserver.observe(dashboardRoot, { childList: true, subtree: true });
+  }
+
+  requestAnimationFrame(ensureRailItem);
 })();
