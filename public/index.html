@@ -32,21 +32,18 @@
     #serverList.hidden,
     #guildDashboard.hidden { display:none !important; }
 
-    /* Orbit owns the page background. The legacy .deck-workspace surface is mechanics only. */
     body.o6-dashboard-mode #guildWorkspace.deck-workspace.o6-canvas {
       background: transparent !important;
       border: 0 !important;
       box-shadow: none !important;
     }
 
-    /* Approved ORBIT wordmark. */
     .orbit-brand { display:inline-flex !important; align-items:center; width:max-content; min-width:0; }
     .orbit-wordmark { display:block; width:auto; object-fit:contain; pointer-events:none; user-select:none; }
     .orbit-wordmark-topbar { height:32px; max-width:142px; }
     .orbit-login-brand { width:100%; justify-content:center; }
     .orbit-wordmark-login { height:48px; max-width:min(260px,70vw); filter:drop-shadow(0 10px 24px rgba(117,100,255,.18)); }
 
-    /* Login: true viewport centering, independent from the legacy two-column login grid. */
     body:has(#loggedOut:not(.hidden)) .app-frame,
     body:has(#loggedOut:not(.hidden)) .main-shell { width:100% !important; max-width:none !important; min-height:100vh; margin:0 !important; }
     #loggedOut.login-screen:not(.hidden) {
@@ -103,18 +100,8 @@
       background:#6cdcff;
       box-shadow:0 0 0 6px rgba(108,220,255,.045),0 0 18px rgba(108,220,255,.45);
     }
-    .orbit-login-orbit-a {
-      width:min(920px,82vw);
-      aspect-ratio:1.75/1;
-      animation:orbitLoginRingA 28s linear infinite;
-    }
-    .orbit-login-orbit-b {
-      width:min(720px,66vw);
-      aspect-ratio:1.55/1;
-      border-color:rgba(108,220,255,.075);
-      transform:translate(-50%,-50%) rotate(18deg);
-      animation:orbitLoginRingB 34s linear infinite reverse;
-    }
+    .orbit-login-orbit-a { width:min(920px,82vw); aspect-ratio:1.75/1; animation:orbitLoginRingA 28s linear infinite; }
+    .orbit-login-orbit-b { width:min(720px,66vw); aspect-ratio:1.55/1; border-color:rgba(108,220,255,.075); transform:translate(-50%,-50%) rotate(18deg); animation:orbitLoginRingB 34s linear infinite reverse; }
     .orbit-login-core-glow {
       position:absolute;
       left:50%;
@@ -189,15 +176,287 @@
       #loggedOut .o6-login-card h1 { font-size:clamp(39px,12vw,58px) !important; }
       .orbit-login-orbit { opacity:.60; }
     }
+
+    /* Server gallery: visual language aligned with Orbit login/dashboard. */
+    #serverList.o6-server-hub {
+      position:relative;
+      isolation:isolate;
+      padding-top:112px !important;
+      overflow:visible;
+    }
+    #serverList .orbit-server-aurora,
+    #serverList .orbit-server-ring {
+      position:absolute;
+      pointer-events:none;
+      z-index:-1;
+    }
+    #serverList .orbit-server-aurora {
+      width:620px;
+      height:620px;
+      left:50%;
+      top:56px;
+      transform:translateX(-50%);
+      border-radius:50%;
+      background:radial-gradient(circle,rgba(149,135,255,.10),rgba(149,135,255,.025) 46%,transparent 72%);
+      filter:blur(18px);
+      animation:orbitServerAurora 9s ease-in-out infinite;
+    }
+    #serverList .orbit-server-ring {
+      left:50%;
+      top:48px;
+      width:min(1180px,88vw);
+      aspect-ratio:2.7/1;
+      transform:translateX(-50%) rotate(-4deg);
+      border:1px solid rgba(180,170,255,.055);
+      border-radius:50%;
+    }
+    #serverList .orbit-server-ring::before,
+    #serverList .orbit-server-ring::after {
+      content:"";
+      position:absolute;
+      border-radius:50%;
+      background:#9587ff;
+      box-shadow:0 0 0 5px rgba(149,135,255,.045),0 0 16px rgba(149,135,255,.36);
+    }
+    #serverList .orbit-server-ring::before { width:6px;height:6px;left:18%;top:9%; }
+    #serverList .orbit-server-ring::after { width:5px;height:5px;right:16%;bottom:8%;background:#6cdcff;box-shadow:0 0 0 5px rgba(108,220,255,.035),0 0 15px rgba(108,220,255,.34); }
+
+    #serverList .page-head {
+      min-height:236px;
+      align-items:center !important;
+      padding:34px 38px !important;
+      border:1px solid rgba(222,227,255,.12);
+      border-radius:30px;
+      background:linear-gradient(145deg,rgba(28,33,49,.62),rgba(10,13,21,.60));
+      box-shadow:0 28px 84px rgba(0,0,0,.26),inset 0 1px rgba(255,255,255,.055);
+      backdrop-filter:blur(30px) saturate(135%);
+      -webkit-backdrop-filter:blur(30px) saturate(135%);
+      overflow:hidden;
+      position:relative;
+    }
+    #serverList .page-head::before {
+      content:"";
+      position:absolute;
+      width:360px;
+      height:360px;
+      right:-100px;
+      top:-190px;
+      border-radius:50%;
+      background:rgba(108,220,255,.055);
+      filter:blur(16px);
+      pointer-events:none;
+    }
+    #serverList .page-head::after {
+      content:"";
+      position:absolute;
+      inset:1px;
+      border-radius:29px;
+      pointer-events:none;
+      background:linear-gradient(120deg,rgba(255,255,255,.045),transparent 22%,transparent 80%,rgba(149,135,255,.035));
+    }
+    #serverList .page-head > * { position:relative; z-index:1; }
+    #serverList .page-head h1 {
+      max-width:780px;
+      margin:8px 0 12px !important;
+      font-size:clamp(40px,4.5vw,62px) !important;
+      line-height:1.01 !important;
+      letter-spacing:-.052em !important;
+      text-wrap:balance;
+    }
+    #serverList .page-head p { max-width:630px !important; font-size:13px !important; color:#b8c0ce !important; }
+    #serverList .deck-stats { gap:10px !important; align-self:center; }
+    #serverList .deck-stats div {
+      min-width:112px !important;
+      min-height:88px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      padding:15px 17px !important;
+      border-radius:18px !important;
+      background:rgba(11,14,23,.52) !important;
+      border-color:rgba(222,227,255,.11) !important;
+      box-shadow:inset 0 1px rgba(255,255,255,.05),0 12px 34px rgba(0,0,0,.16) !important;
+    }
+    #serverList .deck-stats b { font-size:24px !important; line-height:1; }
+    #serverList .deck-stats span { margin-top:7px !important; text-transform:uppercase; letter-spacing:.08em; font-size:8px !important; }
+
+    #serverList .server-toolbar {
+      margin:18px 0 16px !important;
+      padding:8px;
+      border:1px solid rgba(222,227,255,.10);
+      border-radius:20px;
+      background:rgba(13,16,25,.58);
+      box-shadow:0 16px 44px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.04);
+      backdrop-filter:blur(24px);
+      -webkit-backdrop-filter:blur(24px);
+    }
+    #serverList .search-field,
+    #serverList .segmented-control {
+      min-height:44px !important;
+      background:rgba(255,255,255,.025) !important;
+      border-color:rgba(222,227,255,.075) !important;
+      box-shadow:none !important;
+    }
+    #serverList .search-field { width:min(520px,100%) !important; }
+    #serverList .segmented-control button { min-height:34px !important; }
+
+    #serverList .server-card-grid {
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      gap:16px !important;
+    }
+    #serverList .server-card,
+    #serverList .server-card:nth-child(n) {
+      grid-column:auto !important;
+      min-height:302px;
+      border-radius:26px !important;
+      border-color:rgba(222,227,255,.105) !important;
+      background:linear-gradient(145deg,rgba(25,30,45,.72),rgba(10,13,21,.70)) !important;
+      box-shadow:0 24px 64px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.055) !important;
+      transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease,background .22s ease;
+    }
+    #serverList .server-card::before {
+      width:250px !important;
+      height:250px !important;
+      left:-84px !important;
+      top:-120px !important;
+      background:radial-gradient(circle,rgba(149,135,255,.16),rgba(149,135,255,.035) 52%,transparent 74%) !important;
+      filter:blur(4px) !important;
+    }
+    #serverList .server-card.disconnected::before { background:radial-gradient(circle,rgba(108,220,255,.075),rgba(108,220,255,.02) 52%,transparent 74%) !important; }
+    #serverList .server-card:hover {
+      transform:translateY(-7px) scale(1.008) !important;
+      border-color:rgba(171,158,255,.28) !important;
+      background:linear-gradient(145deg,rgba(30,35,52,.80),rgba(12,15,24,.76)) !important;
+      box-shadow:0 34px 88px rgba(0,0,0,.32),0 0 42px rgba(149,135,255,.045),inset 0 1px rgba(255,255,255,.065) !important;
+    }
+    #serverList .server-card-topline {
+      min-height:48px !important;
+      padding:0 20px !important;
+      background:rgba(255,255,255,.012) !important;
+    }
+    #serverList .server-card-topline span { color:#7f8999 !important; }
+    #serverList .server-card-topline b {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-height:25px;
+      padding:0 9px;
+      border:1px solid rgba(222,227,255,.08);
+      border-radius:999px;
+      background:rgba(255,255,255,.025);
+      letter-spacing:.06em;
+    }
+    #serverList .server-card.connected .server-card-topline b { border-color:rgba(89,228,175,.13); background:rgba(89,228,175,.055); }
+
+    #serverList .server-card-main {
+      padding:26px 22px 20px !important;
+      gap:18px !important;
+      align-items:center !important;
+    }
+    #serverList .server-icon-wrap {
+      position:relative;
+      width:82px;
+      height:82px;
+      flex:none;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+    }
+    #serverList .server-icon-wrap::before,
+    #serverList .server-icon-wrap::after {
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      pointer-events:none;
+    }
+    #serverList .server-icon-wrap::before {
+      border:1px solid rgba(171,158,255,.24);
+      box-shadow:0 0 0 8px rgba(149,135,255,.025),0 0 30px rgba(149,135,255,.07);
+      animation:orbitServerIconPulse 5.5s ease-in-out infinite;
+    }
+    #serverList .server-icon-wrap::after {
+      inset:-5px;
+      border:1px solid transparent;
+      background:conic-gradient(from 0deg,rgba(149,135,255,.72),transparent 24%,rgba(108,220,255,.52),transparent 62%,rgba(149,135,255,.72)) border-box;
+      mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
+      mask-composite:exclude;
+      opacity:.45;
+      animation:orbitServerSpin 16s linear infinite;
+    }
+    #serverList .server-icon { width:62px !important; height:62px !important; border-radius:18px !important; z-index:1; }
+    #serverList .server-live-dot { right:4px !important; bottom:5px !important; z-index:3; }
+    #serverList .server-card-copy h3 { font-size:21px !important; }
+    #serverList .server-card-copy p { margin-top:6px !important; color:#aeb7c5 !important; }
+
+    #serverList .server-card-meter {
+      display:grid !important;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      align-items:center;
+      gap:12px;
+      margin:0 22px 20px;
+      padding:12px 14px !important;
+      border:1px solid rgba(222,227,255,.07);
+      border-radius:14px;
+      background:rgba(255,255,255,.018);
+    }
+    #serverList .server-card-meter>span { letter-spacing:.10em; }
+    #serverList .server-card-meter>div { height:3px !important; }
+    #serverList .server-card-meter>b { min-width:48px; text-align:right; letter-spacing:.07em; }
+
+    #serverList .server-card-actions {
+      padding:7px !important;
+      gap:6px;
+      border-top:1px solid rgba(222,227,255,.07) !important;
+      background:rgba(5,7,11,.16) !important;
+    }
+    #serverList .card-action {
+      height:46px !important;
+      border:1px solid transparent !important;
+      border-radius:13px !important;
+      background:transparent !important;
+    }
+    #serverList .card-action:hover { border-color:rgba(222,227,255,.075) !important; background:rgba(255,255,255,.045) !important; }
+    #serverList .card-action.primary {
+      border-color:rgba(171,158,255,.11) !important;
+      background:linear-gradient(135deg,rgba(130,117,245,.16),rgba(108,220,255,.055)) !important;
+      color:#f0eeff !important;
+    }
+
+    @keyframes orbitServerAurora { 0%,100%{opacity:.55;transform:translateX(-50%) scale(.94)} 50%{opacity:.9;transform:translateX(-50%) scale(1.06)} }
+    @keyframes orbitServerSpin { to{transform:rotate(360deg)} }
+    @keyframes orbitServerIconPulse { 0%,100%{transform:scale(.98);opacity:.72} 50%{transform:scale(1.035);opacity:1} }
+
+    @media (max-width:1100px) {
+      #serverList .page-head { grid-template-columns:1fr !important; min-height:0; gap:24px !important; }
+      #serverList .deck-stats { justify-self:start; }
+    }
+    @media (max-width:860px) {
+      #serverList .server-card-grid { grid-template-columns:1fr !important; }
+      #serverList .server-toolbar { align-items:stretch !important; flex-direction:column; }
+      #serverList .search-field { width:100% !important; }
+      #serverList .segmented-control { align-self:flex-start; }
+    }
+    @media (max-width:620px) {
+      #serverList .page-head { padding:26px 22px !important; border-radius:24px; }
+      #serverList .page-head h1 { font-size:clamp(36px,11vw,48px) !important; }
+      #serverList .deck-stats { width:100%; display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)); }
+      #serverList .deck-stats div { min-width:0 !important; min-height:76px; padding:12px !important; }
+      #serverList .server-card-main { align-items:flex-start !important; }
+      #serverList .server-card-meter { margin-inline:14px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       #loggedOut .o6-login-stage::before,
       #loggedOut .o6-login-stage::after,
       #loggedOut .o6-login-float,
       .orbit-login-orbit,
-      .orbit-login-core-glow { animation:none !important; }
+      .orbit-login-core-glow,
+      #serverList .orbit-server-aurora,
+      #serverList .server-icon-wrap::before,
+      #serverList .server-icon-wrap::after { animation:none !important; }
     }
 
-    /* Keep the labelled command rail intentionally compact on desktop. */
     @media (min-width: 901px) {
       body.o6-dashboard-mode .o6-command-rail.o6-dock {
         width: min(1160px, calc(100vw - 64px)) !important;
@@ -216,9 +475,7 @@
         width: 18px !important;
         height: 18px !important;
       }
-      body.o6-dashboard-mode .o6-command-rail .o6-dock-separator {
-        margin-inline: 1px !important;
-      }
+      body.o6-dashboard-mode .o6-command-rail .o6-dock-separator { margin-inline: 1px !important; }
     }
   </style>
 </head>
@@ -261,6 +518,9 @@
       </section>
 
       <section id="serverList" class="server-screen hidden o6-server-hub">
+        <span class="orbit-server-aurora" aria-hidden="true"></span>
+        <span class="orbit-server-ring" aria-hidden="true"></span>
+
         <div class="page-head">
           <div>
             <span class="overline">DEINE ORBITS</span>
@@ -317,7 +577,6 @@
   <script src="/voice-studio.js?v=0290"></script>
   <script src="/analytics-studio.js?v=0290"></script>
 
-  <!-- Final Orbit shell renderer: loaded after every feature module. -->
   <script src="/raku-orbit-v600.js?v=0290"></script>
   <script src="/raku-module-shell.js?v=0290"></script>
   <script src="/bot-profile.js?v=0291"></script>
