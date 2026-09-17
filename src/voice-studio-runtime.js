@@ -12,10 +12,14 @@ const {
   removeVoiceRoom,
   nextVoiceSequence
 } = require('./voice-studio-store');
+const {
+  getActiveClient,
+  shouldHandleGuildEvent
+} = require('./guild-client-router');
 
 const creating = new Set();
 const cleanupTimers = new Map();
-let attached = false;
+const attachedClients = new WeakSet();
 
 function normalizeRoomName(value) {
   const cleaned = String(value || '')
@@ -73,7 +77,7 @@ async function applyOwnerControls(channel, ownerId, enabled) {
       Connect: true,
       ManageChannels: true,
       MoveMembers: true
-    }, { reason: 'RAKU Voice Studio room owner controls' });
+    }, { reason: 'ORBIT Voice Studio room owner controls' });
   } catch (error) {
     console.warn(`[VOICE] Could not grant owner controls in ${channel.name}: ${error.message}`);
   }
@@ -82,7 +86,7 @@ async function applyOwnerControls(channel, ownerId, enabled) {
 async function revokeOwnerControls(channel, ownerId) {
   if (!channel || !ownerId) return;
   try {
-    await channel.permissionOverwrites.delete(ownerId, 'RAKU Voice Studio ownership transfer');
+    await channel.permissionOverwrites.delete(ownerId, 'ORBIT Voice Studio ownership transfer');
   } catch (error) {
     console.warn(`[VOICE] Could not revoke old owner controls in ${channel.name}: ${error.message}`);
   }
@@ -104,12 +108,12 @@ async function transferOwnership(channel, room, nextOwner, config) {
   return updated;
 }
 
-async function deleteManagedRoom(channelId, reason = 'RAKU Voice Studio cleanup') {
+async function deleteManagedRoom(channelId, reason = 'ORBIT Voice Studio cleanup') {
   clearCleanupTimer(channelId);
   const room = getVoiceRoom(channelId);
   if (!room) return false;
 
-  const client = module.exports._client;
+  const client = getActiveClient(room.guildId);
   const guild = client?.guilds.cache.get(room.guildId);
   const channel = guild?.channels.cache.get(channelId) || await guild?.channels.fetch(channelId).catch(() => null);
 
@@ -190,7 +194,7 @@ async function createRoomForVoiceState(state) {
     if (existing?.channel) {
       clearCleanupTimer(existing.channel.id);
       try {
-        await state.setChannel(existing.channel, 'RAKU Voice Studio: return owner to existing room');
+        await state.setChannel(existing.channel, 'ORBIT Voice Studio: return owner to existing room');
       } catch (error) {
         console.warn(`[VOICE] Could not move ${member.user.tag} to existing room: ${error.message}`);
       }
@@ -218,7 +222,7 @@ async function createRoomForVoiceState(state) {
       parent: parentId || undefined,
       userLimit,
       ...(bitrate ? { bitrate } : {}),
-      reason: `RAKU Voice Studio room for ${member.user.tag}`
+      reason: `ORBIT Voice Studio room for ${member.user.tag}`
     });
 
     const room = upsertVoiceRoom({
@@ -234,11 +238,11 @@ async function createRoomForVoiceState(state) {
     await applyOwnerControls(channel, member.id, config.ownerControls);
 
     try {
-      await state.setChannel(channel, 'RAKU Voice Studio: create private room');
+      await state.setChannel(channel, 'ORBIT Voice Studio: create private room');
       console.log(`[VOICE] Created ${channel.name} for ${member.user.tag} in ${guild.name}`);
     } catch (error) {
       removeVoiceRoom(channel.id);
-      await channel.delete('RAKU Voice Studio: rollback failed move').catch(() => null);
+      await channel.delete('ORBIT Voice Studio: rollback failed move').catch(() => null);
       console.warn(`[VOICE] Could not move ${member.user.tag}; rolled room back: ${error.message}`);
     }
 
@@ -291,6 +295,7 @@ async function handleVoiceStateUpdate(oldState, newState) {
 
 async function reconcileVoiceRooms(client) {
   for (const guild of client.guilds.cache.values()) {
+    if (!shouldHandleGuildEvent(client, guild.id)) continue;
     for (const room of listVoiceRooms(guild.id)) {
       const channel = guild.channels.cache.get(room.channelId) || await guild.channels.fetch(room.channelId).catch(() => null);
       if (!channel || channel.type !== ChannelType.GuildVoice) {
@@ -303,15 +308,17 @@ async function reconcileVoiceRooms(client) {
 }
 
 function attachVoiceStudioRuntime(client) {
-  if (attached) return;
-  attached = true;
-  module.exports._client = client;
+  if (!client || attachedClients.has(client)) return;
+  attachedClients.add(client);
 
   client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+    const guildId = newState?.guild?.id || oldState?.guild?.id;
+    if (!guildId || !shouldHandleGuildEvent(client, guildId)) return;
     handleVoiceStateUpdate(oldState, newState).catch(error => console.warn(`[VOICE] Voice state handler failed: ${error.message}`));
   });
 
   client.on(Events.ChannelDelete, channel => {
+    if (!channel?.guild || !shouldHandleGuildEvent(client, channel.guild.id)) return;
     if (getVoiceRoom(channel.id)) {
       clearCleanupTimer(channel.id);
       removeVoiceRoom(channel.id);
