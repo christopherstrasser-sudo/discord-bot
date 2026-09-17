@@ -8,7 +8,7 @@
   const PLATFORM_NAMES = { instagram: 'Instagram', bluesky: 'Bluesky', x: 'X' };
   const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X' };
   const SUBTITLES = {
-    twitch: 'HELIX LIVE', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
+    twitch: 'HELIX LIVE + CLIPS', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
     instagram: 'PUBLIC RELAY', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY'
   };
 
@@ -18,12 +18,31 @@
   const originalDefaults = C.defaults;
   const originalPreviewVars = C.previewVars;
   const originalRender = C.render;
+  const originalWire = C.wire;
 
   C.platform = platform => PLATFORM_NAMES[platform] || originalPlatform(platform);
-  C.eventName = event => event === 'post' ? 'Neuer Post' : originalEventName(event);
-  C.events = platform => SOCIAL.includes(platform) ? [['post', 'Neuer Post']] : originalEvents(platform);
+  C.eventName = event => {
+    if (event === 'post') return 'Neuer Post';
+    if (event === 'clip') return 'Neuer Clip';
+    return originalEventName(event);
+  };
+  C.events = platform => {
+    if (platform === 'twitch') {
+      return [
+        ['live', 'Live-Start'],
+        ['clip', 'Neuer Clip'],
+        ['title_change', 'Stream-Titel geändert'],
+        ['category_change', 'Kategorie / Spiel geändert']
+      ];
+    }
+    return SOCIAL.includes(platform) ? [['post', 'Neuer Post']] : originalEvents(platform);
+  };
 
   C.defaults = (platform, event = null) => {
+    if (platform === 'twitch' && event === 'clip') return {
+      event: 'clip', color: '#9146FF', buttonLabel: 'Clip ansehen', message: '{creator} hat einen neuen Twitch-Clip!',
+      embedTitle: '✂️ Neuer Clip von {creator}', embedDescription: '**{title}**\n\nClip erstellt von **{clipper}**.'
+    };
     if (platform === 'instagram') return {
       event: 'post', color: '#E1306C', buttonLabel: 'Post ansehen', message: '{creator} hat einen neuen Instagram-Post veröffentlicht!',
       embedTitle: '📸 Neuer Instagram-Post von {creator}', embedDescription: '**{title}**\n\nJetzt auf Instagram ansehen.'
@@ -41,11 +60,16 @@
 
   C.previewVars = rule => {
     const vars = originalPreviewVars(rule);
+    if (rule.platform === 'twitch' && rule.event === 'clip') Object.assign(vars, {
+      title: 'Was war DAS denn?!', game: 'VALORANT', viewers: '0', platform: 'Twitch', clipper: 'CommunityMember'
+    });
     if (rule.platform === 'instagram') Object.assign(vars, { title: 'Heute gibt es etwas Neues aus der Community ✨', game: '', viewers: '0', platform: 'Instagram' });
     if (rule.platform === 'bluesky') Object.assign(vars, { title: 'Kleines Update direkt aus Bluesky – schaut mal rein.', game: '', viewers: '0', platform: 'Bluesky' });
     if (rule.platform === 'x') Object.assign(vars, { title: 'Ein neuer Post ist gerade auf X erschienen.', game: '', viewers: '0', platform: 'X' });
     return vars;
   };
+
+  if (!C.vars.includes('{clipper}')) C.vars.push('{clipper}');
 
   function providerState(platform) {
     const health = C.providerHealth(platform);
@@ -189,6 +213,20 @@
   C.render = function renderCreatorHubWithSocialProviders() {
     originalRender();
     decorateSocialUi();
+  };
+
+  C.wire = function wireCreatorHubWithClipDefaults() {
+    originalWire?.();
+    const eventSelect = document.querySelector('[data-cr-event]');
+    eventSelect?.addEventListener('change', () => {
+      const rule = C.rule();
+      if (!rule || rule.platform !== 'twitch' || rule.event !== 'clip') return;
+      if (Number(rule.cooldownMinutes) === 15) {
+        rule.cooldownMinutes = 0;
+        C.mark();
+        C.render();
+      }
+    });
   };
 
   if (typeof activeTab !== 'undefined' && activeTab === 'creators') requestAnimationFrame(decorateSocialUi);
