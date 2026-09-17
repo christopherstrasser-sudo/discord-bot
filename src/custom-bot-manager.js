@@ -1,7 +1,5 @@
 const {
   ActivityType,
-  Client,
-  GatewayIntentBits,
   PermissionFlagsBits,
   PermissionsBitField
 } = require('discord.js');
@@ -9,6 +7,19 @@ const {
   getCustomBot,
   listCustomBotGuildIds
 } = require('./custom-bot-store');
+const {
+  createOrbitClient,
+  attachCoreBotRuntime
+} = require('./bot');
+const { attachTicketRuntime } = require('./ticket-studio-runtime');
+const { attachVoiceStudioRuntime } = require('./voice-studio-runtime');
+const { attachAnalyticsRuntime } = require('./analytics-runtime');
+const {
+  registerCustomClient,
+  unregisterCustomClient,
+  setCustomModeActive,
+  isCustomModeActive
+} = require('./guild-client-router');
 
 const clients = new Map();
 const runtime = new Map();
@@ -74,6 +85,7 @@ function snapshot(guildId) {
   return {
     connected: Boolean(client?.isReady()),
     inTargetGuild: Boolean(client?.isReady() && client.guilds.cache.has(guildId)),
+    active: isCustomModeActive(guildId),
     applicationId,
     username: client?.user?.username || state.username || '',
     avatarUrl: client?.user?.displayAvatarURL?.({ size: 128 }) || state.avatarUrl || '',
@@ -101,9 +113,17 @@ function applyPresence(guildId, presenceInput = {}) {
   return presence;
 }
 
+function attachReplacementRuntimes(guildId, client) {
+  attachCoreBotRuntime(client, { label: `CUSTOM BOT ${guildId}` });
+  attachTicketRuntime(client);
+  attachVoiceStudioRuntime(client);
+  attachAnalyticsRuntime(client);
+}
+
 async function disconnectCustomBot(guildId) {
   const client = clients.get(guildId);
   clients.delete(guildId);
+  unregisterCustomClient(guildId, client);
   if (client) {
     try { client.destroy(); } catch {}
   }
@@ -115,8 +135,11 @@ async function connectCustomBot(guildId, token, presenceInput = {}) {
   if (!rawToken) throw new Error('Bot-Token fehlt.');
   if (clients.has(guildId)) await disconnectCustomBot(guildId);
 
-  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  const client = createOrbitClient();
   clients.set(guildId, client);
+  registerCustomClient(guildId, client);
+  setCustomModeActive(guildId, Boolean(getCustomBot(guildId)?.active));
+  attachReplacementRuntimes(guildId, client);
   setRuntime(guildId, { starting: true, lastError: '' });
 
   client.on('guildCreate', guild => {
@@ -145,9 +168,14 @@ async function connectCustomBot(guildId, token, presenceInput = {}) {
     return { ...snapshot(guildId), presence };
   } catch (error) {
     clients.delete(guildId);
+    unregisterCustomClient(guildId, client);
     try { client.destroy(); } catch {}
     setRuntime(guildId, { starting: false, lastError: String(error?.message || error) });
-    const wrapped = new Error(`Custom Bot konnte nicht verbunden werden: ${error?.message || error}`);
+    const message = String(error?.message || error);
+    const hint = /disallowed intent/i.test(message)
+      ? ' Aktiviere im Discord Developer Portal unter Bot die Server Members- und Message Content-Intents.'
+      : '';
+    const wrapped = new Error(`Custom Bot konnte nicht verbunden werden: ${message}${hint}`);
     wrapped.cause = error;
     throw wrapped;
   }
@@ -156,16 +184,17 @@ async function connectCustomBot(guildId, token, presenceInput = {}) {
 async function reconnectStoredCustomBot(guildId) {
   const stored = getCustomBot(guildId, { withToken: true });
   if (!stored?.token) throw new Error('Für diesen Server ist kein Custom Bot gespeichert.');
+  setCustomModeActive(guildId, Boolean(stored.active));
   return connectCustomBot(guildId, stored.token, stored.presence);
 }
 
 async function startStoredCustomBots() {
   const guildIds = listCustomBotGuildIds();
   if (!guildIds.length) return;
-  console.log(`[CUSTOM BOT] Restoring ${guildIds.length} custom bot connection(s)`);
+  console.log(`[CUSTOM BOT] Restoring ${guildIds.length} replacement bot connection(s)`);
   for (const guildId of guildIds) {
     reconnectStoredCustomBot(guildId)
-      .then(state => console.log(`[CUSTOM BOT] ${state.username || state.applicationId} ready for guild ${guildId}`))
+      .then(state => console.log(`[CUSTOM BOT] ${state.username || state.applicationId} ready for guild ${guildId}${state.active ? ' · ACTIVE' : ' · standby'}`))
       .catch(error => console.warn(`[CUSTOM BOT] Could not restore guild ${guildId}: ${error.message}`));
   }
 }
