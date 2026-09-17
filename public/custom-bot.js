@@ -45,20 +45,47 @@
   function setupMarkup() {
     return `<div class="cb-setup-grid">
       <div class="cb-setup-copy">
-        <span class="cb-kicker">OPTIONALER EIGENER DISCORD BOT</span>
-        <h3>Deine Bot-Identität. Weiterhin von ORBIT gesteuert.</h3>
-        <p>Erstelle im Discord Developer Portal eine eigene Application, kopiere den Bot-Token hier hinein und ORBIT startet dafür eine separate Gateway-Verbindung.</p>
+        <span class="cb-kicker">EIGENE BOT-IDENTITÄT FÜR DIESEN SERVER</span>
+        <h3>Ein Bot auf dem Server. ORBIT steuert ihn vollständig.</h3>
+        <p>Erstelle im Discord Developer Portal eine eigene Application und hinterlege den Bot-Token. Nach dem Einladen übernimmt dieser Bot die ORBIT-Funktionen für genau diesen Server und der öffentliche ORBIT-Bot kann anschließend entfernt werden.</p>
         <div class="cb-security-note"><span>✓</span><p>Der Token wird verschlüsselt gespeichert, nie wieder vollständig angezeigt und niemals an den Browser zurückgegeben.</p></div>
       </div>
       <div class="cb-connect-box">
         <label><span>Bot-Token</span><input data-cb-token type="password" autocomplete="off" spellcheck="false" placeholder="Token aus dem Discord Developer Portal"></label>
         <button class="button button-primary" type="button" data-cb-connect>Custom Bot verbinden</button>
-        <small>Der Bot braucht zunächst nur einen gültigen Token. Danach erzeugt ORBIT den passenden Server-Invite.</small>
+        <small>ORBIT prüft zuerst den Token und erstellt danach den passenden Invite für diesen Server.</small>
       </div>
     </div>`;
   }
 
-  function connectedMarkup(config, runtime) {
+  function replacementMarkup(config, runtime, mode) {
+    const active = Boolean(mode?.customActive || config?.active || runtime?.active);
+    const ready = Boolean(runtime?.connected && runtime?.inTargetGuild);
+    if (active) {
+      return `<div class="cb-runtime-card cb-mode-card">
+        <span>AKTIVER BOT FÜR DIESEN SERVER</span>
+        <b>${esc(runtime?.username || config?.username || 'Custom Bot')} übernimmt ORBIT</b>
+        <small>Dashboard, Commands und ORBIT-Funktionen werden für diesen Server über diese Bot-Identität geroutet. Der öffentliche ORBIT-Bot wird hier nicht mehr benötigt und kann vom Discord-Server entfernt werden.</small>
+        <div class="cb-card-actions">
+          ${mode?.standardConnected ? '<small>Der öffentliche ORBIT-Bot ist noch auf dem Server und kann jetzt entfernt werden.</small>' : '<small>Perfekt: Auf diesem Server ist nur noch die aktive Bot-Identität nötig.</small>'}
+          ${mode?.standardConnected ? '<button class="bp-secondary" type="button" data-cb-deactivate>Zurück zum Standard-Bot</button>' : ''}
+        </div>
+      </div>`;
+    }
+
+    return `<div class="cb-runtime-card cb-mode-card">
+      <span>ÜBERGABE AN CUSTOM BOT</span>
+      <b>${ready ? 'Bereit zur Übernahme' : 'Noch nicht bereit'}</b>
+      <small>${ready
+        ? 'Aktiviere jetzt die Bot-Identität für diesen Server. Erst danach darfst du den öffentlichen ORBIT-Bot kicken.'
+        : 'Lade den Custom Bot zuerst über den Invite auf genau diesen Server ein. Danach kann ORBIT die Verbindung übernehmen.'}</small>
+      <div class="cb-card-actions">
+        ${ready ? '<button class="button button-primary" type="button" data-cb-activate>Als ORBIT-Bot übernehmen</button>' : ''}
+      </div>
+    </div>`;
+  }
+
+  function connectedMarkup(config, runtime, mode) {
     const [statusClass, statusText] = statusLabel(runtime);
     const p = config?.presence || { status:'online', activityType:'playing', activityText:'', activityUrl:'' };
     return `<div class="cb-connected">
@@ -67,13 +94,15 @@
         <span class="cb-status ${statusClass}"><i></i>${statusText}</span>
       </div>
 
+      ${replacementMarkup(config, runtime, mode)}
+
       <div class="cb-runtime-grid">
         <div class="cb-runtime-card">
           <span>VERBINDUNG</span>
           <b>${runtime?.connected ? 'Gateway verbunden' : 'Nicht verbunden'}</b>
-          <small>${runtime?.inTargetGuild ? 'Custom Bot ist auf diesem Server aktiv.' : runtime?.connected ? 'Bot ist bereit, aber noch nicht auf diesem Server.' : (runtime?.lastError || 'Neu verbinden, um die Gateway-Session zu starten.')}</small>
+          <small>${runtime?.inTargetGuild ? 'Bot ist auf diesem Discord-Server verbunden.' : runtime?.connected ? 'Bot ist bereit, aber noch nicht auf diesem Server.' : (runtime?.lastError || 'Neu verbinden, um die Gateway-Session zu starten.')}</small>
           <div class="cb-card-actions">
-            ${runtime?.inviteUrl ? `<a class="bp-secondary cb-link" href="${esc(runtime.inviteUrl)}" target="_blank" rel="noopener">Bot auf Server einladen</a>` : ''}
+            ${runtime?.inviteUrl && !runtime?.inTargetGuild ? `<a class="bp-secondary cb-link" href="${esc(runtime.inviteUrl)}" target="_blank" rel="noopener">Bot auf Server einladen</a>` : ''}
             <button class="bp-secondary" type="button" data-cb-reconnect>Neu verbinden</button>
           </div>
         </div>
@@ -87,7 +116,7 @@
       </div>
 
       <div class="cb-presence">
-        <header><div><span>Aktivität & Status</span><h3>Wie soll dein Bot in Discord erscheinen?</h3></div><small>Wird direkt auf die Custom-Bot-Session angewendet.</small></header>
+        <header><div><span>Aktivität & Status</span><h3>Wie soll dein Bot in Discord erscheinen?</h3></div><small>Wird direkt auf diese Bot-Identität angewendet.</small></header>
         <div class="cb-presence-fields">
           <label><span>Status</span><select data-cb-status>
             <option value="online" ${p.status==='online'?'selected':''}>Online</option>
@@ -109,8 +138,8 @@
       </div>
 
       <div class="cb-danger-zone">
-        <div><b>Custom Bot entfernen</b><small>Trennt die Gateway-Verbindung und löscht den verschlüsselten Token aus ORBIT.</small></div>
-        <button type="button" data-cb-remove>Entfernen</button>
+        <div><b>Custom Bot entfernen</b><small>${mode?.customActive ? 'Wechsle zuerst zurück zum Standard-Bot. Danach kann das Credential gelöscht werden.' : 'Trennt die Gateway-Verbindung und löscht den verschlüsselten Token aus ORBIT.'}</small></div>
+        <button type="button" data-cb-remove ${mode?.customActive ? 'disabled' : ''}>Entfernen</button>
       </div>
     </div>`;
   }
@@ -118,11 +147,12 @@
   function markup() {
     const config = state.data?.config;
     const runtime = state.data?.runtime;
+    const mode = state.data?.mode;
     if (state.loading && !state.data) return `<section class="cb-panel o6-island"><div class="cb-loading"><span></span><div><b>Custom Bot wird geladen</b><small>Verbindungsstatus und Credential-Metadaten werden geprüft …</small></div></div></section>`;
     if (state.error && !state.data) return `<section class="cb-panel o6-island"><div class="cb-error"><span>!</span><div><b>Custom Bot konnte nicht geladen werden</b><small>${esc(state.error)}</small></div><button class="bp-secondary" type="button" data-cb-retry>Erneut versuchen</button></div></section>`;
     return `<section class="cb-panel o6-island">
-      <header class="cb-head"><div><span>CUSTOM BOT</span><h2>Eigener Discord Bot</h2></div>${config?.configured ? `<small>${esc(config.tokenHint || 'Credential gespeichert')}</small>` : '<small>Optional</small>'}</header>
-      ${config?.configured ? connectedMarkup(config, runtime) : setupMarkup()}
+      <header class="cb-head"><div><span>CUSTOM BOT</span><h2>Eigener Discord Bot</h2></div>${config?.configured ? `<small>${mode?.customActive ? 'Aktiv für diesen Server' : esc(config.tokenHint || 'Credential gespeichert')}</small>` : '<small>Optional</small>'}</header>
+      ${config?.configured ? connectedMarkup(config, runtime, mode) : setupMarkup()}
     </section>`;
   }
 
@@ -164,7 +194,7 @@
   async function request(path, options = {}) {
     try {
       const result = await api(`/api/guilds/${state.guildId}/custom-bot${path}`, options);
-      state.data = { config: result.config, runtime: result.runtime };
+      state.data = { config: result.config, runtime: result.runtime, mode: result.mode };
       state.error = '';
       rerender();
       return result;
@@ -184,7 +214,7 @@
   }
 
   document.addEventListener('click', async event => {
-    const button = event.target.closest('[data-cb-connect],[data-cb-reconnect],[data-cb-replace],[data-cb-save-presence],[data-cb-remove],[data-cb-retry]');
+    const button = event.target.closest('[data-cb-connect],[data-cb-reconnect],[data-cb-replace],[data-cb-activate],[data-cb-deactivate],[data-cb-save-presence],[data-cb-remove],[data-cb-retry]');
     if (!button) return;
     event.preventDefault();
 
@@ -196,19 +226,28 @@
         const token = document.querySelector('[data-cb-token]')?.value.trim() || '';
         if (!token) return toast('Bitte zuerst den Bot-Token eintragen.', 'error');
         await request('/connect', { method:'POST', body:JSON.stringify({ token }) });
-        toast('Custom Bot verbunden.');
+        toast('Bot verbunden. Lade ihn jetzt auf den Server ein und übernimm anschließend den ORBIT-Betrieb.');
       } else if (button.matches('[data-cb-reconnect]')) {
         await request('/reconnect', { method:'POST' });
-        toast('Custom Bot neu verbunden.');
+        toast('Bot-Verbindung neu aufgebaut.');
       } else if (button.matches('[data-cb-replace]')) {
         const token = document.querySelector('[data-cb-token-replace]')?.value.trim() || '';
         if (!token) return toast('Bitte einen neuen Bot-Token eintragen.', 'error');
         await request('/connect', { method:'POST', body:JSON.stringify({ token, presence: state.data?.config?.presence || {} }) });
         toast('Bot-Token ersetzt und Verbindung aktualisiert.');
+      } else if (button.matches('[data-cb-activate]')) {
+        await request('/activate', { method:'POST' });
+        toast('Übernahme abgeschlossen. Dieser Bot ist jetzt ORBIT für diesen Server.');
+        if (typeof loadGuildDashboard === 'function') await loadGuildDashboard(state.guildId).catch(() => null);
+      } else if (button.matches('[data-cb-deactivate]')) {
+        await request('/deactivate', { method:'POST' });
+        toast('Standard-ORBIT-Bot ist wieder aktiv.');
+        if (typeof loadGuildDashboard === 'function') await loadGuildDashboard(state.guildId).catch(() => null);
       } else if (button.matches('[data-cb-save-presence]')) {
         await request('/presence', { method:'PATCH', body:JSON.stringify(presenceFromUi()) });
         toast('Aktivität und Status gespeichert.');
       } else if (button.matches('[data-cb-remove]')) {
+        if (state.data?.mode?.customActive) return toast('Wechsle zuerst zurück zum Standard-Bot.', 'error');
         if (!confirm('Custom Bot wirklich entfernen? Der gespeicherte Bot-Token wird aus ORBIT gelöscht.')) return;
         await request('', { method:'DELETE' });
         toast('Custom Bot entfernt.');
