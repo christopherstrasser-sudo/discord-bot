@@ -46,6 +46,157 @@
     .orbit-login-brand { width:100%; justify-content:center; }
     .orbit-wordmark-login { height:48px; max-width:min(260px,70vw); filter:drop-shadow(0 10px 24px rgba(117,100,255,.18)); }
 
+    /* Login: true viewport centering, independent from the legacy two-column login grid. */
+    body:has(#loggedOut:not(.hidden)) .app-frame,
+    body:has(#loggedOut:not(.hidden)) .main-shell { width:100% !important; max-width:none !important; min-height:100vh; margin:0 !important; }
+    #loggedOut.login-screen:not(.hidden) {
+      width:100% !important;
+      min-height:100vh !important;
+      grid-template-columns:minmax(0,1fr) !important;
+      grid-template-rows:minmax(0,1fr) !important;
+      justify-items:center !important;
+      align-items:center !important;
+      place-items:center !important;
+      padding:34px clamp(18px,3vw,48px) !important;
+      isolation:isolate;
+    }
+    #loggedOut .o6-login-stage {
+      width:min(1220px,100%) !important;
+      min-height:min(800px,calc(100vh - 68px));
+      margin:0 auto !important;
+      justify-self:center !important;
+      align-self:center !important;
+    }
+    #loggedOut .o6-login-stage::before { left:17% !important; top:8% !important; opacity:.84; animation:orbitLoginGlowA 10s ease-in-out infinite alternate; }
+    #loggedOut .o6-login-stage::after { right:16% !important; bottom:7% !important; opacity:.82; animation:orbitLoginGlowB 12s ease-in-out infinite alternate; }
+
+    .orbit-login-orbit {
+      position:absolute;
+      left:50%;
+      top:50%;
+      z-index:0;
+      border:1px solid rgba(180,170,255,.10);
+      border-radius:50%;
+      pointer-events:none;
+      transform:translate(-50%,-50%) rotate(-8deg);
+    }
+    .orbit-login-orbit::before,
+    .orbit-login-orbit::after {
+      content:"";
+      position:absolute;
+      border-radius:50%;
+      pointer-events:none;
+    }
+    .orbit-login-orbit::before {
+      width:7px;
+      height:7px;
+      top:-4px;
+      left:50%;
+      background:#9587ff;
+      box-shadow:0 0 0 6px rgba(149,135,255,.06),0 0 20px rgba(149,135,255,.50);
+    }
+    .orbit-login-orbit::after {
+      width:5px;
+      height:5px;
+      right:8%;
+      bottom:20%;
+      background:#6cdcff;
+      box-shadow:0 0 0 6px rgba(108,220,255,.045),0 0 18px rgba(108,220,255,.45);
+    }
+    .orbit-login-orbit-a {
+      width:min(920px,82vw);
+      aspect-ratio:1.75/1;
+      animation:orbitLoginRingA 28s linear infinite;
+    }
+    .orbit-login-orbit-b {
+      width:min(720px,66vw);
+      aspect-ratio:1.55/1;
+      border-color:rgba(108,220,255,.075);
+      transform:translate(-50%,-50%) rotate(18deg);
+      animation:orbitLoginRingB 34s linear infinite reverse;
+    }
+    .orbit-login-core-glow {
+      position:absolute;
+      left:50%;
+      top:50%;
+      z-index:0;
+      width:min(760px,72vw);
+      height:min(560px,62vw);
+      transform:translate(-50%,-50%);
+      border-radius:50%;
+      pointer-events:none;
+      background:radial-gradient(circle,rgba(149,135,255,.11) 0,rgba(149,135,255,.035) 42%,transparent 72%);
+      filter:blur(12px);
+      animation:orbitLoginPulse 7s ease-in-out infinite;
+    }
+    #loggedOut .o6-login-brand { z-index:4; top:24px; }
+    #loggedOut .o6-login-card {
+      z-index:3;
+      width:min(720px,calc(100vw - 44px));
+      border-color:rgba(220,224,255,.17) !important;
+      background:linear-gradient(145deg,rgba(31,36,54,.74),rgba(11,14,23,.72)) !important;
+      box-shadow:0 42px 130px rgba(0,0,0,.50),0 0 90px rgba(116,96,245,.07),inset 0 1px rgba(255,255,255,.08) !important;
+    }
+    #loggedOut .o6-login-card::after {
+      content:"";
+      position:absolute;
+      inset:1px;
+      z-index:0;
+      border-radius:33px;
+      pointer-events:none;
+      background:linear-gradient(115deg,rgba(255,255,255,.055),transparent 18%,transparent 72%,rgba(108,220,255,.035));
+    }
+    #loggedOut .o6-login-card h1 { text-shadow:0 8px 38px rgba(0,0,0,.25); }
+    #loggedOut .o6-login-card .button-primary {
+      min-height:48px !important;
+      padding-inline:22px !important;
+      border-radius:14px !important;
+      box-shadow:0 14px 38px rgba(112,92,244,.28),inset 0 1px rgba(255,255,255,.14) !important;
+    }
+    #loggedOut .o6-login-card .button-primary:hover { transform:translateY(-2px) scale(1.015) !important; }
+
+    #loggedOut .o6-login-float { z-index:4; transition:border-color .2s ease,background .2s ease,box-shadow .2s ease; }
+    #loggedOut .o6-login-float:hover { border-color:rgba(171,158,255,.30); background:rgba(24,28,43,.78); box-shadow:0 22px 56px rgba(0,0,0,.28),0 0 24px rgba(149,135,255,.055),inset 0 1px rgba(255,255,255,.055); }
+    #loggedOut .o6-login-float.a { left:1%; top:29%; animation:orbitLoginFloatA 7s ease-in-out infinite; }
+    #loggedOut .o6-login-float.b { right:1%; top:26%; animation:orbitLoginFloatB 8.5s ease-in-out infinite; }
+    #loggedOut .o6-login-float.c { left:7%; bottom:14%; animation:orbitLoginFloatC 9s ease-in-out infinite; }
+    #loggedOut .o6-login-float.d { right:7%; bottom:13%; animation:orbitLoginFloatD 7.8s ease-in-out infinite; }
+
+    @keyframes orbitLoginFloatA { 0%,100%{transform:translate3d(0,0,0) rotate(-2deg)} 50%{transform:translate3d(8px,-10px,0) rotate(-1deg)} }
+    @keyframes orbitLoginFloatB { 0%,100%{transform:translate3d(0,0,0) rotate(2deg)} 50%{transform:translate3d(-8px,9px,0) rotate(1deg)} }
+    @keyframes orbitLoginFloatC { 0%,100%{transform:translate3d(0,0,0) rotate(1.5deg)} 50%{transform:translate3d(7px,8px,0) rotate(.5deg)} }
+    @keyframes orbitLoginFloatD { 0%,100%{transform:translate3d(0,0,0) rotate(-1.5deg)} 50%{transform:translate3d(-7px,-9px,0) rotate(-.5deg)} }
+    @keyframes orbitLoginRingA { from{transform:translate(-50%,-50%) rotate(-8deg)} to{transform:translate(-50%,-50%) rotate(352deg)} }
+    @keyframes orbitLoginRingB { from{transform:translate(-50%,-50%) rotate(18deg)} to{transform:translate(-50%,-50%) rotate(378deg)} }
+    @keyframes orbitLoginPulse { 0%,100%{opacity:.58;transform:translate(-50%,-50%) scale(.96)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.04)} }
+    @keyframes orbitLoginGlowA { from{transform:translate3d(-18px,8px,0) scale(.96)} to{transform:translate3d(24px,-14px,0) scale(1.06)} }
+    @keyframes orbitLoginGlowB { from{transform:translate3d(14px,-8px,0) scale(.98)} to{transform:translate3d(-22px,18px,0) scale(1.08)} }
+
+    @media (max-width: 900px) {
+      #loggedOut .o6-login-stage { min-height:720px; }
+      .orbit-login-orbit-a { width:900px; }
+      .orbit-login-orbit-b { width:680px; }
+      #loggedOut .o6-login-float.a { left:0; }
+      #loggedOut .o6-login-float.b { right:0; }
+      #loggedOut .o6-login-float.c { left:2%; }
+      #loggedOut .o6-login-float.d { right:2%; }
+    }
+    @media (max-width: 700px) {
+      #loggedOut.login-screen:not(.hidden) { padding:18px 12px !important; }
+      #loggedOut .o6-login-stage { min-height:640px; }
+      #loggedOut .o6-login-brand { top:14px; }
+      #loggedOut .o6-login-card { width:min(620px,calc(100vw - 24px)); padding:32px 23px !important; }
+      #loggedOut .o6-login-card h1 { font-size:clamp(39px,12vw,58px) !important; }
+      .orbit-login-orbit { opacity:.60; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #loggedOut .o6-login-stage::before,
+      #loggedOut .o6-login-stage::after,
+      #loggedOut .o6-login-float,
+      .orbit-login-orbit,
+      .orbit-login-core-glow { animation:none !important; }
+    }
+
     /* Keep the labelled command rail intentionally compact on desktop. */
     @media (min-width: 901px) {
       body.o6-dashboard-mode .o6-command-rail.o6-dock {
@@ -86,6 +237,10 @@
     <main class="main-shell">
       <section id="loggedOut" class="login-screen hidden">
         <div class="o6-login-stage">
+          <span class="orbit-login-core-glow" aria-hidden="true"></span>
+          <span class="orbit-login-orbit orbit-login-orbit-a" aria-hidden="true"></span>
+          <span class="orbit-login-orbit orbit-login-orbit-b" aria-hidden="true"></span>
+
           <div class="o6-login-brand orbit-login-brand">
             <img class="orbit-wordmark orbit-wordmark-login" src="/orbit-wordmark.svg?v=0290" alt="ORBIT">
           </div>
