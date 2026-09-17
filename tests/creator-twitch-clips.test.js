@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { sortClipsNewestFirst, normalizeClip } = require('../src/creator-twitch-clips');
+const { eventForRule, sampleSnapshot } = require('../src/creator-runtime');
 
 test('sorts Twitch clips by created_at instead of view count', () => {
   const clips = [
@@ -36,4 +37,25 @@ test('normalizes a Twitch clip for Discord notifications', () => {
   assert.equal(snapshot.url, 'https://clips.twitch.tv/FreshClipSlug');
   assert.equal(snapshot.thumbnail, 'https://example.test/clip.jpg');
   assert.equal(snapshot.publishedAt, '2026-09-17T06:55:00Z');
+});
+
+test('detects a Twitch clip as a distinct Creator Hub event', () => {
+  const rule = { platform: 'twitch', source: 'rakulein', event: 'clip' };
+  const snapshot = {
+    platform: 'twitch', source: 'rakulein', id: 'FreshClipSlug', live: false,
+    title: 'Fresh clip', url: 'https://clips.twitch.tv/FreshClipSlug'
+  };
+  assert.deepEqual(eventForRule(rule, snapshot, {}), {
+    key: 'twitch:rakulein:clip:FreshClipSlug',
+    kind: 'clip'
+  });
+  assert.equal(eventForRule(rule, snapshot, { lastEventKey: 'twitch:rakulein:clip:FreshClipSlug' }), null);
+});
+
+test('Twitch clip test data uses a clip link and clip metadata', () => {
+  const snapshot = sampleSnapshot({ platform: 'twitch', source: 'rakulein', displayName: 'Rakulein', event: 'clip' });
+  assert.equal(snapshot.live, false);
+  assert.equal(snapshot.clipper, 'CommunityMember');
+  assert.match(snapshot.url, /clips\.twitch\.tv/);
+  assert.equal(snapshot.game, 'VALORANT');
 });
