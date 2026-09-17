@@ -1,8 +1,8 @@
 {
-  "name": "raku-discord-bot",
-  "version": "0.28.1",
+  "name": "orbit-discord-control",
+  "version": "0.29.0",
   "private": true,
-  "description": "Multi-user Discord bot with web dashboard",
+  "description": "Orbit — multi-server Discord management platform with web dashboard",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
