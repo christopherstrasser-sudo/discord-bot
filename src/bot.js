@@ -24,24 +24,71 @@ const {
   logBanAdd,
   logBanRemove
 } = require('./logger');
+const {
+  setSharedClient,
+  getActiveGuild,
+  shouldHandleGuildEvent
+} = require('./guild-client-router');
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.MessageContent
-  ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.Reaction,
-    Partials.User
-  ]
-});
+const BOT_INTENTS = Object.freeze([
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildMessageReactions,
+  GatewayIntentBits.GuildModeration,
+  GatewayIntentBits.GuildVoiceStates,
+  GatewayIntentBits.MessageContent
+]);
+
+const BOT_PARTIALS = Object.freeze([
+  Partials.Message,
+  Partials.Channel,
+  Partials.Reaction,
+  Partials.User
+]);
+
+const attachedClients = new WeakSet();
+
+function createOrbitClient() {
+  return new Client({
+    intents: [...BOT_INTENTS],
+    partials: [...BOT_PARTIALS]
+  });
+}
+
+const sharedClient = createOrbitClient();
+setSharedClient(sharedClient);
+
+function createRoutedClient(shared) {
+  const cacheProxy = new Proxy(shared.guilds.cache, {
+    get(target, property) {
+      if (property === 'get') return guildId => getActiveGuild(guildId);
+      if (property === 'has') return guildId => Boolean(getActiveGuild(guildId));
+      const value = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  });
+
+  const guildsProxy = new Proxy(shared.guilds, {
+    get(target, property) {
+      if (property === 'cache') return cacheProxy;
+      const value = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  });
+
+  return new Proxy(shared, {
+    get(target, property) {
+      if (property === 'guilds') return guildsProxy;
+      const value = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  });
+}
+
+// Dashboard/API compatibility: existing modules can keep using `client.guilds.cache.get(id)`.
+// The guild lookup is routed to the bot identity that is active for that server.
+const client = createRoutedClient(sharedClient);
 
 function renderWelcomeMessage(template, member) {
   return String(template || '')
@@ -84,7 +131,7 @@ async function applyAutoRole(member, settings) {
   if (member.roles.cache.has(role.id)) return;
 
   try {
-    await member.roles.add(role, 'RAKU Bot Auto-Role');
+    await member.roles.add(role, 'ORBIT Auto-Role');
     console.log(`[AUTOROLE] Added ${role.name} to ${member.user.tag} in ${guild.name}`);
   } catch (error) {
     console.warn(`[AUTOROLE] Could not assign role in ${guild.name}: ${error.message}`);
@@ -129,59 +176,114 @@ async function sendWelcome(member, settings) {
   }
 }
 
-client.once(Events.ClientReady, readyClient => {
-  console.log(`[BOT] Logged in as ${readyClient.user.tag}`);
-  console.log(`[BOT] Connected to ${readyClient.guilds.cache.size} guild(s)`);
-});
+function handles(targetClient, guildId) {
+  return shouldHandleGuildEvent(targetClient, guildId);
+}
 
-client.on(Events.GuildCreate, guild => {
-  console.log(`[BOT] Added to guild: ${guild.name} (${guild.id})`);
-});
+function attachCoreBotRuntime(targetClient, options = {}) {
+  if (!targetClient || attachedClients.has(targetClient)) return targetClient;
+  attachedClients.add(targetClient);
+  const label = options.label || 'BOT';
 
-client.on(Events.GuildDelete, guild => {
-  console.log(`[BOT] Removed from guild: ${guild.name} (${guild.id})`);
-});
+  targetClient.once(Events.ClientReady, readyClient => {
+    console.log(`[${label}] Logged in as ${readyClient.user.tag}`);
+    console.log(`[${label}] Connected to ${readyClient.guilds.cache.size} guild(s)`);
+  });
 
-client.on(Events.GuildMemberAdd, async member => {
-  if (member.user.bot) return;
+  targetClient.on(Events.GuildCreate, guild => {
+    console.log(`[${label}] Added to guild: ${guild.name} (${guild.id})`);
+  });
 
-  let settings;
-  try {
-    settings = getGuildSettings(member.guild.id);
-  } catch (error) {
-    console.warn(`[MEMBER JOIN] Could not load settings for ${member.guild.name}: ${error.message}`);
-    return;
-  }
+  targetClient.on(Events.GuildDelete, guild => {
+    console.log(`[${label}] Removed from guild: ${guild.name} (${guild.id})`);
+  });
 
-  await applyAutoRole(member, settings);
-  await sendWelcome(member, settings);
-  await logMemberJoin(member);
-});
+  targetClient.on(Events.GuildMemberAdd, async member => {
+    if (!handles(targetClient, member.guild.id) || member.user.bot) return;
 
-client.on(Events.GuildMemberRemove, member => logMemberLeave(member));
-client.on(Events.GuildMemberUpdate, (oldMember, newMember) => logMemberUpdate(oldMember, newMember));
-client.on(Events.MessageCreate, message => handleCustomCommand(message));
-client.on(Events.MessageDelete, message => logMessageDelete(message));
-client.on(Events.MessageUpdate, (oldMessage, newMessage) => logMessageUpdate(oldMessage, newMessage));
-client.on(Events.GuildRoleCreate, role => logRoleCreate(role));
-client.on(Events.GuildRoleDelete, role => logRoleDelete(role));
-client.on(Events.GuildRoleUpdate, (oldRole, newRole) => logRoleUpdate(oldRole, newRole));
-client.on(Events.ChannelCreate, channel => logChannelCreate(channel));
-client.on(Events.ChannelDelete, channel => logChannelDelete(channel));
-client.on(Events.ChannelUpdate, (oldChannel, newChannel) => logChannelUpdate(oldChannel, newChannel));
-client.on(Events.GuildBanAdd, ban => logBanAdd(ban));
-client.on(Events.GuildBanRemove, ban => logBanRemove(ban));
-client.on(Events.InteractionCreate, interaction => handleRoleInteraction(interaction));
-client.on(Events.MessageReactionAdd, (reaction, user) => handleRoleReaction(reaction, user, true));
-client.on(Events.MessageReactionRemove, (reaction, user) => handleRoleReaction(reaction, user, false));
+    let settings;
+    try {
+      settings = getGuildSettings(member.guild.id);
+    } catch (error) {
+      console.warn(`[MEMBER JOIN] Could not load settings for ${member.guild.name}: ${error.message}`);
+      return;
+    }
+
+    await applyAutoRole(member, settings);
+    await sendWelcome(member, settings);
+    await logMemberJoin(member);
+  });
+
+  targetClient.on(Events.GuildMemberRemove, member => {
+    if (handles(targetClient, member.guild.id)) return logMemberLeave(member);
+  });
+  targetClient.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
+    if (handles(targetClient, newMember.guild.id)) return logMemberUpdate(oldMember, newMember);
+  });
+  targetClient.on(Events.MessageCreate, message => {
+    if (message.guild && handles(targetClient, message.guild.id)) return handleCustomCommand(message);
+  });
+  targetClient.on(Events.MessageDelete, message => {
+    if (message.guild && handles(targetClient, message.guild.id)) return logMessageDelete(message);
+  });
+  targetClient.on(Events.MessageUpdate, (oldMessage, newMessage) => {
+    const guildId = newMessage?.guild?.id || oldMessage?.guild?.id;
+    if (guildId && handles(targetClient, guildId)) return logMessageUpdate(oldMessage, newMessage);
+  });
+  targetClient.on(Events.GuildRoleCreate, role => {
+    if (handles(targetClient, role.guild.id)) return logRoleCreate(role);
+  });
+  targetClient.on(Events.GuildRoleDelete, role => {
+    if (handles(targetClient, role.guild.id)) return logRoleDelete(role);
+  });
+  targetClient.on(Events.GuildRoleUpdate, (oldRole, newRole) => {
+    if (handles(targetClient, newRole.guild.id)) return logRoleUpdate(oldRole, newRole);
+  });
+  targetClient.on(Events.ChannelCreate, channel => {
+    if (channel.guild && handles(targetClient, channel.guild.id)) return logChannelCreate(channel);
+  });
+  targetClient.on(Events.ChannelDelete, channel => {
+    if (channel.guild && handles(targetClient, channel.guild.id)) return logChannelDelete(channel);
+  });
+  targetClient.on(Events.ChannelUpdate, (oldChannel, newChannel) => {
+    const guildId = newChannel?.guild?.id || oldChannel?.guild?.id;
+    if (guildId && handles(targetClient, guildId)) return logChannelUpdate(oldChannel, newChannel);
+  });
+  targetClient.on(Events.GuildBanAdd, ban => {
+    if (handles(targetClient, ban.guild.id)) return logBanAdd(ban);
+  });
+  targetClient.on(Events.GuildBanRemove, ban => {
+    if (handles(targetClient, ban.guild.id)) return logBanRemove(ban);
+  });
+  targetClient.on(Events.InteractionCreate, interaction => {
+    if (interaction.guild && handles(targetClient, interaction.guild.id)) return handleRoleInteraction(interaction);
+  });
+  targetClient.on(Events.MessageReactionAdd, (reaction, user) => {
+    const guildId = reaction.message?.guild?.id;
+    if (guildId && handles(targetClient, guildId)) return handleRoleReaction(reaction, user, true);
+  });
+  targetClient.on(Events.MessageReactionRemove, (reaction, user) => {
+    const guildId = reaction.message?.guild?.id;
+    if (guildId && handles(targetClient, guildId)) return handleRoleReaction(reaction, user, false);
+  });
+
+  return targetClient;
+}
+
+attachCoreBotRuntime(sharedClient, { label: 'BOT' });
 
 async function startBot() {
-  await client.login(config.discord.botToken);
-  return client;
+  await sharedClient.login(config.discord.botToken);
+  return sharedClient;
 }
 
 module.exports = {
   client,
+  sharedClient,
+  BOT_INTENTS,
+  BOT_PARTIALS,
+  createOrbitClient,
+  attachCoreBotRuntime,
   startBot,
   renderWelcomeMessage
 };
