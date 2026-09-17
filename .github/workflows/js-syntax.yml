@@ -117,9 +117,11 @@ jobs:
             'src/custom-bot-store.js',
             'src/custom-bot-manager.js',
             'src/custom-bot-api.js',
+            'src/guild-client-router.js',
             'public/custom-bot.js',
             'public/custom-bot.css',
-            'tests/custom-bot-manager.test.js'
+            'tests/custom-bot-manager.test.js',
+            'tests/guild-client-router.test.js'
           ]) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
@@ -154,7 +156,7 @@ jobs:
           const profileApi = fs.readFileSync('src/bot-profile-api.js', 'utf8');
           const profileUi = fs.readFileSync('public/bot-profile.js', 'utf8');
           const profileCss = fs.readFileSync('public/bot-profile.css', 'utf8');
-          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname']) {
+          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname', 'activeBotToken(guild)', 'guild?.client?.user']) {
             if (!profileApi.includes(token)) throw new Error(`Bot Profile API token missing: ${token}`);
           }
           if (/GLOBAL · GESPERRT|function activityMarkup|bp-activity/.test(profileUi) || /\.bp-activity/.test(profileCss)) {
@@ -171,27 +173,55 @@ jobs:
           }
 
           const customStore = fs.readFileSync('src/custom-bot-store.js', 'utf8');
-          for (const token of ['aes-256-gcm', 'scryptSync', 'ciphertext', 'getAuthTag', 'SESSION_SECRET']) {
+          for (const token of ['aes-256-gcm', 'scryptSync', 'ciphertext', 'getAuthTag', 'SESSION_SECRET', 'listActiveCustomBotGuildIds', 'setCustomBotActive']) {
             if (!customStore.includes(token)) throw new Error(`Custom Bot credential security token missing: ${token}`);
           }
           if (/token\s*:\s*String\(|JSON\.stringify\([^)]*token/i.test(customStore)) {
             throw new Error('Custom Bot store must not persist plaintext token fields');
           }
-          const customManager = fs.readFileSync('src/custom-bot-manager.js', 'utf8');
-          for (const token of ['new Client', 'GatewayIntentBits.Guilds', 'setPresence', 'applications.commands', 'reconnectStoredCustomBot']) {
-            if (!customManager.includes(token)) throw new Error(`Custom Bot runtime token missing: ${token}`);
+
+          const guildRouter = fs.readFileSync('src/guild-client-router.js', 'utf8');
+          for (const token of ['getActiveClient', 'getActiveGuild', 'shouldHandleGuildEvent', 'setCustomModeActive', 'customClients', 'activeCustomGuilds']) {
+            if (!guildRouter.includes(token)) throw new Error(`Per-guild bot router token missing: ${token}`);
           }
+
+          const customManager = fs.readFileSync('src/custom-bot-manager.js', 'utf8');
+          for (const token of ['createOrbitClient', 'attachCoreBotRuntime', 'attachTicketRuntime', 'attachVoiceStudioRuntime', 'attachAnalyticsRuntime', 'setPresence', 'applications.commands', 'reconnectStoredCustomBot', 'Promise.allSettled']) {
+            if (!customManager.includes(token)) throw new Error(`Custom Bot replacement runtime token missing: ${token}`);
+          }
+
+          const customApi = fs.readFileSync('src/custom-bot-api.js', 'utf8');
+          for (const token of ['/custom-bot/activate', '/custom-bot/deactivate', 'setCustomModeActive', 'setCustomBotActive', 'custom_bot_active']) {
+            if (!customApi.includes(token)) throw new Error(`Custom Bot replacement API token missing: ${token}`);
+          }
+
           const customUi = fs.readFileSync('public/custom-bot.js', 'utf8');
-          for (const token of ['Custom Bot verbinden', 'Aktivität & Status', 'Token ersetzen', 'data-cb-save-presence']) {
+          for (const token of ['Custom Bot verbinden', 'Aktivität & Status', 'Token ersetzen', 'data-cb-save-presence', 'data-cb-activate', 'Als ORBIT-Bot übernehmen', 'refreshDashboardContext']) {
             if (!customUi.includes(token)) throw new Error(`Custom Bot UI token missing: ${token}`);
           }
+
+          const botRuntime = fs.readFileSync('src/bot.js', 'utf8');
+          for (const token of ['createRoutedClient', 'getActiveGuild', 'shouldHandleGuildEvent', 'attachCoreBotRuntime']) {
+            if (!botRuntime.includes(token)) throw new Error(`Routed core bot token missing: ${token}`);
+          }
+
+          const voiceRuntime = fs.readFileSync('src/voice-studio-runtime.js', 'utf8');
+          for (const token of ['attachedClients', 'getActiveClient', 'shouldHandleGuildEvent']) {
+            if (!voiceRuntime.includes(token)) throw new Error(`Voice replacement routing token missing: ${token}`);
+          }
+
+          const analyticsRuntime = fs.readFileSync('src/analytics-runtime.js', 'utf8');
+          for (const token of ['attachedClients', 'shouldHandleGuildEvent']) {
+            if (!analyticsRuntime.includes(token)) throw new Error(`Analytics replacement routing token missing: ${token}`);
+          }
+
           const profileOrbit = fs.readFileSync('public/bot-profile-orbit.js', 'utf8');
           for (const token of ['/custom-bot.css?v=0310', '/custom-bot.js?v=0310']) {
             if (!profileOrbit.includes(token)) throw new Error(`Custom Bot asset loader missing: ${token}`);
           }
 
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
-          console.log('ORBIT v0.31.0 product contract verified');
+          console.log('ORBIT v0.31.0 replacement bot contract verified');
           NODE
 
       - name: Install dependencies
@@ -199,7 +229,7 @@ jobs:
 
       - name: Load core modules
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); require('./src/custom-bot-store'); require('./src/custom-bot-manager'); require('./src/custom-bot-api'); console.log('Core modules loaded')"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); require('./src/custom-bot-store'); require('./src/custom-bot-manager'); require('./src/custom-bot-api'); require('./src/guild-client-router'); console.log('Core modules loaded')"
           node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
 
       - name: Run automated tests
