@@ -1,6 +1,8 @@
-# RAKU Discord Bot
+# ORBIT
 
-Multi-user Discord bot with web dashboard.
+**Your community at the center.**
+
+ORBIT is a multi-server Discord management platform with a web dashboard. The Discord server is the center; automation and management modules form the orbit around it.
 
 ## Development
 
@@ -9,35 +11,49 @@ Multi-user Discord bot with web dashboard.
 - Discord OAuth scopes: `identify guilds`
 - Bot install scopes: `bot applications.commands`
 - Privileged intents required: `Server Members Intent` and `Message Content Intent`
-- JavaScript syntax is checked automatically by GitHub Actions on every push / pull request.
+- JavaScript syntax, CSS sanity, architecture contracts and automated tests run in GitHub Actions.
 
 ## Current modules
 
+- Overview / Orbit Navigator
 - Welcome
-- Auto-Role
-- Server Logs
-- Custom Commands / Flow Builder
+- Auto-Roles
+- Bot Profile: per-server name, avatar and bio
 - Role Studio with Buttons, Dropdowns and Reaction Roles
 - Ticket Studio with forms, private channels, claiming, archive flow and transcripts
-- Creator Hub with Twitch, YouTube and adapter-based TikTok automations
+- Voice Studio for temporary rooms and lobby automation
+- Commands / Flow Builder
+- Creator Alerts: Twitch, YouTube, TikTok, Instagram, Bluesky and X
+- Server Logs
+- Analytics
+- Diagnostics
 
-## Role Studio
+## Creator Alerts
 
-Role Studio supports multiple panels per guild, live previews, publish/update/unpublish, exclusive or multi-role selection and an integrated emoji picker.
-
-Component emoji publishing is fault-tolerant: if Discord rejects a specific Unicode emoji for a button/select component, the affected emoji is removed from that one role entry and the panel is retried automatically instead of failing as a whole. The rejected value and Unicode code points are logged for diagnostics.
-
-## Creator Hub
-
-Creator Hub uses a source -> event -> rule -> Discord-output model. Each server can configure multiple rules with provider diagnostics, real source checks, cooldowns, title/category filters, quiet hours, first-seen protection, templates, live Discord previews, safe test notifications and an event ledger for sent, filtered, suppressed, baseline and failed events.
+Creator Alerts use a source → event → rule → Discord-output model. Each server can configure multiple rules with provider diagnostics, real source checks, cooldowns, filters, quiet hours, templates, live Discord previews, safe test notifications and a persistent event ledger.
 
 Provider strategy:
 
-- Twitch: official Helix API using app credentials from `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET`.
-- YouTube: upload monitoring through the public channel RSS feed, so no API key or quota-heavy polling is required.
-- TikTok: intentionally adapter-based through `TIKTOK_STATUS_ENDPOINT`; the dashboard does not pretend TikTok is connected when no reliable provider is configured.
+- Twitch: official Helix API using backend app credentials.
+- YouTube: public channel RSS for uploads.
+- TikTok: built-in local provider.
+- Bluesky: public ATProto AppView.
+- X: server-side public read relay; no customer X API key required.
+- Instagram: relay/provider chain with browserless fallbacks; no customer Instagram login or API key required.
 
-The Creator runtime deduplicates events persistently so service restarts do not create duplicate notifications. New rules use a safe baseline by default instead of announcing an already-active stream/video unless explicitly enabled.
+Manual `Quelle prüfen` publishes the latest real post/upload for supported content sources without a role ping. Twitch and TikTok Live remain validation-only because there is no static latest post to publish.
+
+## Bot Profile
+
+Server administrators can give the shared ORBIT bot a server-specific nickname, avatar and bio. These values are stored by Discord on the guild member profile and affect only that server.
+
+Discord bot presence/activity is global to the bot connection, so ORBIT intentionally does not expose fake per-server activity controls on the shared bot.
+
+## Brand
+
+The product name is **ORBIT**. The approved wordmark lives at `public/orbit-wordmark.svg` and is used in the dashboard header and login screen.
+
+The visual concept mirrors the product architecture: the Discord server is the central core and its modules occupy the surrounding orbit.
 
 ## Welcome variables
 
