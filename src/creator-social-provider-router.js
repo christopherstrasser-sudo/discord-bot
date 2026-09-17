@@ -44,7 +44,7 @@ async function fetchJson(url, options = {}) {
       ...options,
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'RAKU-Discord-Control/0.27',
+        'User-Agent': 'Orbit-Discord-Control/0.29',
         ...(options.headers || {})
       },
       signal: controller.signal
@@ -159,7 +159,7 @@ async function fetchInstagramImginnPost(value) {
 async function fetchInstagramScrapeCreators(value) {
   const source = base.normalizeSocialHandle('instagram', value);
   const apiKey = optionalEnv('SCRAPECREATORS_API_KEY');
-  if (!apiKey) throw new Error('RAKU Instagram Provider ist serverseitig noch nicht konfiguriert.');
+  if (!apiKey) throw new Error('Orbit Instagram Provider ist serverseitig noch nicht konfiguriert.');
 
   return cached('instagram-provider', source, 5 * 60 * 1000, async () => {
     const params = new URLSearchParams({ handle: source, trim: 'false' });
@@ -183,16 +183,16 @@ async function fetchInstagramRelay(source, relayUrl, relayToken) {
       headers: relayToken ? { Authorization: `Bearer ${relayToken}` } : {}
     });
     const snapshot = data?.snapshot || data;
-    if (!snapshot?.id || !snapshot?.url) throw new Error('RAKU Social Relay lieferte keinen gültigen Instagram-Post.');
-    updateHealth('instagram', true, 'raku-relay');
+    if (!snapshot?.id || !snapshot?.url) throw new Error('Orbit Social Relay lieferte keinen gültigen Instagram-Post.');
+    updateHealth('instagram', true, 'orbit-relay');
     return { ...snapshot, platform: 'instagram', source };
   });
 }
 
 async function fetchInstagramPost(value) {
   const source = base.normalizeSocialHandle('instagram', value);
-  const relayUrl = optionalEnv('RAKU_SOCIAL_RELAY_URL').replace(/\/+$/, '');
-  const relayToken = optionalEnv('RAKU_SOCIAL_RELAY_TOKEN');
+  const relayUrl = (optionalEnv('ORBIT_SOCIAL_RELAY_URL') || optionalEnv('RAKU_SOCIAL_RELAY_URL')).replace(/\/+$/, '');
+  const relayToken = optionalEnv('ORBIT_SOCIAL_RELAY_TOKEN') || optionalEnv('RAKU_SOCIAL_RELAY_TOKEN');
   const errors = [];
 
   // Stable server-side providers take priority. Dashboard users still only enter a handle.
@@ -200,7 +200,7 @@ async function fetchInstagramPost(value) {
     try {
       return await fetchInstagramRelay(source, relayUrl, relayToken);
     } catch (error) {
-      errors.push(`RAKU Relay: ${compactError(error)}`);
+      errors.push(`Orbit Relay: ${compactError(error)}`);
     }
   }
 
@@ -212,14 +212,12 @@ async function fetchInstagramPost(value) {
     }
   }
 
-  // Public third-party viewer relay. No Instagram login/API key required by the bot user.
   try {
     return await fetchInstagramImginnPost(source);
   } catch (error) {
     errors.push(compactError(error));
   }
 
-  // Last-resort direct Instagram path. This is often blocked by require_login/401 in 2026.
   try {
     const result = await fetchInstagramKeyless(source);
     updateHealth('instagram', true, result.mode || 'keyless-web');
@@ -255,7 +253,7 @@ function getSocialProviderHealth() {
     browserRequired: false,
     publicRelayAvailable: true,
     keylessProfileFeed: true,
-    serverProviderConfigured: Boolean(optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
+    serverProviderConfigured: Boolean(optionalEnv('ORBIT_SOCIAL_RELAY_URL') || optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
   };
   return health;
 }
