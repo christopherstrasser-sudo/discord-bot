@@ -1,6 +1,6 @@
 {
   "name": "orbit-discord-control",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "private": true,
   "description": "Orbit — multi-server Discord management platform with web dashboard",
   "main": "src/index.js",
