@@ -1,5 +1,4 @@
 const { PermissionFlagsBits } = require('discord.js');
-const config = require('./config');
 const { client } = require('./bot');
 const { getGuildSettings, updateGuildSettings } = require('./store');
 const {
@@ -14,16 +13,26 @@ function access(req, res, next) {
   const allowed = (req.session.guilds || []).some(guild => guild.id === req.params.guildId);
   if (!allowed) return res.status(403).json({ error: 'guild_access_denied', message: 'Kein Zugriff auf diesen Server.' });
   const guild = client.guilds.cache.get(req.params.guildId);
-  if (!guild) return res.status(409).json({ error: 'bot_not_installed', message: 'Der Bot ist auf diesem Server nicht verbunden.' });
+  if (!guild) return res.status(409).json({ error: 'bot_not_installed', message: 'Für diesen Server ist aktuell kein ORBIT-Bot verbunden.' });
   req.botProfileGuild = guild;
   next();
 }
 
-async function discordBotRequest(pathname, options = {}) {
+function activeBotUser(guild) {
+  return guild?.client?.user || guild?.members?.me?.user || null;
+}
+
+function activeBotToken(guild) {
+  const token = String(guild?.client?.token || '').trim();
+  if (!token) throw new Error('Der aktive Bot besitzt keine verwendbare Discord-Session.');
+  return token;
+}
+
+async function discordBotRequest(guild, pathname, options = {}) {
   const response = await fetch(`${DISCORD_API}${pathname}`, {
     ...options,
     headers: {
-      Authorization: `Bot ${config.discord.botToken}`,
+      Authorization: `Bot ${activeBotToken(guild)}`,
       'Content-Type': 'application/json',
       ...(options.headers || {})
     }
@@ -41,12 +50,13 @@ async function discordBotRequest(pathname, options = {}) {
   return payload;
 }
 
-function globalAvatarUrl() {
-  return client.user?.displayAvatarURL?.({ size: 256 }) || '';
+function identityAvatarUrl(guild) {
+  return activeBotUser(guild)?.displayAvatarURL?.({ size: 256 }) || '';
 }
 
 function profilePayload(guild, member, stored = {}) {
-  const userId = client.user?.id || member?.user?.id || '';
+  const botUser = activeBotUser(guild);
+  const userId = botUser?.id || member?.user?.id || '';
   const serverAvatarHash = String(member?.avatar || stored.avatarHash || '');
   const nickname = String(member?.nick ?? stored.nickname ?? '');
   const bio = typeof member?.bio === 'string' ? member.bio : String(stored.bio || '');
@@ -55,24 +65,28 @@ function profilePayload(guild, member, stored = {}) {
 
   return {
     nickname,
-    effectiveName: nickname || client.user?.username || 'Bot',
+    effectiveName: nickname || botUser?.username || 'Bot',
     bio,
     avatarHash: serverAvatarHash,
-    avatarUrl: guildMemberAvatarUrl(guild.id, userId, serverAvatarHash) || globalAvatarUrl(),
-    globalAvatarUrl: globalAvatarUrl(),
+    avatarUrl: guildMemberAvatarUrl(guild.id, userId, serverAvatarHash) || identityAvatarUrl(guild),
+    globalAvatarUrl: identityAvatarUrl(guild),
     hasServerAvatar: Boolean(serverAvatarHash),
-    canChangeNickname
+    canChangeNickname,
+    botId: botUser?.id || '',
+    botUsername: botUser?.username || ''
   };
 }
 
 async function fetchCurrentMember(guild) {
+  const botUser = activeBotUser(guild);
+  if (!botUser?.id) throw new Error('Aktive Bot-Identität konnte nicht ermittelt werden.');
   try {
-    return await discordBotRequest(`/guilds/${guild.id}/members/${client.user.id}`, { method: 'GET' });
+    return await discordBotRequest(guild, `/guilds/${guild.id}/members/${botUser.id}`, { method: 'GET' });
   } catch {
     const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
     if (!me) throw new Error('Bot-Profil konnte nicht geladen werden.');
     return {
-      user: { id: client.user.id },
+      user: { id: botUser.id },
       nick: me.nickname || null,
       avatar: me.avatar || null
     };
@@ -87,7 +101,7 @@ async function getBotProfile(guild) {
 
 function mapDiscordProfileError(error) {
   if (error?.status === 403 || error?.code === 50013) {
-    return 'Discord verweigert die Profiländerung. Für den Server-Namen braucht die Bot-Rolle „Nickname ändern“.';
+    return 'Discord verweigert die Profiländerung. Für den Server-Namen braucht die aktive Bot-Rolle „Nickname ändern“.';
   }
   if (error?.status === 429) return 'Discord limitiert Profiländerungen gerade. Bitte warte kurz und versuche es erneut.';
   return `Discord konnte das Bot-Profil nicht aktualisieren: ${error.message}`;
@@ -115,7 +129,7 @@ function attachBotProfileApi(app) {
       if (requestedNickname !== currentNickname && !me?.permissions?.has(PermissionFlagsBits.ChangeNickname)) {
         return res.status(400).json({
           error: 'change_nickname_permission_missing',
-          message: 'Der Bot-Rolle fehlt „Nickname ändern“. Avatar und Bio sind serverbezogen möglich, für den Namen braucht Discord diese Berechtigung.'
+          message: 'Der aktiven Bot-Rolle fehlt „Nickname ändern“.'
         });
       }
 
@@ -129,10 +143,10 @@ function attachBotProfileApi(app) {
 
       let updated;
       try {
-        updated = await discordBotRequest(`/guilds/${guild.id}/members/@me`, {
+        updated = await discordBotRequest(guild, `/guilds/${guild.id}/members/@me`, {
           method: 'PATCH',
           body: JSON.stringify(patch),
-          headers: { 'X-Audit-Log-Reason': encodeURIComponent(`Bot-Profil via RAKU Dashboard von ${req.session.user.id}`) }
+          headers: { 'X-Audit-Log-Reason': encodeURIComponent(`Bot-Profil via ORBIT Dashboard von ${req.session.user.id}`) }
         });
       } catch (error) {
         throw new Error(mapDiscordProfileError(error));
