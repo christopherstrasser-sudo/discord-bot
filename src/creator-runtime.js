@@ -22,6 +22,10 @@ const {
   snapshotForTikTokRule,
   getTikTokProviderHealth
 } = require('./creator-tiktok-provider');
+const {
+  fetchTwitchClipStatuses,
+  fetchLatestTwitchClip
+} = require('./creator-twitch-clips');
 
 const DEFAULT_POLL_SECONDS = 90;
 let timer = null;
@@ -42,7 +46,9 @@ function sourceOf(rule) {
 }
 
 function sourceKey(rule) {
-  return `${rule.platform}:${sourceOf(rule)}`;
+  const source = sourceOf(rule);
+  if (rule.platform === 'twitch' && rule.event === 'clip') return `twitch:${source}:clip`;
+  return `${rule.platform}:${source}`;
 }
 
 function platformLabel(platform) {
@@ -52,6 +58,7 @@ function platformLabel(platform) {
 function eventLabel(event) {
   return {
     live: 'Live-Start',
+    clip: 'Neuer Clip',
     upload: 'Neuer Upload',
     title_change: 'Titel geändert',
     category_change: 'Kategorie geändert'
@@ -61,6 +68,27 @@ function eventLabel(event) {
 function sampleSnapshot(rule) {
   const platform = rule.platform;
   const source = sourceOf(rule) || 'creator';
+  if (platform === 'twitch' && rule.event === 'clip') {
+    return {
+      platform: 'twitch',
+      source,
+      creator: rule.displayName || source || 'Creator',
+      clipper: 'CommunityMember',
+      live: false,
+      id: 'demo-clip',
+      eventKey: 'demo:twitch:clip',
+      title: 'Was war DAS denn?!',
+      game: 'VALORANT',
+      url: 'https://clips.twitch.tv/',
+      thumbnail: '',
+      avatar: '',
+      publishedAt: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
+      viewers: 0,
+      views: 42,
+      duration: 27.4
+    };
+  }
   if (platform === 'youtube' || (platform === 'tiktok' && rule.event === 'upload')) {
     return {
       platform,
@@ -99,6 +127,7 @@ function sampleSnapshot(rule) {
 function templateVariables(rule, snapshot) {
   return {
     creator: snapshot.creator || rule.displayName || sourceOf(rule),
+    clipper: snapshot.clipper || '',
     title: snapshot.title || '',
     game: snapshot.game || '',
     url: snapshot.url || '',
@@ -125,6 +154,7 @@ function normalizeColor(value, platform) {
 function defaultEmbedTitle(rule) {
   if (rule.platform === 'youtube') return '🎬 {creator} hat ein neues Video';
   if (rule.platform === 'tiktok' && rule.event === 'upload') return '🎵 Neues TikTok von {creator}';
+  if (rule.platform === 'twitch' && rule.event === 'clip') return '✂️ Neuer Clip von {creator}';
   if (rule.event === 'category_change') return '🎮 {creator} spielt jetzt {game}';
   if (rule.event === 'title_change') return '✏️ Neuer Stream-Titel';
   return '🔴 {creator} ist jetzt live!';
@@ -133,6 +163,7 @@ function defaultEmbedTitle(rule) {
 function defaultEmbedDescription(rule) {
   if (rule.platform === 'youtube') return '**{title}**\n\nJetzt auf YouTube ansehen.';
   if (rule.platform === 'tiktok' && rule.event === 'upload') return '**{title}**\n\nJetzt auf TikTok ansehen.';
+  if (rule.platform === 'twitch' && rule.event === 'clip') return '**{title}**\n\nClip erstellt von **{clipper}**.';
   if (rule.event === 'category_change') return '**{title}**\nNeue Kategorie: **{game}**';
   if (rule.event === 'title_change') return '**{title}**';
   return '**{title}**\n{game}';
@@ -141,6 +172,7 @@ function defaultEmbedDescription(rule) {
 function defaultButtonLabel(rule) {
   if (rule.platform === 'youtube') return 'Video ansehen';
   if (rule.platform === 'tiktok') return rule.event === 'upload' ? 'TikTok ansehen' : 'TikTok öffnen';
+  if (rule.platform === 'twitch' && rule.event === 'clip') return 'Clip ansehen';
   return 'Stream ansehen';
 }
 
@@ -156,7 +188,7 @@ function buildNotificationPayload(rule, snapshot, options = {}) {
     .setColor(normalizeColor(rule.color, rule.platform))
     .setTitle(embedTitle || `${vars.creator} · ${vars.event}`)
     .setDescription(embedDescription || vars.title || vars.url || 'Neue Creator-Aktivität')
-    .setFooter({ text: `RAKU Creator Hub · ${vars.platform}${options.test ? ' · TEST' : ''}` })
+    .setFooter({ text: `ORBIT Creator Hub · ${vars.platform}${options.test ? ' · TEST' : ''}` })
     .setTimestamp();
 
   if (snapshot.avatar && /^https?:\/\//i.test(snapshot.avatar)) embed.setAuthor({ name: vars.creator, iconURL: snapshot.avatar });
@@ -164,6 +196,8 @@ function buildNotificationPayload(rule, snapshot, options = {}) {
   if (rule.showThumbnail !== false && snapshot.thumbnail && /^https?:\/\//i.test(snapshot.thumbnail)) embed.setImage(snapshot.thumbnail);
   if (snapshot.game) embed.addFields({ name: 'Kategorie', value: snapshot.game.slice(0, 1024), inline: true });
   if (snapshot.viewers && rule.event === 'live') embed.addFields({ name: 'Zuschauer', value: Number(snapshot.viewers).toLocaleString('de-DE'), inline: true });
+  if (rule.event === 'clip' && snapshot.clipper) embed.addFields({ name: 'Clip erstellt von', value: snapshot.clipper.slice(0, 1024), inline: true });
+  if (rule.event === 'clip' && Number(snapshot.views || 0) > 0) embed.addFields({ name: 'Aufrufe', value: Number(snapshot.views).toLocaleString('de-DE'), inline: true });
 
   const components = [];
   if (snapshot.url && /^https?:\/\//i.test(snapshot.url)) {
@@ -229,10 +263,11 @@ function eventForRule(rule, snapshot, state) {
   if (!snapshot || snapshot.error) return null;
   const source = sourceOf(rule);
 
-  if (rule.event === 'upload') {
+  if (rule.event === 'upload' || rule.event === 'clip') {
     if (!snapshot.id) return null;
-    const key = `${rule.platform}:${source}:upload:${snapshot.id}`;
-    return key !== state.lastEventKey ? { key, kind: 'upload' } : null;
+    const kind = rule.event === 'clip' ? 'clip' : 'upload';
+    const key = `${rule.platform}:${source}:${kind}:${snapshot.id}`;
+    return key !== state.lastEventKey ? { key, kind } : null;
   }
 
   if (rule.event === 'live') {
@@ -273,6 +308,7 @@ function currentObservation(rule, snapshot, state, event) {
   };
   if (event?.key) next.lastEventKey = event.key;
   else if (!state.initialized && rule.event === 'upload' && snapshot?.id) next.lastEventKey = `${rule.platform}:${sourceOf(rule)}:upload:${snapshot.id}`;
+  else if (!state.initialized && rule.event === 'clip' && snapshot?.id) next.lastEventKey = `${rule.platform}:${sourceOf(rule)}:clip:${snapshot.id}`;
   else if (!state.initialized && rule.event === 'live' && snapshot?.live && snapshot?.id) next.lastEventKey = `${rule.platform}:${sourceOf(rule)}:live:${snapshot.id}`;
   return next;
 }
@@ -314,20 +350,109 @@ function logHistory(guildId, rule, status, message, snapshot = null) {
   });
 }
 
+function providerErrorState(guildId, rule, state, error) {
+  const message = String(error || 'Providerfehler');
+  const now = Date.now();
+  const previous = state.lastProviderErrorAt ? Date.parse(state.lastProviderErrorAt) : 0;
+  if (!previous || now - previous > 30 * 60 * 1000 || state.lastProviderError !== message) {
+    logHistory(guildId, rule, 'error', message);
+  }
+  setCreatorRuleState(guildId, rule.id, {
+    lastProviderError: message,
+    lastProviderErrorAt: new Date().toISOString(),
+    lastObservedAt: new Date().toISOString()
+  });
+}
+
+async function processClipRule(client, guildId, config, rule, snapshot) {
+  const state = getCreatorRuleState(guildId, rule.id);
+  if (snapshot?.error) {
+    providerErrorState(guildId, rule, state, snapshot.error);
+    return;
+  }
+
+  const items = (Array.isArray(snapshot?.items) ? snapshot.items : (snapshot?.id ? [snapshot] : []))
+    .filter(item => item?.id)
+    .sort((a, b) => Date.parse(a.publishedAt || a.startedAt || 0) - Date.parse(b.publishedAt || b.startedAt || 0));
+  const latest = items.at(-1) || snapshot || null;
+  const seen = new Set(Array.isArray(state.seenClipIds) ? state.seenClipIds : []);
+  const nowIso = new Date().toISOString();
+  const observedCutoff = state.lastObservedAt ? Date.parse(state.lastObservedAt) - 5 * 60 * 1000 : 0;
+  const currentIds = items.map(item => item.id);
+  const mergedSeen = [...new Set([...currentIds, ...seen])].slice(0, 200);
+  const observation = currentObservation(rule, latest, state, null);
+  observation.lastObservedAt = nowIso;
+  observation.lastLiveId = '';
+  observation.seenClipIds = mergedSeen;
+  if (latest?.id) observation.lastEventKey = `twitch:${sourceOf(rule)}:clip:${latest.id}`;
+
+  const firstObservation = !state.initialized;
+  if (firstObservation && (!rule.announceFirstMatch || !latest?.id)) {
+    setCreatorRuleState(guildId, rule.id, observation);
+    logHistory(guildId, rule, 'baseline', latest?.id ? 'Aktueller Clip als Baseline übernommen.' : 'Clip-Quelle initialisiert – noch kein aktueller Clip im Zeitfenster.', latest);
+    return;
+  }
+
+  let newItems = firstObservation
+    ? [latest]
+    : items.filter(item => !seen.has(item.id) && (!observedCutoff || Date.parse(item.publishedAt || item.startedAt || 0) >= observedCutoff));
+  newItems = newItems.filter(Boolean);
+
+  if (!newItems.length) {
+    setCreatorRuleState(guildId, rule.id, observation);
+    return;
+  }
+
+  let lastSentAt = state.lastSentAt || '';
+  let lastSentMessageId = state.lastSentMessageId || '';
+  let lastSentChannelId = state.lastSentChannelId || '';
+
+  for (const clip of newItems) {
+    if (!matchesFilters(rule, clip)) {
+      logHistory(guildId, rule, 'filtered', 'Neuer Clip erkannt, aber durch Filter verworfen.', clip);
+      continue;
+    }
+
+    const cooldownMs = Math.max(0, Number(rule.cooldownMinutes || 0)) * 60 * 1000;
+    const lastSent = lastSentAt ? Date.parse(lastSentAt) : 0;
+    if (cooldownMs && lastSent && Date.now() - lastSent < cooldownMs) {
+      logHistory(guildId, rule, 'suppressed', 'Clip wegen Cooldown unterdrückt.', clip);
+      continue;
+    }
+
+    const quiet = inQuietHours(rule, config.timezone);
+    if (quiet && rule.quietHours?.mode === 'suppress') {
+      logHistory(guildId, rule, 'suppressed', 'Clip innerhalb der Quiet Hours unterdrückt.', clip);
+      continue;
+    }
+
+    try {
+      const result = await sendRuleNotification(client, guildId, rule, clip, { allowPing: !(quiet && rule.quietHours?.mode === 'no_ping') });
+      lastSentAt = new Date().toISOString();
+      lastSentMessageId = result.message.id;
+      lastSentChannelId = result.message.channelId;
+      logHistory(guildId, rule, 'sent', quiet && !result.pinged ? 'Clip-Benachrichtigung ohne Ping gesendet.' : 'Neuen Twitch-Clip gesendet.', clip);
+    } catch (error) {
+      logHistory(guildId, rule, 'error', `Discord-Ausgabe fehlgeschlagen: ${error.message}`, clip);
+    }
+  }
+
+  setCreatorRuleState(guildId, rule.id, {
+    ...observation,
+    ...(lastSentAt ? { lastSentAt, lastSentMessageId, lastSentChannelId } : {})
+  });
+}
+
 async function processRule(client, guildId, config, rule, snapshot) {
+  if (rule.platform === 'twitch' && rule.event === 'clip') {
+    await processClipRule(client, guildId, config, rule, snapshot);
+    return;
+  }
+
   const state = getCreatorRuleState(guildId, rule.id);
 
   if (snapshot?.error) {
-    const now = Date.now();
-    const previous = state.lastProviderErrorAt ? Date.parse(state.lastProviderErrorAt) : 0;
-    if (!previous || now - previous > 30 * 60 * 1000 || state.lastProviderError !== snapshot.error) {
-      logHistory(guildId, rule, 'error', snapshot.error);
-    }
-    setCreatorRuleState(guildId, rule.id, {
-      lastProviderError: snapshot.error,
-      lastProviderErrorAt: new Date().toISOString(),
-      lastObservedAt: new Date().toISOString()
-    });
+    providerErrorState(guildId, rule, state, snapshot.error);
     return;
   }
 
@@ -399,15 +524,36 @@ async function mapLimit(items, limit, fn) {
   return result;
 }
 
+function clipWindowStart(ruleEntries) {
+  const now = Date.now();
+  let start = now - 10 * 60 * 1000;
+  let foundState = false;
+  for (const entry of ruleEntries) {
+    if (entry.rule.platform !== 'twitch' || entry.rule.event !== 'clip') continue;
+    const state = getCreatorRuleState(entry.guildId, entry.rule.id);
+    const observed = state.lastObservedAt ? Date.parse(state.lastObservedAt) : 0;
+    if (observed) {
+      start = Math.min(start, observed - 5 * 60 * 1000);
+      foundState = true;
+    } else {
+      start = Math.min(start, now - 24 * 60 * 60 * 1000);
+    }
+  }
+  const maxLookback = now - 7 * 24 * 60 * 60 * 1000;
+  return Math.max(maxLookback, start || (foundState ? now - 10 * 60 * 1000 : now - 24 * 60 * 60 * 1000));
+}
+
 async function loadSnapshots(ruleEntries) {
   const snapshots = new Map();
   const twitch = new Set();
+  const twitchClips = new Set();
   const youtube = new Set();
   const tiktok = new Set();
   for (const { rule } of ruleEntries) {
     const source = sourceOf(rule);
     if (!source) continue;
-    if (rule.platform === 'twitch') twitch.add(source);
+    if (rule.platform === 'twitch' && rule.event === 'clip') twitchClips.add(source);
+    else if (rule.platform === 'twitch') twitch.add(source);
     else if (rule.platform === 'youtube') youtube.add(source);
     else if (rule.platform === 'tiktok') tiktok.add(source);
   }
@@ -418,6 +564,20 @@ async function loadSnapshots(ruleEntries) {
       for (const source of twitch) snapshots.set(`twitch:${source}`, data.get(source) || { error: 'Twitch Creator wurde nicht gefunden.' });
     } catch (error) {
       for (const source of twitch) snapshots.set(`twitch:${source}`, { error: String(error.message || error) });
+    }
+  }
+
+  if (twitchClips.size) {
+    try {
+      const endedAt = Date.now();
+      const data = await fetchTwitchClipStatuses([...twitchClips], {
+        startedAt: clipWindowStart(ruleEntries),
+        endedAt,
+        maxPages: 10
+      });
+      for (const source of twitchClips) snapshots.set(`twitch:${source}:clip`, data.get(source) || { error: 'Twitch Creator wurde nicht gefunden.' });
+    } catch (error) {
+      for (const source of twitchClips) snapshots.set(`twitch:${source}:clip`, { error: String(error.message || error) });
     }
   }
 
@@ -464,6 +624,7 @@ async function pollCreatorHub(client) {
 
 async function checkCreatorRule(rule) {
   const source = sourceOf(rule);
+  if (rule.platform === 'twitch' && rule.event === 'clip') return fetchLatestTwitchClip(source, { maxPages: 10 });
   if (rule.platform === 'twitch') {
     const map = await fetchTwitchStatuses([source]);
     return map.get(source) || null;
