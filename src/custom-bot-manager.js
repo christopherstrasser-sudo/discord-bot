@@ -32,14 +32,59 @@ const ACTIVITY_TYPES = {
   competing: ActivityType.Competing
 };
 
+const ACTIVITY_LABELS = Object.freeze({
+  playing: 'Spielt',
+  streaming: 'Streamt',
+  listening: 'Hört',
+  watching: 'Schaut',
+  competing: 'Tritt an in'
+});
+
+function normalizeStreamingUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.toLowerCase();
+    const supportedHost = host === 'twitch.tv' || host.endsWith('.twitch.tv') ||
+      host === 'youtube.com' || host.endsWith('.youtube.com');
+    if (parsed.protocol !== 'https:' || !supportedHost) return '';
+    return parsed.toString().slice(0, 300);
+  } catch {
+    return '';
+  }
+}
+
 function normalizePresence(input = {}) {
   const statuses = new Set(['online', 'idle', 'dnd', 'invisible']);
   const activityTypes = new Set(Object.keys(ACTIVITY_TYPES));
   const status = statuses.has(String(input.status || '').toLowerCase()) ? String(input.status).toLowerCase() : 'online';
   const activityType = activityTypes.has(String(input.activityType || '').toLowerCase()) ? String(input.activityType).toLowerCase() : 'playing';
   const activityText = String(input.activityText || '').trim().slice(0, 128);
-  const activityUrl = /^https?:\/\//i.test(String(input.activityUrl || '').trim()) ? String(input.activityUrl).trim().slice(0, 300) : '';
+  const activityUrl = normalizeStreamingUrl(input.activityUrl);
   return { status, activityType, activityText, activityUrl };
+}
+
+function activityDisplayText(presenceInput = {}) {
+  const presence = normalizePresence(presenceInput);
+  if (!presence.activityText) return '';
+  const prefix = ACTIVITY_LABELS[presence.activityType] || ACTIVITY_LABELS.playing;
+  const alreadyPrefixed = presence.activityText.toLocaleLowerCase('de-DE').startsWith(`${prefix.toLocaleLowerCase('de-DE')} `);
+  return (alreadyPrefixed ? presence.activityText : `${prefix} ${presence.activityText}`).slice(0, 128);
+}
+
+function buildActivity(presenceInput = {}) {
+  const presence = normalizePresence(presenceInput);
+  if (!presence.activityText) return null;
+  return {
+    // Discord's current member-list UI may render only the activity name without the
+    // localized type verb. Keep the real type for Discord semantics/status colour,
+    // while making the visible name complete and keeping the raw value in state.
+    name: activityDisplayText(presence),
+    state: presence.activityText,
+    type: ACTIVITY_TYPES[presence.activityType],
+    ...(presence.activityType === 'streaming' && presence.activityUrl ? { url: presence.activityUrl } : {})
+  };
 }
 
 function recommendedPermissions() {
@@ -104,12 +149,8 @@ function applyPresence(guildId, presenceInput = {}) {
   const client = clients.get(guildId);
   if (!client?.isReady()) throw new Error('Custom Bot ist nicht verbunden.');
   const presence = normalizePresence(presenceInput);
-  const activities = presence.activityText ? [{
-    name: presence.activityText,
-    type: ACTIVITY_TYPES[presence.activityType],
-    ...(presence.activityType === 'streaming' && presence.activityUrl ? { url: presence.activityUrl } : {})
-  }] : [];
-  client.user.setPresence({ status: presence.status, activities });
+  const activity = buildActivity(presence);
+  client.user.setPresence({ status: presence.status, activities: activity ? [activity] : [] });
   return presence;
 }
 
@@ -214,6 +255,9 @@ function getCustomBotClient(guildId) {
 
 module.exports = {
   normalizePresence,
+  normalizeStreamingUrl,
+  activityDisplayText,
+  buildActivity,
   inviteUrl,
   snapshot,
   applyPresence,
