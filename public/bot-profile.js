@@ -14,6 +14,7 @@
   };
 
   const PROFILE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="13" rx="4"/><path d="M9 6V4.5M15 6V4.5M8.5 12h.01M15.5 12h.01M9 16h6"/></svg>';
+  let railSyncQueued = false;
 
   function safe(value) {
     if (typeof escapeHtml === 'function') return escapeHtml(String(value ?? ''));
@@ -300,9 +301,9 @@
 
   function injectRailItem() {
     const rail = document.querySelector('.o6-command-rail');
-    if (!rail || rail.querySelector('[data-tab="profile"]')) return;
+    if (!rail || rail.querySelector('[data-tab="profile"]')) return false;
     const overview = rail.querySelector('[data-tab="overview"]');
-    if (!overview) return;
+    if (!overview) return false;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `deck-nav-item o6-dock-item${activeTab === 'profile' ? ' active' : ''}`;
@@ -311,19 +312,31 @@
     button.title = 'Bot-Profil';
     button.innerHTML = `<span class="o6-module-symbol">${PROFILE_ICON}</span><span class="o6-dock-label">Bot-Profil</span>`;
     overview.insertAdjacentElement('afterend', button);
+    return true;
   }
 
   function updatePageCapsule() {
     if (activeTab !== 'profile') return;
     const title = document.querySelector('#o6PageTitle');
     const description = document.querySelector('#o6PageDescription');
-    if (title) title.textContent = 'Bot-Profil';
-    if (description) description.textContent = 'Name, Avatar und Serverprofil deines Bots.';
+    const titleText = 'Bot-Profil';
+    const descriptionText = 'Name, Avatar und Serverprofil deines Bots.';
+    if (title && title.textContent !== titleText) title.textContent = titleText;
+    if (description && description.textContent !== descriptionText) description.textContent = descriptionText;
   }
 
   function ensureRailItem() {
     injectRailItem();
     updatePageCapsule();
+  }
+
+  function queueRailSync() {
+    if (railSyncQueued) return;
+    railSyncQueued = true;
+    requestAnimationFrame(() => {
+      railSyncQueued = false;
+      if (!document.querySelector('.o6-command-rail [data-tab="profile"]')) injectRailItem();
+    });
   }
 
   if (typeof getInitialTab === 'function') {
@@ -363,12 +376,14 @@
     };
   }
 
-  // The Orbit shell is rendered asynchronously during the initial guild load.
-  // Observe that one dashboard subtree so Bot-Profil is present even when the
-  // command rail is created after this module has already executed.
+  // Initial guild rendering is asynchronous. Observe only for the one thing
+  // this hook owns: a missing Bot-Profil rail item. Never mutate page content
+  // from the observer callback; doing so can create a MutationObserver loop.
   const dashboardRoot = document.querySelector('#guildDashboard');
   if (dashboardRoot && typeof MutationObserver !== 'undefined') {
-    const railObserver = new MutationObserver(() => ensureRailItem());
+    const railObserver = new MutationObserver(() => {
+      if (!document.querySelector('.o6-command-rail [data-tab="profile"]')) queueRailSync();
+    });
     railObserver.observe(dashboardRoot, { childList: true, subtree: true });
   }
 
