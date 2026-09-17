@@ -15,6 +15,8 @@ const { attachVoiceStudioRuntime } = require('./voice-studio-runtime');
 const { attachAnalyticsApi } = require('./analytics-api');
 const { attachAnalyticsRuntime } = require('./analytics-runtime');
 const { attachBotProfileApi } = require('./bot-profile-api');
+const { attachCustomBotApi } = require('./custom-bot-api');
+const { startStoredCustomBots } = require('./custom-bot-manager');
 const { retryTransient, formatErrorDetails } = require('./startup-utils');
 
 function isDisallowedIntentError(error) {
@@ -32,6 +34,7 @@ function startDashboard() {
   attachVoiceStudioApi(app);
   attachAnalyticsApi(app);
   attachBotProfileApi(app);
+  attachCustomBotApi(app);
 
   return new Promise(resolve => {
     const server = app.listen(config.port, '0.0.0.0', () => {
@@ -58,7 +61,7 @@ async function startDiscordBot() {
 
 async function main() {
   console.log('=========================================');
-  console.log(' RAKU DISCORD BOT');
+  console.log(' ORBIT DISCORD CONTROL');
   console.log('=========================================');
 
   attachTicketRuntime(client);
@@ -82,6 +85,7 @@ async function main() {
     console.log('');
   }
 
+  await startStoredCustomBots();
   await startDashboard();
 }
 
