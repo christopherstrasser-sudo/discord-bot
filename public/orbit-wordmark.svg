@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 216" role="img" aria-label="ORBIT">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.48" stop-color="#f1f3ff"/>
+      <stop offset="1" stop-color="#b9c7e8"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#6cdcff"/>
+      <stop offset="0.58" stop-color="#9587ff"/>
+      <stop offset="1" stop-color="#6a3cff"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#d9d4ff"/>
+      <stop offset="0.45" stop-color="#9587ff"/>
+      <stop offset="1" stop-color="#5c2dff"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(18 23)">
+    <circle cx="86" cy="85" r="64" fill="none" stroke="url(#metal)" stroke-width="16"/>
+    <ellipse cx="86" cy="85" rx="91" ry="19" transform="rotate(-24 86 85)" fill="none" stroke="url(#orbit)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+    <circle cx="86" cy="85" r="4.5" fill="#eef4ff"/>
+    <circle cx="161" cy="42" r="10" fill="url(#planet)" filter="url(#glow)"/>
+  </g>
+  <g fill="url(#metal)" filter="url(#glow)" aria-hidden="true">
+    <path d="M239 47h106c31 0 51 17 51 45 0 22-13 36-32 41l39 52h-29l-36-48h-74v48h-25V47zm25 23v44h80c17 0 27-8 27-22s-10-22-27-22h-80z"/>
+    <path d="M448 47h103c32 0 51 14 51 38 0 16-8 28-23 34 20 5 31 17 31 35 0 27-21 31-57 31H448V47zm25 22v40h78c17 0 26-7 26-20s-9-20-26-20h-78zm0 62v32h83c19 0 29-5 29-16s-10-16-29-16h-83z"/>
+    <rect x="657" y="47" width="25" height="138" rx="5"/>
+    <path d="M730 47h152v24h-64v114h-25V71h-63V47z"/>
+  </g>
+</svg>
