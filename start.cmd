@@ -1,10 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title RAKU Discord Bot
+title ORBIT Discord Control
 
 echo =========================================
-echo  RAKU DISCORD BOT
+echo  ORBIT DISCORD CONTROL
 echo =========================================
 echo.
 
@@ -27,7 +27,7 @@ if errorlevel 1 (
 if not exist ".env" (
   copy /Y ".env.example" ".env" >nul
   echo [INFO] Created .env from .env.example.
-  echo [INFO] Fill in the Discord credentials in C:\Discord-Bot\.env, then start again.
+  echo [INFO] Fill in the Discord credentials in the .env file, then start again.
   notepad ".env"
   pause
   exit /b 0
@@ -44,9 +44,10 @@ if not exist "node_modules\" set NEED_NPM_INSTALL=1
 if not exist "node_modules\piratetok-live-js\package.json" set NEED_NPM_INSTALL=1
 if not exist "node_modules\puppeteer-core\package.json" set NEED_NPM_INSTALL=1
 if not exist "node_modules\tiktok-signature\package.json" set NEED_NPM_INSTALL=1
+if not exist "node_modules\impit\package.json" set NEED_NPM_INSTALL=1
 
 if "%NEED_NPM_INSTALL%"=="1" (
-  echo [INFO] Installing/updating dependencies...
+  echo [INFO] Installing/updating ORBIT dependencies...
   set PUPPETEER_SKIP_DOWNLOAD=true
   call npm install --no-audit --no-fund
   if errorlevel 1 (
@@ -56,10 +57,10 @@ if "%NEED_NPM_INSTALL%"=="1" (
   )
 )
 
-echo [INFO] Starting bot and dashboard...
+echo [INFO] Starting ORBIT bot and dashboard...
 echo.
 call npm start
 
 echo.
-echo [INFO] Process stopped.
+echo [INFO] ORBIT stopped.
 pause
