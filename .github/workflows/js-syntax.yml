@@ -228,6 +228,11 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Load core modules
+        env:
+          DISCORD_CLIENT_ID: '123456789012345678'
+          DISCORD_CLIENT_SECRET: 'ci-client-secret'
+          DISCORD_BOT_TOKEN: 'ci-bot-token'
+          SESSION_SECRET: 'ci-session-secret-for-module-load'
         run: |
           node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); require('./src/custom-bot-store'); require('./src/custom-bot-manager'); require('./src/custom-bot-api'); require('./src/guild-client-router'); console.log('Core modules loaded')"
           node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
