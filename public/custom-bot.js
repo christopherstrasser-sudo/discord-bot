@@ -87,7 +87,7 @@
       </div>
 
       <div class="cb-presence">
-        <header><div><span>AKTIVITÄT & STATUS</span><h3>Wie soll dein Bot in Discord erscheinen?</h3></div><small>Wird direkt auf die Custom-Bot-Session angewendet.</small></header>
+        <header><div><span>Aktivität & Status</span><h3>Wie soll dein Bot in Discord erscheinen?</h3></div><small>Wird direkt auf die Custom-Bot-Session angewendet.</small></header>
         <div class="cb-presence-fields">
           <label><span>Status</span><select data-cb-status>
             <option value="online" ${p.status==='online'?'selected':''}>Online</option>
