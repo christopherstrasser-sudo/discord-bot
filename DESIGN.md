@@ -1,120 +1,90 @@
-# RAKU Discord Control — Orbit UI v6.2
+# ORBIT — Product & UI Design Contract
+
+## Brand
+
+The product name is **ORBIT**.
+
+Concept: the Discord server is the central core; management and automation modules form the orbit around it. This concept is structural, not decorative: the overview's Module Constellation visualizes the same idea.
+
+Approved brand asset:
+
+- `public/orbit-wordmark.svg` — canonical ORBIT wordmark used in the header and login
+
+Do not reintroduce RAKU as visible product branding. Legacy internal identifiers may remain temporarily where renaming them would risk runtime compatibility, but they are implementation details only.
 
 ## Current architecture
 
-The product-wide interface has exactly two final UI authorities:
+The product-wide interface uses the Orbit spatial architecture:
 
-- `public/raku-orbit-v610.css` — the **only** product-wide visual layer
-- `public/raku-orbit-v600.js` — the authenticated shell and constellation overview renderer
+- no fixed application sidebar
+- floating server capsule top-left
+- floating current-page capsule top-center
+- floating action capsule top-right
+- one free workspace canvas
+- floating labeled top command rail below the capsules
+- every navigation item exposes icon + text on desktop
+- overview centers on a Module Constellation rather than a KPI/card wall
 
-Feature CSS remains loaded only for component mechanics. Do not add a second global fix, polish, override, readability or glass stylesheet.
+The current runtime files still include historical filenames `public/raku-orbit-v610.css`, `public/raku-orbit-v600.js`, `public/raku-module-shell.css` and `public/raku-module-shell.js`. These names are compatibility-only and are not part of the public brand.
 
-## Core silhouette
+## Orbit Navigator
 
-Orbit stays structurally different from conventional admin dashboards:
+The overview places the real Discord server in the illuminated center core with operational modules around it. Inner/outer orbital geometry, connector paths and restrained signal motion reinforce the product model without turning the interface into decorative sci-fi.
 
-1. no fixed application sidebar
-2. floating server capsule top-left
-3. floating current-page capsule top-center
-4. floating action capsule top-right
-5. one free workspace canvas
-6. a **floating top command rail** directly below the capsules
-7. every command-rail item always exposes icon + text on desktop
-8. overview centers on a Module Constellation rather than a KPI/card wall
-
-Legacy hooks like `.deck-nav`, `.deck-nav-item` and `#guildWorkspace` exist only for compatibility with feature code. They must never recreate the old sidebar layout.
-
-## v6.2 command rail
-
-The old bottom dock is retired.
-
-The authenticated dashboard now uses a labeled top command rail:
-
-- top position below the three context capsules
-- always-visible module labels on desktop
-- horizontal scrolling on narrower screens rather than icon-only ambiguity
-- unique SVG symbol for every module
-- subtle group separators
-- active item gets a glass highlight plus violet/cyan indicator line
-- module status remains visible as a small state point
-
-Do not move the primary module navigation back to the bottom of the viewport.
-
-## Overview / Orbit Navigator
-
-The overview uses an upgraded **Orbit Navigator**:
-
-- real Discord server in the illuminated center core
-- eight operational module nodes around the server
-- separate inner and outer orbit geometry
-- three orbital rings with restrained motion
-- visible connector paths from server core to module nodes
-- connector path brightens when its module node is hovered or focused
-- small orbital signal beacons and a subtle server activity signal
-- Activity, Health and Quick Actions remain separate glass islands
-- compact metrics stay secondary
-
-The primary nodes are Welcome, Auto-Roles, Roles, Tickets, Commands, Creator Alerts, Voice and Logs. Analytics and Diagnostics remain available in the top command rail and quick actions.
-
-On narrow screens, constellation nodes become a normal two-column/one-column module grid underneath the server core so the Orbit concept never causes overlap or horizontal clipping.
+On narrow screens the constellation becomes a normal module grid so the visual metaphor never damages usability.
 
 ## Typography and glass
 
 - Manrope for display/headline/navigation typography
 - Inter for working UI text
-- dark translucent material, restrained light edge, inner highlight and controlled shadow
+- deep dark spatial background
+- translucent glass with restrained edge highlights and controlled shadow
 - violet primary accent and cyan secondary signal accent
+- strong readable contrast
 - ordinary working text normally 10–14px
 - dynamic names/messages must truncate or wrap safely
-- every dynamic grid/flex child must be shrinkable with `min-width: 0`
+- dynamic flex/grid children remain shrinkable with `min-width:0`
 
 ## Module layout contract
 
-Feature internals may have side lists/editor/preview columns when needed, but they must obey Orbit's outer geometry.
+All feature pages use the same outer width, hero language and vertical rhythm. Feature internals may use editors, side lists and previews when useful, but they must not introduce their own outer page widths.
 
 Specific rules:
+
 - module toolbars wrap rather than overflow
 - Role/Ticket/Creator side lists become non-sticky on narrower layouts
-- desktop sticky editor/preview elements sit **below the top command rail**
-- Ticket panelbar and Role commandbar wrap instead of using old fixed grid columns
+- desktop sticky editor/preview elements sit below the top command rail
 - Commands progressively collapses from three columns to two to one
 - form grids collapse to one column on narrow screens
 
 ## Login
 
-Login is a centered glass portal with subtle ambient light and a few floating feature chips. Do not restore a text-left / fake-console-right layout.
+Login is a centered glass portal with the approved ORBIT wordmark and subtle ambient feature chips. Do not restore a conventional split-screen login or fake system console.
 
 ## Server picker
 
-The server picker is an asymmetric gallery with real Discord server icons.
-
-The desktop rhythm uses five-card cycles:
-- card 1: 7 columns
-- card 2: 5 columns
-- cards 3–5: 4 columns each
-
-This fills complete 12-column rows with `grid-auto-flow:dense`. Do not restore the old six-card `nth-child` pattern.
+The server picker is an asymmetric gallery with real Discord server icons. Desktop uses the established dense 12-column rhythm rather than equal generic cards.
 
 ## Screen contract
 
-Login, server picker and guild dashboard are mutually exclusive screens. Visual CSS must never override `.hidden`.
+Login, server picker and guild dashboard are mutually exclusive application states. Visual CSS must never override `.hidden`.
+
+## Bot Profile
+
+The Bot Profile module supports server-specific bot nickname, avatar and bio. It intentionally does not expose activity/presence controls because Discord presence is global to the shared bot connection.
 
 ## Retired architecture
 
-Do not restore or reference:
-- the Orbit bottom navigation dock layout
-- `raku-orbit-v600.css`
-- `raku-studio-v500.css`
-- `raku-workspace-v500.js`
-- Studio v5 fixed sidebar/context-bar layout
-- `raku-prism-v400.css`
-- `raku-ui-v100.js`
-- `raku-glass-v300.css`
-- `raku-design-v200.css`
-- UX-v2 decorators/guides/hints
-- module-unification/readability/wide/fix layers
-- role/ticket version-specific polish stylesheets
+Do not restore:
+
+- conventional fixed app sidebar + context bar dashboard
+- bottom primary navigation dock
+- Prism / Glass / Studio v5 generations
+- duplicate global polish/fix/readability stylesheets
+- Bot Profile Activity / `GLOBAL · GESPERRT` block
+- per-guild `setPresence()` / `setActivity()` on the shared bot
+- local-browser Instagram/X social fallback
 
 ## Rule
 
-Polish the Orbit architecture in place. If a change starts rebuilding a conventional admin dashboard, hides navigation behind ambiguous icons, moves the command rail back to the bottom, or requires another global override file, the approach is wrong.
+Polish ORBIT in place. If a change hides navigation behind ambiguous icons, rebuilds a generic admin dashboard, moves primary navigation back to the bottom, or requires another global appearance layer, the approach is wrong.
