@@ -94,7 +94,7 @@ jobs:
 
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           if (pkg.name !== 'orbit-discord-control') throw new Error(`Unexpected package name: ${pkg.name}`);
-          if (pkg.version !== '0.30.0') throw new Error(`Expected package version 0.30.0, got ${pkg.version}`);
+          if (pkg.version !== '0.30.1') throw new Error(`Expected package version 0.30.1, got ${pkg.version}`);
 
           const readme = fs.readFileSync('README.md', 'utf8');
           const launcher = fs.readFileSync('start.cmd', 'utf8');
@@ -157,9 +157,15 @@ jobs:
           if (/setPresence\s*\(|setActivity\s*\(/.test(profileUi) || /setPresence\s*\(|setActivity\s*\(/.test(profileApi)) {
             throw new Error('Shared Bot Profile must never fake per-guild presence/activity');
           }
+          if (profileUi.includes('new MutationObserver(() => ensureRailItem())')) {
+            throw new Error('Bot Profile rail observer must never mutate page capsule/content directly');
+          }
+          for (const token of ['queueRailSync', 'title.textContent !== titleText', 'description.textContent !== descriptionText', 'Never mutate page content']) {
+            if (!profileUi.includes(token)) throw new Error(`Bot Profile observer loop guard missing: ${token}`);
+          }
 
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
-          console.log('ORBIT v0.30.0 product contract verified');
+          console.log('ORBIT v0.30.1 product contract verified');
           NODE
 
       - name: Install dependencies
