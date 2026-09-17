@@ -190,13 +190,21 @@ async function reconnectStoredCustomBot(guildId) {
 
 async function startStoredCustomBots() {
   const guildIds = listCustomBotGuildIds();
-  if (!guildIds.length) return;
+  if (!guildIds.length) return [];
   console.log(`[CUSTOM BOT] Restoring ${guildIds.length} replacement bot connection(s)`);
-  for (const guildId of guildIds) {
-    reconnectStoredCustomBot(guildId)
-      .then(state => console.log(`[CUSTOM BOT] ${state.username || state.applicationId} ready for guild ${guildId}${state.active ? ' · ACTIVE' : ' · standby'}`))
-      .catch(error => console.warn(`[CUSTOM BOT] Could not restore guild ${guildId}: ${error.message}`));
-  }
+
+  const results = await Promise.allSettled(guildIds.map(async guildId => {
+    try {
+      const state = await reconnectStoredCustomBot(guildId);
+      console.log(`[CUSTOM BOT] ${state.username || state.applicationId} ready for guild ${guildId}${state.active ? ' · ACTIVE' : ' · standby'}`);
+      return { guildId, ok: true, state };
+    } catch (error) {
+      console.warn(`[CUSTOM BOT] Could not restore guild ${guildId}: ${error.message}`);
+      return { guildId, ok: false, error: error.message };
+    }
+  }));
+
+  return results.map(result => result.status === 'fulfilled' ? result.value : ({ ok: false, error: String(result.reason?.message || result.reason) }));
 }
 
 function getCustomBotClient(guildId) {
