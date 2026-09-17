@@ -78,7 +78,7 @@
       <b>${ready ? 'Bereit zur Übernahme' : 'Noch nicht bereit'}</b>
       <small>${ready
         ? 'Aktiviere jetzt die Bot-Identität für diesen Server. Erst danach darfst du den öffentlichen ORBIT-Bot kicken.'
-        : 'Lade den Custom Bot zuerst über den Invite auf genau diesen Server ein. Danach kann ORBIT die Verbindung übernehmen.'}</small>
+        : 'Lade den Custom Bot zuerst über den Invite auf genau diesen Server ein. ORBIT erkennt automatisch, sobald er angekommen ist.'}</small>
       <div class="cb-card-actions">
         ${ready ? '<button class="button button-primary" type="button" data-cb-activate>Als ORBIT-Bot übernehmen</button>' : ''}
       </div>
@@ -191,6 +191,12 @@
     }
   }
 
+  async function refreshDashboardContext() {
+    if (!state.guildId || typeof renderGuildDashboard !== 'function') return;
+    await renderGuildDashboard(state.guildId);
+    if (typeof switchTab === 'function') switchTab('profile');
+  }
+
   async function request(path, options = {}) {
     try {
       const result = await api(`/api/guilds/${state.guildId}/custom-bot${path}`, options);
@@ -238,11 +244,11 @@
       } else if (button.matches('[data-cb-activate]')) {
         await request('/activate', { method:'POST' });
         toast('Übernahme abgeschlossen. Dieser Bot ist jetzt ORBIT für diesen Server.');
-        if (typeof loadGuildDashboard === 'function') await loadGuildDashboard(state.guildId).catch(() => null);
+        await refreshDashboardContext().catch(() => null);
       } else if (button.matches('[data-cb-deactivate]')) {
         await request('/deactivate', { method:'POST' });
         toast('Standard-ORBIT-Bot ist wieder aktiv.');
-        if (typeof loadGuildDashboard === 'function') await loadGuildDashboard(state.guildId).catch(() => null);
+        await refreshDashboardContext().catch(() => null);
       } else if (button.matches('[data-cb-save-presence]')) {
         await request('/presence', { method:'PATCH', body:JSON.stringify(presenceFromUi()) });
         toast('Aktivität und Status gespeichert.');
@@ -267,6 +273,13 @@
     });
     observer.observe(root, { childList:true, subtree:true });
   }
+
+  setInterval(() => {
+    const workspace = document.querySelector('#guildWorkspace');
+    if (!workspace || workspace.dataset.page !== 'profile') return;
+    if (!state.data?.config?.configured || state.data?.runtime?.inTargetGuild || state.loading) return;
+    load(true).catch(() => null);
+  }, 3500);
 
   requestAnimationFrame(mount);
 })();
