@@ -38,7 +38,7 @@ function decryptSecret(record) {
 function ensureStore() {
   fs.mkdirSync(dataDir, { recursive: true });
   if (!fs.existsSync(dataFile)) {
-    fs.writeFileSync(dataFile, JSON.stringify({ schemaVersion: 1, guilds: {} }, null, 2), 'utf8');
+    fs.writeFileSync(dataFile, JSON.stringify({ schemaVersion: 2, guilds: {} }, null, 2), 'utf8');
   }
 }
 
@@ -48,12 +48,13 @@ function readStore() {
     const parsed = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
     if (!parsed || typeof parsed !== 'object') throw new Error('Invalid custom bot store');
     if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
+    parsed.schemaVersion = Math.max(2, Number(parsed.schemaVersion || 1));
     return parsed;
   } catch (error) {
     const backup = `${dataFile}.corrupt-${Date.now()}`;
     try { fs.copyFileSync(dataFile, backup); } catch {}
     console.warn(`[CUSTOM BOT] Invalid credential store backed up to ${backup}`);
-    const fresh = { schemaVersion: 1, guilds: {} };
+    const fresh = { schemaVersion: 2, guilds: {} };
     fs.writeFileSync(dataFile, JSON.stringify(fresh, null, 2), 'utf8');
     return fresh;
   }
@@ -61,6 +62,7 @@ function readStore() {
 
 function writeStore(store) {
   ensureStore();
+  store.schemaVersion = 2;
   const temp = `${dataFile}.tmp`;
   fs.writeFileSync(temp, JSON.stringify(store, null, 2), { encoding: 'utf8', mode: 0o600 });
   fs.renameSync(temp, dataFile);
@@ -72,6 +74,7 @@ function safeRecord(guildId, record) {
   return {
     guildId,
     configured: Boolean(record.token?.ciphertext),
+    active: Boolean(record.active),
     applicationId: String(record.applicationId || ''),
     username: String(record.username || ''),
     avatarUrl: String(record.avatarUrl || ''),
@@ -83,7 +86,8 @@ function safeRecord(guildId, record) {
       activityUrl: String(record.presence?.activityUrl || '')
     },
     createdAt: record.createdAt || null,
-    updatedAt: record.updatedAt || null
+    updatedAt: record.updatedAt || null,
+    activatedAt: record.activatedAt || null
   };
 }
 
@@ -105,12 +109,31 @@ function listCustomBotGuildIds() {
   return Object.keys(readStore().guilds);
 }
 
+function listActiveCustomBotGuildIds() {
+  const store = readStore();
+  return Object.entries(store.guilds)
+    .filter(([, record]) => Boolean(record?.active && record?.token?.ciphertext))
+    .map(([guildId]) => guildId);
+}
+
+function findCustomBotGuildByApplicationId(applicationId, excludeGuildId = '') {
+  const id = String(applicationId || '');
+  if (!id) return null;
+  const store = readStore();
+  for (const [guildId, record] of Object.entries(store.guilds)) {
+    if (guildId === excludeGuildId) continue;
+    if (String(record?.applicationId || '') === id && record?.token?.ciphertext) return guildId;
+  }
+  return null;
+}
+
 function saveCustomBot(guildId, input = {}) {
   const store = readStore();
   const current = store.guilds[guildId] || {};
   const now = new Date().toISOString();
   const next = {
     ...current,
+    active: input.active === undefined ? Boolean(current.active) : Boolean(input.active),
     applicationId: input.applicationId ?? current.applicationId ?? '',
     username: input.username ?? current.username ?? '',
     avatarUrl: input.avatarUrl ?? current.avatarUrl ?? '',
@@ -121,7 +144,8 @@ function saveCustomBot(guildId, input = {}) {
       activityUrl: input.presence?.activityUrl ?? current.presence?.activityUrl ?? ''
     },
     createdAt: current.createdAt || now,
-    updatedAt: now
+    updatedAt: now,
+    activatedAt: input.active === true ? (current.activatedAt || now) : (input.active === false ? null : current.activatedAt || null)
   };
   if (input.token) {
     next.token = encryptSecret(input.token);
@@ -130,6 +154,18 @@ function saveCustomBot(guildId, input = {}) {
   store.guilds[guildId] = next;
   writeStore(store);
   return safeRecord(guildId, next);
+}
+
+function setCustomBotActive(guildId, active) {
+  const store = readStore();
+  const current = store.guilds[guildId];
+  if (!current?.token?.ciphertext) throw new Error('Für diesen Server ist kein Custom Bot eingerichtet.');
+  const now = new Date().toISOString();
+  current.active = Boolean(active);
+  current.updatedAt = now;
+  current.activatedAt = active ? (current.activatedAt || now) : null;
+  writeStore(store);
+  return safeRecord(guildId, current);
 }
 
 function deleteCustomBot(guildId) {
@@ -145,6 +181,9 @@ module.exports = {
   decryptSecret,
   getCustomBot,
   listCustomBotGuildIds,
+  listActiveCustomBotGuildIds,
+  findCustomBotGuildByApplicationId,
   saveCustomBot,
+  setCustomBotActive,
   deleteCustomBot
 };
