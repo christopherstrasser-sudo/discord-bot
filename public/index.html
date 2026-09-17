@@ -4,27 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>RAKU Discord Control</title>
+  <meta name="theme-color" content="#08090f">
+  <title>ORBIT — Discord Management</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Module mechanics only. -->
-  <link rel="stylesheet" href="/styles.css?v=0281">
-  <link rel="stylesheet" href="/commands-editor.css?v=0281">
-  <link rel="stylesheet" href="/role-studio.css?v=0281">
-  <link rel="stylesheet" href="/ticket-studio.css?v=0281">
-  <link rel="stylesheet" href="/creator-hub.css?v=0281">
-  <link rel="stylesheet" href="/creator-social-extension.css?v=0281">
-  <link rel="stylesheet" href="/emoji-picker-popup.css?v=0281">
-  <link rel="stylesheet" href="/voice-studio.css?v=0281">
-  <link rel="stylesheet" href="/analytics-studio.css?v=0281">
-  <link rel="stylesheet" href="/bot-profile.css?v=0281">
-  <link rel="stylesheet" href="/raku-module-shell.css?v=0281">
+  <link rel="stylesheet" href="/styles.css?v=0290">
+  <link rel="stylesheet" href="/commands-editor.css?v=0290">
+  <link rel="stylesheet" href="/role-studio.css?v=0290">
+  <link rel="stylesheet" href="/ticket-studio.css?v=0290">
+  <link rel="stylesheet" href="/creator-hub.css?v=0290">
+  <link rel="stylesheet" href="/creator-social-extension.css?v=0290">
+  <link rel="stylesheet" href="/emoji-picker-popup.css?v=0290">
+  <link rel="stylesheet" href="/voice-studio.css?v=0290">
+  <link rel="stylesheet" href="/analytics-studio.css?v=0290">
+  <link rel="stylesheet" href="/bot-profile.css?v=0290">
+  <link rel="stylesheet" href="/raku-module-shell.css?v=0290">
 
-  <!-- The only product-wide appearance layer. -->
-  <link rel="stylesheet" href="/raku-orbit-v610.css?v=0281">
+  <!-- Orbit's single product-wide appearance layer. -->
+  <link rel="stylesheet" href="/raku-orbit-v610.css?v=0290">
 
   <style id="app-screen-state-contract">
     #loggedOut.hidden,
@@ -37,6 +38,13 @@
       border: 0 !important;
       box-shadow: none !important;
     }
+
+    /* Approved ORBIT wordmark. */
+    .orbit-brand { display:inline-flex !important; align-items:center; width:max-content; min-width:0; }
+    .orbit-wordmark { display:block; width:auto; object-fit:contain; pointer-events:none; user-select:none; }
+    .orbit-wordmark-topbar { height:32px; max-width:142px; }
+    .orbit-login-brand { width:100%; justify-content:center; }
+    .orbit-wordmark-login { height:48px; max-width:min(260px,70vw); filter:drop-shadow(0 10px 24px rgba(117,100,255,.18)); }
 
     /* Keep the labelled command rail intentionally compact on desktop. */
     @media (min-width: 901px) {
@@ -66,9 +74,8 @@
 <body>
   <div class="app-frame">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="RAKU Discord Control">
-        <span class="brand-mark">R</span>
-        <span class="brand-copy"><b>RAKU</b><small>DISCORD CONTROL</small></span>
+      <a class="brand orbit-brand" href="/" aria-label="ORBIT">
+        <img class="orbit-wordmark orbit-wordmark-topbar" src="/orbit-wordmark.svg?v=0290" alt="ORBIT">
       </a>
       <div id="globalStatus" class="global-status" aria-live="polite">
         <span class="status-pulse"></span><span>Status wird geprüft</span>
@@ -79,7 +86,9 @@
     <main class="main-shell">
       <section id="loggedOut" class="login-screen hidden">
         <div class="o6-login-stage">
-          <div class="o6-login-brand"><i>R</i><span>RAKU DISCORD CONTROL</span></div>
+          <div class="o6-login-brand orbit-login-brand">
+            <img class="orbit-wordmark orbit-wordmark-login" src="/orbit-wordmark.svg?v=0290" alt="ORBIT">
+          </div>
 
           <div class="o6-login-float a"><b>Tickets</b><small>Support ohne Extra-Tool</small></div>
           <div class="o6-login-float b"><b>Creator Alerts</b><small>6 Plattformen · ein Workflow</small></div>
@@ -87,9 +96,9 @@
           <div class="o6-login-float d"><b>Voice</b><small>Temporäre Räume & Lobbys</small></div>
 
           <div class="o6-login-card login-copy">
-            <span class="overline">ALLES AN EINEM ORT</span>
-            <h1>Dein Discord fühlt sich endlich aufgeräumt an.</h1>
-            <p>Rollen, Tickets, Commands, Creator Alerts, Voice und Analytics in einer Oberfläche, die für den täglichen Einsatz gebaut ist.</p>
+            <span class="overline">DEINE COMMUNITY IM ZENTRUM</span>
+            <h1>Alles, was dein Discord braucht. In einem Orbit.</h1>
+            <p>Rollen, Tickets, Commands, Creator Alerts, Voice und Analytics kreisen als Module um deinen Server – zentral steuerbar in einer Oberfläche.</p>
             <a class="button button-primary button-large" href="/auth/discord">Mit Discord anmelden</a>
             <small class="o6-login-note">Du siehst danach nur Server, die du verwalten kannst.</small>
           </div>
@@ -99,9 +108,9 @@
       <section id="serverList" class="server-screen hidden o6-server-hub">
         <div class="page-head">
           <div>
-            <span class="overline">DEINE WORKSPACES</span>
-            <h1>Wo willst du rein?</h1>
-            <p>Jeder Server bleibt ein eigener Workspace mit eigenen Modulen, Einstellungen und Statusdaten.</p>
+            <span class="overline">DEINE ORBITS</span>
+            <h1>Welcher Server steht heute im Zentrum?</h1>
+            <p>Jeder Discord-Server ist ein eigener Orbit mit seinen Modulen, Einstellungen und Statusdaten.</p>
           </div>
           <div id="serverStats" class="deck-stats"></div>
         </div>
@@ -133,29 +142,29 @@
 
   <div id="toastHost" class="toast-host" aria-live="polite"></div>
 
-  <script src="/app.js?v=0281"></script>
-  <script src="/save-button-fix.js?v=0281"></script>
-  <script src="/commands-editor.js?v=0281"></script>
-  <script src="/role-studio-observer-guard.js?v=0281"></script>
-  <script src="/role-studio.js?v=0281"></script>
-  <script src="/role-studio-observer-guard.js?restore=1&v=0281"></script>
-  <script src="/ticket-studio-core.js?v=0281"></script>
-  <script src="/ticket-studio-render.js?v=0281"></script>
-  <script src="/ticket-studio-actions.js?v=0281"></script>
-  <script src="/creator-hub-core.js?v=0281"></script>
-  <script src="/creator-hub-render.js?v=0281"></script>
-  <script src="/creator-hub-youtube-handle.js?v=0281"></script>
-  <script src="/creator-hub-tiktok-v092.js?v=0281"></script>
-  <script src="/creator-hub-actions.js?v=0281"></script>
-  <script src="/creator-social-extension.js?v=0281"></script>
+  <script src="/app.js?v=0290"></script>
+  <script src="/save-button-fix.js?v=0290"></script>
+  <script src="/commands-editor.js?v=0290"></script>
+  <script src="/role-studio-observer-guard.js?v=0290"></script>
+  <script src="/role-studio.js?v=0290"></script>
+  <script src="/role-studio-observer-guard.js?restore=1&v=0290"></script>
+  <script src="/ticket-studio-core.js?v=0290"></script>
+  <script src="/ticket-studio-render.js?v=0290"></script>
+  <script src="/ticket-studio-actions.js?v=0290"></script>
+  <script src="/creator-hub-core.js?v=0290"></script>
+  <script src="/creator-hub-render.js?v=0290"></script>
+  <script src="/creator-hub-youtube-handle.js?v=0290"></script>
+  <script src="/creator-hub-tiktok-v092.js?v=0290"></script>
+  <script src="/creator-hub-actions.js?v=0290"></script>
+  <script src="/creator-social-extension.js?v=0290"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.29.1/index.js"></script>
-  <script src="/emoji-picker-popup.js?v=0281"></script>
-  <script src="/voice-studio.js?v=0281"></script>
-  <script src="/analytics-studio.js?v=0281"></script>
+  <script src="/emoji-picker-popup.js?v=0290"></script>
+  <script src="/voice-studio.js?v=0290"></script>
+  <script src="/analytics-studio.js?v=0290"></script>
 
-  <!-- Final shell renderer: loaded after every feature module. -->
-  <script src="/raku-orbit-v600.js?v=0281"></script>
-  <script src="/raku-module-shell.js?v=0281"></script>
-  <script src="/bot-profile.js?v=0281"></script>
+  <!-- Final Orbit shell renderer: loaded after every feature module. -->
+  <script src="/raku-orbit-v600.js?v=0290"></script>
+  <script src="/raku-module-shell.js?v=0290"></script>
+  <script src="/bot-profile.js?v=0290"></script>
 </body>
 </html>
