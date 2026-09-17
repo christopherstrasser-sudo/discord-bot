@@ -166,6 +166,13 @@ function attachCustomBotApi(app) {
 
   app.delete('/api/guilds/:guildId/custom-bot', access, async (req, res) => {
     const guildId = req.params.guildId;
+    const stored = getCustomBot(guildId);
+    if (stored?.active) {
+      return res.status(409).json({
+        error: 'custom_bot_active',
+        message: 'Dieser Bot ist aktuell ORBIT für den Server. Wechsle zuerst zurück zum Standard-Bot, bevor du das Credential löschst.'
+      });
+    }
     setCustomModeActive(guildId, false);
     await disconnectCustomBot(guildId);
     deleteCustomBot(guildId);
