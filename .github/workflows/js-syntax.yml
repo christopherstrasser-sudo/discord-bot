@@ -86,7 +86,7 @@ jobs:
             const count = html.split(asset).length - 1;
             if (count < 1) throw new Error(`Required asset missing from index: ${asset}`);
           }
-          if (!html.includes('v=0290')) throw new Error('v0.29.0 UI cache key missing');
+          if (!html.includes('v=0290')) throw new Error('Base Orbit UI cache key missing');
           if (!html.includes('<title>ORBIT')) throw new Error('ORBIT browser title missing');
           if (!html.includes('alt="ORBIT"')) throw new Error('ORBIT wordmark is not wired into UI');
           if (/RAKU Discord Control|>RAKU<|RAKU DISCORD/i.test(html)) throw new Error('Visible legacy RAKU branding remains in index.html');
@@ -94,7 +94,7 @@ jobs:
 
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           if (pkg.name !== 'orbit-discord-control') throw new Error(`Unexpected package name: ${pkg.name}`);
-          if (pkg.version !== '0.29.0') throw new Error(`Expected package version 0.29.0, got ${pkg.version}`);
+          if (pkg.version !== '0.30.0') throw new Error(`Expected package version 0.30.0, got ${pkg.version}`);
 
           const readme = fs.readFileSync('README.md', 'utf8');
           const launcher = fs.readFileSync('start.cmd', 'utf8');
@@ -106,7 +106,15 @@ jobs:
             if (!env.includes(token)) throw new Error(`Orbit relay config missing: ${token}`);
           }
 
-          for (const file of ['src/creator-social-providers.js', 'src/creator-instagram-keyless.js', 'src/creator-instagram-imginn.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
+          for (const file of [
+            'src/creator-social-providers.js',
+            'src/creator-instagram-keyless.js',
+            'src/creator-instagram-imginn.js',
+            'src/creator-social-provider-router.js',
+            'src/creator-social-runtime.js',
+            'src/creator-twitch-clips.js',
+            'tests/creator-twitch-clips.test.js'
+          ]) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
           if (fs.existsSync('src/creator-social-browser.js')) throw new Error('Local browser social fallback must stay retired');
@@ -118,8 +126,23 @@ jobs:
           if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use a local browser');
 
           const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
-          for (const token of ["'instagram'", "'bluesky'", "'x'", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'publishError', 'allowPing: false']) {
-            if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
+          for (const token of ["'instagram'", "'bluesky'", "'x'", "'clip'", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'publishError', 'allowPing: false', 'seenClipIds']) {
+            if (!api.includes(token)) throw new Error(`Creator API token missing: ${token}`);
+          }
+
+          const runtime = fs.readFileSync('src/creator-runtime.js', 'utf8');
+          for (const token of ["require('./creator-twitch-clips')", 'fetchTwitchClipStatuses', 'fetchLatestTwitchClip', 'processClipRule', 'seenClipIds', "event === 'clip'", 'ORBIT Creator Hub']) {
+            if (!runtime.includes(token)) throw new Error(`Twitch clip runtime token missing: ${token}`);
+          }
+
+          const clipProvider = fs.readFileSync('src/creator-twitch-clips.js', 'utf8');
+          for (const token of ['/helix/clips?', 'broadcaster_id', 'started_at', 'ended_at', 'created_at', 'creator_name']) {
+            if (!clipProvider.includes(token)) throw new Error(`Twitch clip provider token missing: ${token}`);
+          }
+
+          const creatorUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
+          for (const token of ['HELIX LIVE + CLIPS', "['clip', 'Neuer Clip']", '{clipper}', 'Clip ansehen']) {
+            if (!creatorUi.includes(token)) throw new Error(`Twitch clip UI token missing: ${token}`);
           }
 
           const profileApi = fs.readFileSync('src/bot-profile-api.js', 'utf8');
@@ -136,7 +159,7 @@ jobs:
           }
 
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
-          console.log('ORBIT v0.29.0 product contract verified');
+          console.log('ORBIT v0.30.0 product contract verified');
           NODE
 
       - name: Install dependencies
@@ -144,7 +167,7 @@ jobs:
 
       - name: Load core modules
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/bot-profile-utils'); console.log('Core modules loaded')"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); console.log('Core modules loaded')"
           node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
 
       - name: Run automated tests
