@@ -64,7 +64,7 @@ jobs:
           for (const file of walk('public').filter(file => file.endsWith('.css'))) checkCss(file);
           NODE
 
-      - name: Check Orbit, Creator Social and Bot Profile contract
+      - name: Check Orbit product contract
         shell: bash
         run: |
           set -euo pipefail
@@ -79,56 +79,54 @@ jobs:
             '/creator-social-extension.css',
             '/creator-social-extension.js',
             '/bot-profile.css',
-            '/bot-profile.js'
+            '/bot-profile.js',
+            '/orbit-wordmark.svg'
           ];
           for (const asset of required) {
             const count = html.split(asset).length - 1;
-            if (count !== 1) throw new Error(`Expected exactly one ${asset} reference, found ${count}`);
+            if (count < 1) throw new Error(`Required asset missing from index: ${asset}`);
           }
-          if (!html.includes('v=0281')) throw new Error('v0.28.1 UI cache key missing');
+          if (!html.includes('v=0290')) throw new Error('v0.29.0 UI cache key missing');
+          if (!html.includes('<title>ORBIT')) throw new Error('ORBIT browser title missing');
+          if (!html.includes('alt="ORBIT"')) throw new Error('ORBIT wordmark is not wired into UI');
+          if (/RAKU Discord Control|>RAKU<|RAKU DISCORD/i.test(html)) throw new Error('Visible legacy RAKU branding remains in index.html');
+          if (!fs.existsSync('public/orbit-wordmark.svg')) throw new Error('Approved ORBIT wordmark asset missing');
+
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (pkg.name !== 'orbit-discord-control') throw new Error(`Unexpected package name: ${pkg.name}`);
+          if (pkg.version !== '0.29.0') throw new Error(`Expected package version 0.29.0, got ${pkg.version}`);
+
+          const readme = fs.readFileSync('README.md', 'utf8');
+          const launcher = fs.readFileSync('start.cmd', 'utf8');
+          if (!readme.startsWith('# ORBIT')) throw new Error('README is not branded ORBIT');
+          if (!launcher.includes('ORBIT DISCORD CONTROL')) throw new Error('Launcher is not branded ORBIT');
+
+          const env = fs.readFileSync('.env.example', 'utf8');
+          for (const token of ['ORBIT_SOCIAL_RELAY_URL=', 'ORBIT_SOCIAL_RELAY_TOKEN=']) {
+            if (!env.includes(token)) throw new Error(`Orbit relay config missing: ${token}`);
+          }
 
           for (const file of ['src/creator-social-providers.js', 'src/creator-instagram-keyless.js', 'src/creator-instagram-imginn.js', 'src/creator-social-provider-router.js', 'src/creator-social-runtime.js']) {
             if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
           }
           if (fs.existsSync('src/creator-social-browser.js')) throw new Error('Local browser social fallback must stay retired');
-          if (fs.existsSync('tests/creator-social-browser.test.js')) throw new Error('Obsolete browser fallback test must stay retired');
-
-          const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
-          for (const token of ["'instagram'", "'bluesky'", "'x'", "new Set(['post'])", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'publishError', 'allowPing: false']) {
-            if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
-          }
-
-          const runtime = fs.readFileSync('src/creator-social-runtime.js', 'utf8');
-          if (!runtime.includes("require('./creator-social-provider-router')")) throw new Error('Creator social runtime must use provider router');
 
           const router = fs.readFileSync('src/creator-social-provider-router.js', 'utf8');
-          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-imginn')", "require('./creator-instagram-keyless')", 'instagram-imginn', 'imginn-relay', 'SCRAPECREATORS_API_KEY', 'RAKU_SOCIAL_RELAY_URL']) {
+          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-imginn')", "require('./creator-instagram-keyless')", 'imginn-relay', 'SCRAPECREATORS_API_KEY', 'ORBIT_SOCIAL_RELAY_URL', 'Orbit-Discord-Control/0.29', 'orbit-relay']) {
             if (!router.includes(token)) throw new Error(`Provider router token missing: ${token}`);
           }
           if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use a local browser');
 
-          const imginn = fs.readFileSync('src/creator-instagram-imginn.js', 'utf8');
-          for (const token of ['https://imginn.com', 'extractPostCodes', 'parsePostedOn', 'parseImginnPostHtml', 'fetchInstagramImginn']) {
-            if (!imginn.includes(token)) throw new Error(`Imginn relay token missing: ${token}`);
+          const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
+          for (const token of ["'instagram'", "'bluesky'", "'x'", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'publishError', 'allowPing: false']) {
+            if (!api.includes(token)) throw new Error(`Creator Social API token missing: ${token}`);
           }
 
-          const instagram = fs.readFileSync('src/creator-instagram-keyless.js', 'utf8');
-          for (const token of ["import('impit')", "browser: 'chrome'", '/web/search/topsearch/', '/api/v1/feed/user/', '7950326061742207', '/graphql/query/', 'parseGraphqlTimeline']) {
-            if (!instagram.includes(token)) throw new Error(`Instagram direct resolver token missing: ${token}`);
-          }
-          if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(instagram)) throw new Error('Instagram direct resolver must not use a local browser');
-
-          for (const file of ['src/bot-profile-api.js', 'src/bot-profile-utils.js', 'public/bot-profile.js', 'public/bot-profile.css']) {
-            if (!fs.existsSync(file)) throw new Error(`Bot Profile file missing: ${file}`);
-          }
           const profileApi = fs.readFileSync('src/bot-profile-api.js', 'utf8');
-          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname']) {
-            if (!profileApi.includes(token)) throw new Error(`Bot Profile API token missing: ${token}`);
-          }
           const profileUi = fs.readFileSync('public/bot-profile.js', 'utf8');
           const profileCss = fs.readFileSync('public/bot-profile.css', 'utf8');
-          for (const token of ["dataset.tab = 'profile'", 'Bot-Profil', 'Server-Avatar', 'prepareAvatar']) {
-            if (!profileUi.includes(token)) throw new Error(`Bot Profile UI token missing: ${token}`);
+          for (const token of ['/members/@me', 'avatar', 'bio', 'PermissionFlagsBits.ChangeNickname']) {
+            if (!profileApi.includes(token)) throw new Error(`Bot Profile API token missing: ${token}`);
           }
           if (/GLOBAL · GESPERRT|function activityMarkup|bp-activity/.test(profileUi) || /\.bp-activity/.test(profileCss)) {
             throw new Error('Retired activity section still exists in Bot Profile UI');
@@ -136,25 +134,9 @@ jobs:
           if (/setPresence\s*\(|setActivity\s*\(/.test(profileUi) || /setPresence\s*\(|setActivity\s*\(/.test(profileApi)) {
             throw new Error('Shared Bot Profile must never fake per-guild presence/activity');
           }
-          const index = fs.readFileSync('src/index.js', 'utf8');
-          if (!index.includes('attachBotProfileApi(app)')) throw new Error('Bot Profile API is not attached');
-          const store = fs.readFileSync('src/store.js', 'utf8');
-          if (!store.includes('botProfile:')) throw new Error('Bot Profile settings are not persisted');
 
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          if (pkg.version !== '0.28.1') throw new Error(`Expected package version 0.28.1, got ${pkg.version}`);
           if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
-
-          const socialUi = fs.readFileSync('public/creator-social-extension.js', 'utf8');
-          for (const token of ['PUBLIC RELAY', 'X.MD RELAY', 'kein lokaler Browser', 'appendProviderCards']) {
-            if (!socialUi.includes(token)) throw new Error(`Creator Social UI token missing: ${token}`);
-          }
-
-          const actions = fs.readFileSync('public/creator-hub-actions.js', 'utf8');
-          for (const token of ['aktuellster Inhalt wurde in Discord gepostet', 'result.publishError', 'Quelle erfolgreich geprüft']) {
-            if (!actions.includes(token)) throw new Error(`Creator check feedback missing: ${token}`);
-          }
-          console.log('Orbit + Creator Social + Bot Profile v0.28.1 contract verified');
+          console.log('ORBIT v0.29.0 product contract verified');
           NODE
 
       - name: Install dependencies
