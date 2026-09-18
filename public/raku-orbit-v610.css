@@ -3107,3 +3107,28 @@ body.o7-desktop-mode .ticket-q {
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* Module guide owns the explanation; native toolbar is now controls only. */
+body.o7-desktop-mode .o7-module-canvas .o7-native-toolbar > :first-child {
+  display: none !important;
+}
+
+body.o7-desktop-mode .o7-module-canvas .o7-native-toolbar {
+  min-height: 44px !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+}
+
+body.o7-desktop-mode .o7-module-canvas .o7-native-toolbar.o6-native-toolbar-empty {
+  display: none !important;
+}
+
+body.o7-desktop-mode .o7-rail .o6-dock-item:focus {
+  outline: none !important;
+}
+
+body.o7-desktop-mode .o7-rail .o6-dock-item:focus-visible {
+  border-color: rgba(141,124,255,.34) !important;
+  box-shadow: 0 0 0 2px rgba(141,124,255,.08) !important;
+}
