@@ -477,7 +477,7 @@
   </style>
 
   <!-- Orbit desktop appearance loads after the legacy screen-state contract. -->
-  <link rel="stylesheet" href="/raku-orbit-v610.css?v=0320">
+  <link rel="stylesheet" href="/raku-orbit-v610.css?v=0330">
 </head>
 <body>
   <div class="app-frame">
@@ -493,26 +493,37 @@
 
     <main class="main-shell">
       <section id="loggedOut" class="login-screen hidden">
-        <div class="o6-login-stage">
-          <span class="orbit-login-core-glow" aria-hidden="true"></span>
-          <span class="orbit-login-orbit orbit-login-orbit-a" aria-hidden="true"></span>
-          <span class="orbit-login-orbit orbit-login-orbit-b" aria-hidden="true"></span>
-
+        <div class="o6-login-stage o7-login-stage">
           <div class="o6-login-brand orbit-login-brand">
             <img class="orbit-wordmark orbit-wordmark-login" src="/orbit-wordmark.svg?v=0290" alt="ORBIT">
           </div>
 
-          <div class="o6-login-float a"><b>Tickets</b><small>Support ohne Extra-Tool</small></div>
-          <div class="o6-login-float b"><b>Creator Alerts</b><small>6 Plattformen · ein Workflow</small></div>
-          <div class="o6-login-float c"><b>Rollen</b><small>Self-Service für Mitglieder</small></div>
-          <div class="o6-login-float d"><b>Voice</b><small>Temporäre Räume & Lobbys</small></div>
+          <div class="o7-login-layout">
+            <section class="o7-login-story">
+              <span class="o7-login-kicker">Discord Management</span>
+              <h1>Dein Server.<br>Eine Oberfläche.</h1>
+              <p>ORBIT bündelt Rollen, Tickets, Voice, Commands, Creator Alerts und Analytics in einem klaren Control Center.</p>
 
-          <div class="o6-login-card login-copy">
-            <span class="overline">DEINE COMMUNITY IM ZENTRUM</span>
-            <h1>Alles, was dein Discord braucht. In einem Orbit.</h1>
-            <p>Rollen, Tickets, Commands, Creator Alerts, Voice und Analytics kreisen als Module um deinen Server – zentral steuerbar in einer Oberfläche.</p>
-            <a class="button button-primary button-large" href="/auth/discord">Mit Discord anmelden</a>
-            <small class="o6-login-note">Du siehst danach nur Server, die du verwalten kannst.</small>
+              <div class="o7-login-featureline" aria-label="ORBIT Module">
+                <span>Tickets</span>
+                <span>Rollen</span>
+                <span>Voice</span>
+                <span>Creator Alerts</span>
+                <span>Analytics</span>
+              </div>
+
+              <div class="o7-login-signature" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </section>
+
+            <div class="o6-login-card login-copy o7-login-card">
+              <span class="overline">ORBIT CONTROL</span>
+              <h2>Willkommen zurück.</h2>
+              <p>Melde dich mit Discord an und verwalte nur die Server, für die du die nötigen Rechte besitzt.</p>
+              <a class="button button-primary button-large" href="/auth/discord">Mit Discord anmelden</a>
+              <small class="o6-login-note">Die Anmeldung läuft direkt über Discord OAuth.</small>
+            </div>
           </div>
         </div>
       </section>
@@ -523,9 +534,9 @@
 
         <div class="page-head">
           <div>
-            <span class="overline">DEINE ORBITS</span>
-            <h1>Welcher Server steht heute im Zentrum?</h1>
-            <p>Jeder Discord-Server ist ein eigener Orbit mit seinen Modulen, Einstellungen und Statusdaten.</p>
+            <span class="overline">SERVER</span>
+            <h1>Deine Discord-Server.</h1>
+            <p>Öffne einen Server, prüfe seinen Status oder verbinde ORBIT mit einem neuen Workspace.</p>
           </div>
           <div id="serverStats" class="deck-stats"></div>
         </div>
@@ -577,9 +588,9 @@
   <script src="/voice-studio.js?v=0290"></script>
   <script src="/analytics-studio.js?v=0290"></script>
 
-  <script src="/raku-orbit-v600.js?v=0320"></script>
-  <script src="/raku-module-shell.js?v=0320"></script>
-  <script src="/bot-profile.js?v=0320"></script>
+  <script src="/raku-orbit-v600.js?v=0330"></script>
+  <script src="/raku-module-shell.js?v=0330"></script>
+  <script src="/bot-profile.js?v=0330"></script>
   <script src="/bot-profile-orbit.js?v=0292"></script>
 </body>
 </html>
