@@ -349,23 +349,32 @@ function welcomePreview(text) {
 
 function moduleToggle(key) {
   const enabled = workingSettings[key].enabled;
-  return `<label class="power-toggle"><input type="checkbox" data-module-switch="${key}" ${enabled ? 'checked' : ''}><span></span><b>${enabled ? 'Aktiv' : 'Aus'}</b></label>`;
+  return `<label class="o7-module-toggle">
+    <input type="checkbox" data-module-switch="${key}" ${enabled ? 'checked' : ''}>
+    <span class="o7-toggle-track"><i></i></span>
+    <span class="o7-toggle-copy"><b>${enabled ? 'Aktiv' : 'Aus'}</b><small>${enabled ? 'Modul ist eingeschaltet' : 'Modul ist ausgeschaltet'}</small></span>
+  </label>`;
+}
+
+function moduleControls(toggle = '') {
+  return toggle ? `<div class="o7-module-controls">${toggle}</div>` : '';
 }
 
 function welcomeWorkspace() {
   const s = workingSettings.welcome;
   return `
-    ${workspaceHeader('AUTOMATION / WELCOME', 'Willkommen', 'Begrüße neue Mitglieder sofort nach dem Join.', moduleToggle('welcome'))}
-    <div class="workspace-split">
+    ${moduleControls(moduleToggle('welcome'))}
+    <div class="workspace-split o7-basic-grid">
       <div class="control-panel">
+        <div class="o7-box-title"><span>Konfiguration</span><b>Begrüßung einrichten</b></div>
         <label class="field"><span>Zielkanal</span><select id="welcomeChannel">${channelOptions(activeGuildData.channels, s.channelId)}</select><small>Nur Kanäle mit Schreibrechten werden angezeigt.</small></label>
         <label class="field"><span>Nachricht</span><textarea id="welcomeMessage" rows="7" maxlength="1800">${escapeHtml(s.message)}</textarea></label>
         <div class="variable-bar"><span>Variablen</span>${['{user}','{username}','{displayName}','{server}','{memberCount}'].map(v => `<button type="button" data-variable="${v}">${v}</button>`).join('')}</div>
       </div>
       <div class="preview-console">
-        <div class="preview-console-top"><span>LIVE MESSAGE PREVIEW</span><b>#${escapeHtml(activeGuildData.channels.find(c => c.id === s.channelId)?.name || 'willkommen')}</b></div>
+        <div class="preview-console-top"><span>Live-Vorschau</span><b>#${escapeHtml(activeGuildData.channels.find(c => c.id === s.channelId)?.name || 'willkommen')}</b></div>
         <div class="discord-message"><div class="bot-avatar">R</div><div><div class="message-author"><b>RAKU Bot</b><span>APP</span><small>Heute um 08:12</small></div><p id="welcomePreview">${welcomePreview(s.message)}</p></div></div>
-        <div class="preview-console-foot">Preview only · wird nicht gesendet</div>
+        <div class="preview-console-foot">Nur Vorschau · wird nicht gesendet</div>
       </div>
     </div>`;
 }
@@ -374,8 +383,9 @@ function autoroleWorkspace() {
   const s = workingSettings.autorole;
   const permitted = activeGuildData.capabilities?.canManageRoles !== false;
   return `
-    ${workspaceHeader('AUTOMATION / ROLES', 'Auto-Role', 'Vergibt beim Join automatisch eine definierte Rolle.', moduleToggle('autorole'))}
-    <div class="control-panel narrow">
+    ${moduleControls(moduleToggle('autorole'))}
+    <div class="control-panel narrow o7-single-panel">
+      <div class="o7-box-title"><span>Konfiguration</span><b>Rolle für neue Mitglieder</b></div>
       <label class="field"><span>Zielrolle</span><select id="autoroleRole">${roleOptions(activeGuildData.roles, s.roleId)}</select><small>Nur Rollen unterhalb der Bot-Rolle werden angeboten.</small></label>
       <div class="permission-readout ${permitted ? 'good' : 'bad'}"><span>${permitted ? '✓' : '!'}</span><div><b>${permitted ? 'Rollenverwaltung bereit' : 'Berechtigung fehlt'}</b><small>${permitted ? `${activeGuildData.roles.length} Rollen können vergeben werden.` : 'Aktiviere „Rollen verwalten“ für die Bot-Rolle.'}</small></div></div>
     </div>`;
@@ -384,24 +394,27 @@ function autoroleWorkspace() {
 function loggingWorkspace() {
   const s = workingSettings.logging;
   return `
-    ${workspaceHeader('OBSERVABILITY / LOGS', 'Server-Logs', 'Lege fest, wohin Server- und Moderationsereignisse geschrieben werden.', moduleToggle('logging'))}
-    <div class="workspace-split">
-      <div class="control-panel"><label class="field"><span>Log-Kanal</span><select id="loggingChannel">${channelOptions(activeGuildData.channels, s.channelId)}</select><small>Der Bot benötigt Schreibrechte im gewählten Kanal.</small></label></div>
-      <div class="event-matrix"><span>JOIN / LEAVE</span><span>MESSAGE EDIT</span><span>MESSAGE DELETE</span><span>ROLE CHANGES</span><span>CHANNEL CHANGES</span><span>MODERATION</span></div>
+    ${moduleControls(moduleToggle('logging'))}
+    <div class="workspace-split o7-basic-grid">
+      <div class="control-panel">
+        <div class="o7-box-title"><span>Konfiguration</span><b>Log-Ziel</b></div>
+        <label class="field"><span>Log-Kanal</span><select id="loggingChannel">${channelOptions(activeGuildData.channels, s.channelId)}</select><small>Der Bot benötigt Schreibrechte im gewählten Kanal.</small></label>
+      </div>
+      <div class="event-matrix"><span>Join / Leave</span><span>Message Edit</span><span>Message Delete</span><span>Role Changes</span><span>Channel Changes</span><span>Moderation</span></div>
     </div>`;
 }
 
 function commandsWorkspace() {
   return `
-    ${workspaceHeader('AUTOMATION / COMMANDS', 'Custom Commands', 'Eigene Chat-Befehle mit frei definierbaren Antworten.', moduleToggle('customCommands'))}
+    ${moduleControls(moduleToggle('customCommands'))}
     <div class="coming-panel"><div class="coming-icon">/</div><div><b>Command Editor</b><span>Der Modulstatus wird bereits serverbezogen gespeichert. Der eigentliche Editor kommt als nächstes.</span></div><button class="button button-ghost" type="button" disabled>Editor folgt</button></div>`;
 }
 
 function diagnosticsWorkspace() {
   return `
-    ${workspaceHeader('TOOLS / DIAGNOSTICS', 'Bot-Diagnose', 'Teste die komplette Kette Dashboard → API → Bot → Discord.')}
     <div class="diagnostics-grid">
       <div class="control-panel">
+        <div class="o7-box-title"><span>Verbindungstest</span><b>Testnachricht senden</b></div>
         <label class="field"><span>Testkanal</span><select id="testMessageChannel">${channelOptions(activeGuildData.channels)}</select><small>Nur beschreibbare Kanäle stehen zur Auswahl.</small></label>
         <button id="sendTestMessage" class="button button-primary" type="button">${icon('message')}<span>Testnachricht senden</span></button>
       </div>
