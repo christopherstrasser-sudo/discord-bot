@@ -42,15 +42,11 @@ renderer_path = root / "src/renderer/src/main.jsx"
 s = renderer_path.read_text(encoding="utf-8")
 
 old = """  useEffect(() => {
-    refresh().catch((e) => {
+    refresh().catch((e) => showToast(e.message, 'error'))
 """
 new = """  useEffect(() => {
-    if (!window.raku) {
-      setFatalError('Die Launcher-Bridge konnte nicht geladen werden. Bitte die aktuelle RAKU-Launcher-Version verwenden.')
-      return undefined
-    }
-
-    refresh().catch((e) => {
+    if (!window.raku) return undefined
+    refresh().catch((e) => showToast(e.message, 'error'))
 """
 if old not in s:
     raise SystemExit("preload guard marker not found")
@@ -117,7 +113,7 @@ if old not in s:
 s = s.replace(old, new, 1)
 
 old = '  if (!state) return <div className="boot"><div className="boot-mark">R</div><span>RAKU Launcher startet</span></div>'
-new = '  if (fatalError) return <div className="boot boot-error"><div className="boot-mark">!</div><strong>Launcher-Fehler</strong><span>{fatalError}</span><small>Fehlercode: PRELOAD_BRIDGE</small></div>\n' + old
+new = '  if (!window.raku) return <div className="boot boot-error"><div className="boot-mark">!</div><strong>Launcher-Fehler</strong><span>Launcher-Bridge konnte nicht geladen werden.</span><small>Fehlercode: PRELOAD_BRIDGE</small></div>\n' + old
 if old not in s:
     raise SystemExit("boot marker not found")
 s = s.replace(old, new, 1)
