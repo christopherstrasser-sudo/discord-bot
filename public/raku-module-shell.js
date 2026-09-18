@@ -147,13 +147,20 @@
     });
   }
 
-  const workspace = document.querySelector('#guildWorkspace');
-  if (workspace && typeof MutationObserver !== 'undefined') {
+  /* Observe the stable dashboard host instead of the current #guildWorkspace.
+     Orbit rebuilds #guildWorkspace when the guild shell is rendered, and async
+     modules (Creator Alerts in particular) replace its contents after loading.
+     An observer attached to the old workspace therefore becomes stale and the
+     guide can disappear on the first module load. */
+  const dashboardHost = document.querySelector('#guildDashboardContent');
+  if (dashboardHost && typeof MutationObserver !== 'undefined') {
     const observer = new MutationObserver(() => {
       if (typeof activeTab === 'undefined' || activeTab === 'overview' || activeTab === 'profile') return;
-      if (!workspace.querySelector(':scope > .o7-module-guide')) queueGuideSync();
+      const currentWorkspace = document.querySelector('#guildWorkspace');
+      if (!currentWorkspace || currentWorkspace.querySelector(':scope > .o7-module-guide')) return;
+      queueGuideSync();
     });
-    observer.observe(workspace, { childList: true });
+    observer.observe(dashboardHost, { childList: true, subtree: true });
   }
 
   requestAnimationFrame(() => {
