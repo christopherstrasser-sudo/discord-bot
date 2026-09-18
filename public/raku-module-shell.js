@@ -98,6 +98,8 @@
       </section>`;
   }
 
+  window.OrbitModuleGuide = guideMarkup;
+
   function nativeToolbar(root) {
     const head = root.querySelector('.workspace-head,.role-studio-toolbar,.ticket-head,.creator-head,.voice-head,.analytics-head,.flow-studio-toolbar');
     if (!head) return;
