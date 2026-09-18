@@ -166,28 +166,82 @@
     const issueCount = issues().length;
     const channels = activeGuildData?.channels?.length || 0;
     const roles = activeGuildData?.roles?.length || 0;
+    const members = guild.memberCount ? Number(guild.memberCount).toLocaleString('de-DE') : '—';
 
     root.innerHTML = `
-      <div class="o7-overview">
-        <header class="o7-page-head o7-dashboard-head">
-          <div class="o7-dashboard-title">
-            <div class="o7-dashboard-server-mark">
-              ${guildIcon(guild, 'o7-overview-server-icon')}
-              <span class="o7-dashboard-live-dot" aria-hidden="true"></span>
+      <div class="o7-overview o7-overview-landing">
+        <section class="o7-overview-hero-v2">
+          <div class="o7-overview-hero-main">
+            <div class="o7-overview-hero-server">
+              <div class="o7-overview-hero-icon">
+                ${guildIcon(guild, 'o7-overview-server-icon')}
+                <span class="o7-overview-hero-live" aria-hidden="true"></span>
+              </div>
+              <div class="o7-overview-hero-copy">
+                <span class="o7-overview-hero-kicker">SERVER CONTROL / OVERVIEW</span>
+                <h1>${escapeHtml(guild.name || 'Discord')}</h1>
+                <p>Dein zentraler Einstieg in ORBIT. Starte Module, prüfe offene Punkte und springe direkt zu den wichtigsten Werkzeugen dieses Servers.</p>
+              </div>
             </div>
-            <div>
-              <span class="o7-section-label">Dashboard</span>
-              <h1>${escapeHtml(guild.name || 'Discord')}</h1>
-              <p>Serverstatus, Module und aktuelle Aufgaben.</p>
+
+            <div class="o7-overview-hero-actions">
+              <button type="button" class="o7-overview-hero-action primary" data-o7-open="tickets">
+                ${moduleIcon('tickets')}<span>Tickets öffnen</span>
+              </button>
+              <button type="button" class="o7-overview-hero-action" data-o7-open="creators">
+                ${moduleIcon('creators')}<span>Creator Alerts</span>
+              </button>
+              <button type="button" class="o7-overview-hero-action" data-o7-open="diagnostics">
+                ${moduleIcon('diagnostics')}<span>Diagnose</span>
+              </button>
+            </div>
+
+            <div class="o7-overview-hero-chips">
+              <span><i class="on"></i> ORBIT VERBUNDEN</span>
+              <span>${count} MODULE AKTIV</span>
+              <span class="${issueCount ? 'attention' : ''}">${issueCount} OFFENE PUNKTE</span>
             </div>
           </div>
-          <div class="o7-page-actions">
-            <button type="button" class="o7-text-action" data-o7-open="diagnostics">${moduleIcon('diagnostics')} Diagnose öffnen</button>
-          </div>
-        </header>
+
+          <aside class="o7-overview-hero-status">
+            <div class="o7-overview-status-head">
+              <span>SERVER SNAPSHOT</span>
+              <b>Live Übersicht</b>
+            </div>
+            <div class="o7-overview-status-grid">
+              <div><span>Mitglieder</span><b>${members}</b></div>
+              <div><span>Kanäle</span><b>${channels}</b></div>
+              <div><span>Rollen</span><b>${roles}</b></div>
+              <div class="${issueCount ? 'attention' : 'good'}"><span>Status</span><b>${issueCount ? issueCount + ' offen' : 'Sauber'}</b></div>
+            </div>
+            <div class="o7-overview-status-foot">
+              <span class="o7-overview-status-orb"><i></i></span>
+              <div><b>Control Link aktiv</b><small>Dashboard und Bot sind für diesen Server verbunden.</small></div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="o7-overview-launchpad" aria-label="Schnellzugriff">
+          <button type="button" data-o7-open="tickets">
+            <span class="o7-overview-launch-icon">${moduleIcon('tickets')}</span>
+            <span><b>Tickets</b><small>Support & Workflows</small></span><em>›</em>
+          </button>
+          <button type="button" data-o7-open="roles">
+            <span class="o7-overview-launch-icon">${moduleIcon('roles')}</span>
+            <span><b>Rollen</b><small>Self-Service Panels</small></span><em>›</em>
+          </button>
+          <button type="button" data-o7-open="creators">
+            <span class="o7-overview-launch-icon">${moduleIcon('creators')}</span>
+            <span><b>Creator Alerts</b><small>Lives, Uploads & Clips</small></span><em>›</em>
+          </button>
+          <button type="button" data-o7-open="analytics">
+            <span class="o7-overview-launch-icon">${moduleIcon('analytics')}</span>
+            <span><b>Analytics</b><small>Aktivität & Trends</small></span><em>›</em>
+          </button>
+        </section>
 
         <div class="o7-stat-strip" aria-label="Serverstatus">
-          <div><span>Mitglieder</span><b>${guild.memberCount ? Number(guild.memberCount).toLocaleString('de-DE') : '—'}</b></div>
+          <div><span>Mitglieder</span><b>${members}</b></div>
           <div><span>Aktive Module</span><b>${count}<small>/ 8</small></b></div>
           <div><span>Kanäle</span><b>${channels}</b></div>
           <div><span>Verwaltbare Rollen</span><b>${roles}</b></div>
@@ -196,7 +250,7 @@
 
         <div class="o7-overview-grid">
           <section class="o7-panel o7-modules-panel">
-            <header class="o7-panel-head"><div><b>Module</b><span>Konfiguration und Status</span></div><small>${count} aktiv</small></header>
+            <header class="o7-panel-head"><div><span class="o7-panel-kicker">MODULE CONTROL</span><b>Deine Werkzeuge</b><span>Konfiguration und Status</span></div><small>${count} aktiv</small></header>
             <div class="o7-module-table">
               ${MODULES.filter(([tab]) => !['overview','analytics','diagnostics'].includes(tab)).map(item => moduleRow(...item)).join('')}
               ${moduleRow('analytics', 'Analytics', 'analytics')}
@@ -213,17 +267,17 @@
 
           <aside class="o7-overview-side">
             <section class="o7-panel">
-              <header class="o7-panel-head"><div><b>Aufmerksamkeit</b><span>Konfiguration prüfen</span></div><small>${issueCount ? `${issueCount} offen` : 'OK'}</small></header>
+              <header class="o7-panel-head"><div><span class="o7-panel-kicker">SYSTEM HEALTH</span><b>Aufmerksamkeit</b><span>Konfiguration prüfen</span></div><small>${issueCount ? `${issueCount} offen` : 'OK'}</small></header>
               <div class="o7-health-list">${issuesMarkup()}</div>
             </section>
 
             <section class="o7-panel">
-              <header class="o7-panel-head"><div><b>Letzte Aktivität</b><span>Echte Ereignisse aus ORBIT</span></div></header>
+              <header class="o7-panel-head"><div><span class="o7-panel-kicker">RECENT SIGNALS</span><b>Letzte Aktivität</b><span>Echte Ereignisse aus ORBIT</span></div></header>
               <div class="o7-activity-list">${activityMarkup()}</div>
             </section>
 
             <section class="o7-panel o7-quick-panel">
-              <header class="o7-panel-head"><div><b>Schnellzugriff</b><span>Direkt zum Werkzeug</span></div></header>
+              <header class="o7-panel-head"><div><span class="o7-panel-kicker">QUICK ACCESS</span><b>Schnellzugriff</b><span>Direkt zum Werkzeug</span></div></header>
               <div class="o7-quick-list">
                 <button type="button" data-o7-open="tickets">${moduleIcon('tickets')}<span>Tickets</span><em>›</em></button>
                 <button type="button" data-o7-open="roles">${moduleIcon('roles')}<span>Rollen</span><em>›</em></button>
