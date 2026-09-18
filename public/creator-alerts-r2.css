@@ -824,3 +824,298 @@ body.o7-desktop-mode .creator-history-row small{
     grid-template-columns:1fr !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Creator Alerts R4 — clean vertical composition + sticky bug fix             */
+/* -------------------------------------------------------------------------- */
+
+/* Critical: the global Orbit layer makes this sidebar sticky. In the vertical
+   Creator layout that causes it to float over the editor while scrolling. */
+body.o7-desktop-mode .creator-rules{
+  position:static !important;
+  top:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+
+/* Calmer page rhythm. */
+body.o7-desktop-mode .creator-shell{
+  width:min(1380px,100%) !important;
+  gap:34px !important;
+}
+body.o7-desktop-mode .creator-head{
+  min-height:0 !important;
+  padding:2px 0 28px !important;
+}
+body.o7-desktop-mode .creator-head h2{
+  font-size:38px !important;
+}
+body.o7-desktop-mode .creator-head p{
+  max-width:760px !important;
+  font-size:14px !important;
+}
+
+/* Providers: deliberately two wide cards per row instead of tiny status tiles. */
+body.o7-desktop-mode .creator-provider-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:14px !important;
+}
+body.o7-desktop-mode .creator-provider{
+  min-height:148px !important;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto 1fr auto;
+  column-gap:18px;
+  padding:18px 20px !important;
+  border-radius:14px !important;
+  background:#111419 !important;
+}
+body.o7-desktop-mode .creator-provider:before{
+  width:3px !important;
+}
+body.o7-desktop-mode .creator-provider-top{
+  grid-column:1/-1;
+}
+body.o7-desktop-mode .creator-platform-mark{
+  width:42px !important;
+  height:42px !important;
+}
+body.o7-desktop-mode .creator-provider-top b{
+  font-size:15px !important;
+}
+body.o7-desktop-mode .creator-provider>strong{
+  grid-column:1;
+  margin:16px 0 5px !important;
+  font-size:11px !important;
+}
+body.o7-desktop-mode .creator-provider p{
+  grid-column:1/-1;
+  min-height:0 !important;
+  margin:0 !important;
+  font-size:12px !important;
+  line-height:1.5 !important;
+  -webkit-line-clamp:unset !important;
+}
+body.o7-desktop-mode .creator-provider footer{
+  grid-column:1/-1;
+}
+
+/* Runtime reads as a slim status strip, not another giant box. */
+body.o7-desktop-mode .creator-runtime-strip{
+  min-height:46px !important;
+  gap:30px !important;
+  padding:0 4px 14px !important;
+  border:0 !important;
+  border-bottom:1px solid #2b313b !important;
+  border-radius:0 !important;
+  background:transparent !important;
+}
+
+/* Automations become a proper vertical list. */
+body.o7-desktop-mode .creator-rules{
+  border-radius:14px !important;
+  background:#101318 !important;
+}
+body.o7-desktop-mode .creator-rules>header{
+  min-height:64px !important;
+  padding:0 20px !important;
+}
+body.o7-desktop-mode .creator-rules>div{
+  grid-template-columns:1fr !important;
+  gap:0 !important;
+  padding:0 !important;
+}
+body.o7-desktop-mode .creator-rule-item{
+  min-height:78px !important;
+  grid-template-columns:46px minmax(0,1fr) auto 10px !important;
+  gap:14px !important;
+  padding:14px 20px !important;
+  border:0 !important;
+  border-bottom:1px solid #222832 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+}
+body.o7-desktop-mode .creator-rule-item:first-child{
+  border-top:1px solid #222832 !important;
+}
+body.o7-desktop-mode .creator-rule-item:hover{
+  background:#151920 !important;
+}
+body.o7-desktop-mode .creator-rule-item.on{
+  background:linear-gradient(90deg,rgba(152,137,255,.11),rgba(152,137,255,.025) 58%,transparent) !important;
+  box-shadow:inset 3px 0 #9889ff;
+}
+body.o7-desktop-mode .creator-source-icon{
+  width:42px !important;
+  height:42px !important;
+}
+body.o7-desktop-mode .creator-rule-item b{
+  font-size:14px !important;
+}
+body.o7-desktop-mode .creator-rule-item small{
+  font-size:11px !important;
+}
+body.o7-desktop-mode .creator-rule-item>em{
+  position:static !important;
+  justify-self:end;
+  align-self:center;
+  order:3;
+  font-size:9px !important;
+}
+body.o7-desktop-mode .creator-rule-item>i{
+  order:4;
+}
+body.o7-desktop-mode .creator-rules>footer{
+  grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+  gap:8px !important;
+  margin-top:0 !important;
+  padding:14px 16px 16px !important;
+}
+body.o7-desktop-mode .creator-rules>footer button{
+  min-height:40px !important;
+  border-radius:8px !important;
+  background:#151922 !important;
+}
+
+/* Selected automation title: flatter and cleaner. */
+body.o7-desktop-mode .creator-editor-top{
+  min-height:90px !important;
+  margin:0 0 22px !important;
+  padding:16px 20px !important;
+  border-radius:14px !important;
+  background:#101318 !important;
+}
+body.o7-desktop-mode .creator-rule-title span{
+  color:#7f8796 !important;
+  font-size:10px !important;
+}
+body.o7-desktop-mode .creator-rule-title input{
+  width:100% !important;
+  max-width:760px !important;
+  font-size:22px !important;
+}
+body.o7-desktop-mode .creator-editor-actions{
+  gap:9px !important;
+}
+
+/* All editor groups are full-width and stacked. */
+body.o7-desktop-mode .creator-editor-grid,
+body.o7-desktop-mode .creator-editor-grid main,
+body.o7-desktop-mode .creator-sticky{
+  grid-template-columns:1fr !important;
+}
+body.o7-desktop-mode .creator-block{
+  border-radius:14px !important;
+  background:#101318 !important;
+}
+body.o7-desktop-mode .creator-block>header{
+  min-height:76px !important;
+  padding:16px 22px !important;
+}
+body.o7-desktop-mode .creator-block>header b{
+  font-size:19px !important;
+}
+
+/* Inputs are intentionally one per row. No squeezed form pairs. */
+body.o7-desktop-mode .creator-form-grid{
+  grid-template-columns:1fr !important;
+  gap:18px !important;
+  padding:22px !important;
+}
+body.o7-desktop-mode .creator-form-grid label.wide{
+  grid-column:auto !important;
+}
+body.o7-desktop-mode .creator-form-grid label{
+  gap:9px !important;
+}
+body.o7-desktop-mode .creator-form-grid label>span{
+  font-size:12px !important;
+}
+body.o7-desktop-mode .creator-form-grid input:not([type="checkbox"]):not([type="color"]),
+body.o7-desktop-mode .creator-form-grid select{
+  min-height:52px !important;
+}
+body.o7-desktop-mode .creator-form-grid textarea{
+  min-height:180px !important;
+}
+
+/* Switch rows become spacious inline settings instead of tiny form controls. */
+body.o7-desktop-mode .creator-switch-field{
+  grid-template-columns:44px minmax(0,1fr) !important;
+  min-height:72px;
+  padding:14px 16px;
+  border:1px solid #2b313b;
+  border-radius:10px;
+  background:#0d1015;
+}
+body.o7-desktop-mode .creator-switch-field span{
+  gap:4px !important;
+}
+body.o7-desktop-mode .creator-switch-field b{
+  font-size:13px !important;
+}
+
+/* Source action also stacks so the result never gets crushed. */
+body.o7-desktop-mode .creator-source-actions{
+  grid-template-columns:1fr !important;
+  padding:0 22px 22px !important;
+}
+body.o7-desktop-mode .creator-source-actions .creator-action{
+  width:max-content;
+  min-width:190px;
+}
+body.o7-desktop-mode .creator-source-result{
+  min-height:54px !important;
+}
+
+/* Preview and QC are separated vertically and no longer sticky. */
+body.o7-desktop-mode .creator-sticky{
+  position:static !important;
+  top:auto !important;
+  gap:20px !important;
+}
+body.o7-desktop-mode .creator-preview-console,
+body.o7-desktop-mode .creator-tools{
+  border-radius:14px !important;
+  background:#101318 !important;
+}
+body.o7-desktop-mode .creator-discord-msg{
+  min-height:250px !important;
+  padding:26px 22px !important;
+}
+body.o7-desktop-mode .creator-embed-preview{
+  max-width:820px !important;
+}
+body.o7-desktop-mode .creator-tools{
+  padding-bottom:4px;
+}
+
+/* Ledger: one clean stream. */
+body.o7-desktop-mode .creator-history{
+  border-radius:14px !important;
+  background:#101318 !important;
+}
+body.o7-desktop-mode .creator-history>div{
+  grid-template-columns:1fr !important;
+}
+
+/* Responsive */
+@media (max-width:1100px){
+  body.o7-desktop-mode .creator-provider-grid{
+    grid-template-columns:1fr !important;
+  }
+  body.o7-desktop-mode .creator-rules>footer{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  }
+}
+@media (max-width:700px){
+  body.o7-desktop-mode .creator-head-controls,
+  body.o7-desktop-mode .creator-editor-actions{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+  }
+  body.o7-desktop-mode .creator-rules>footer{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
