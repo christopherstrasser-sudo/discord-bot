@@ -91,13 +91,21 @@
 
   function profileHero() {
     const name = displayName();
-    return `<section class="o7-module-heading bp-hero">
-      <div>
-        <span class="o7-section-label">Bot-Profil</span>
-        <h1>Bot-Identität</h1>
-        <p>Name, Avatar und Bio von <b>${safe(name)}</b> auf diesem Server.</p>
+    return `<section class="o7-module-guide bp-hero" data-o7-guide="profile">
+      <div class="o7-guide-main">
+        <span class="o7-guide-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="13" rx="4"/><path d="M9 6V4.5M15 6V4.5M8.5 12h.01M15.5 12h.01M9 16h6"/></svg></span>
+        <div>
+          <span class="o7-section-label">So funktioniert es</span>
+          <h1>Bot-Profil</h1>
+          <p>Gib <b>${safe(name)}</b> auf diesem Server einen eigenen Namen, Avatar und eine eigene Bio.</p>
+        </div>
       </div>
-      <span class="o7-inline-status">Serverbezogen</span>
+      <div class="o7-guide-steps">
+        <span class="o7-guide-step"><i>1</i><b>Name festlegen</b></span>
+        <span class="o7-guide-step"><i>2</i><b>Avatar & Bio anpassen</b></span>
+        <span class="o7-guide-step"><i>3</i><b>Profil speichern</b></span>
+      </div>
+      <div class="o7-guide-hint"><span>i</span><p>Die Änderungen gelten nur für diesen Discord-Server.</p></div>
     </section>`;
   }
 
@@ -178,7 +186,7 @@
   function renderProfile() {
     const root = document.querySelector('#guildWorkspace');
     if (!root) return;
-    root.className = 'deck-workspace o6-canvas o6-module-canvas bp-canvas';
+    root.className = 'deck-workspace o6-canvas o7-canvas o6-module-canvas o7-module-canvas bp-canvas';
     root.dataset.page = 'profile';
     root.dataset.module = 'profile';
     root.innerHTML = `${profileHero()}${S.loading && !S.loaded ? loadingMarkup() : S.error && !S.loaded ? errorMarkup() : S.loaded ? `<div class="bp-grid">${editorMarkup()}${previewMarkup()}</div>` : loadingMarkup()}`;
