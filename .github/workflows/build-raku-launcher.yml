@@ -1,0 +1,63 @@
+name: Build RAKU Launcher EXE
+
+on:
+  push:
+    branches:
+      - tmp-raku-launcher-build
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Recreate launcher source archive
+        shell: pwsh
+        run: |
+          $parts = 0..3 | ForEach-Object { (Get-Content ".raku-launcher-build/chunk$_.txt" -Raw).Trim() }
+          $b64 = ($parts -join "")
+          if ($b64.Length -ne 30508) { throw "Unexpected base64 length: $($b64.Length)" }
+          $bytes = [Convert]::FromBase64String($b64)
+          [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE\launcher.zip", $bytes)
+          $hash = (Get-FileHash "$env:GITHUB_WORKSPACE\launcher.zip" -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "04c9931894445b831e68f8a8d5781d02511cdd7493701a5dbe2ef38b0eaa62a4") {
+            throw "Launcher archive checksum mismatch: $hash"
+          }
+          Expand-Archive "$env:GITHUB_WORKSPACE\launcher.zip" -DestinationPath "$env:GITHUB_WORKSPACE\launcher-src" -Force
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        working-directory: launcher-src/raku-launcher-v0.1.1
+        shell: pwsh
+        run: npm install --no-audit --no-fund
+
+      - name: Build Electron application
+        working-directory: launcher-src/raku-launcher-v0.1.1
+        shell: pwsh
+        run: npm run build
+
+      - name: Package portable Windows EXE
+        working-directory: launcher-src/raku-launcher-v0.1.1
+        shell: pwsh
+        run: npx electron-builder --win portable --x64
+
+      - name: Show build output
+        shell: pwsh
+        run: Get-ChildItem -Path "launcher-src\raku-launcher-v0.1.1\release" -Recurse | Select-Object FullName,Length
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: RAKU-Launcher-Windows
+          path: launcher-src/raku-launcher-v0.1.1/release/*.exe
+          if-no-files-found: error
+          retention-days: 1
