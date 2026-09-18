@@ -47,17 +47,16 @@ test('streaming URL accepts Twitch and YouTube HTTPS only', () => {
   assert.equal(normalizeStreamingUrl('https://example.com/live'), '');
 });
 
-test('activityDisplayText adds the visible German activity verb once', () => {
-  assert.equal(activityDisplayText({ activityType: 'listening', activityText: 'Spotify' }), 'Hört Spotify');
-  assert.equal(activityDisplayText({ activityType: 'streaming', activityText: 'Minecraft' }), 'Streamt Minecraft');
-  assert.equal(activityDisplayText({ activityType: 'watching', activityText: 'dem Chat zu' }), 'Schaut dem Chat zu');
-  assert.equal(activityDisplayText({ activityType: 'playing', activityText: 'VALORANT' }), 'Spielt VALORANT');
-  assert.equal(activityDisplayText({ activityType: 'listening', activityText: 'Hört Spotify' }), 'Hört Spotify');
+test('activityDisplayText keeps the configured activity text unchanged', () => {
+  assert.equal(activityDisplayText({ activityType: 'listening', activityText: 'Spotify' }), 'Spotify');
+  assert.equal(activityDisplayText({ activityType: 'streaming', activityText: 'Minecraft' }), 'Minecraft');
+  assert.equal(activityDisplayText({ activityType: 'watching', activityText: 'dem Chat zu' }), 'dem Chat zu');
+  assert.equal(activityDisplayText({ activityType: 'playing', activityText: 'VALORANT' }), 'VALORANT');
 });
 
-test('buildActivity preserves semantic type while formatting visible name', () => {
+test('buildActivity preserves native Discord type and raw visible name', () => {
   const listening = buildActivity({ activityType: 'listening', activityText: 'Spotify' });
-  assert.equal(listening.name, 'Hört Spotify');
+  assert.equal(listening.name, 'Spotify');
   assert.equal(listening.state, 'Spotify');
   assert.equal(listening.type, ActivityType.Listening);
 
@@ -66,7 +65,7 @@ test('buildActivity preserves semantic type while formatting visible name', () =
     activityText: 'Minecraft',
     activityUrl: 'https://twitch.tv/rakulein'
   });
-  assert.equal(streaming.name, 'Streamt Minecraft');
+  assert.equal(streaming.name, 'Minecraft');
   assert.equal(streaming.state, 'Minecraft');
   assert.equal(streaming.type, ActivityType.Streaming);
   assert.equal(streaming.url, 'https://twitch.tv/rakulein');
