@@ -24,9 +24,6 @@
   <link rel="stylesheet" href="/bot-profile.css?v=0290">
   <link rel="stylesheet" href="/raku-module-shell.css?v=0290">
 
-  <!-- Orbit's single product-wide appearance layer. -->
-  <link rel="stylesheet" href="/raku-orbit-v610.css?v=0290">
-
   <style id="app-screen-state-contract">
     #loggedOut.hidden,
     #serverList.hidden,
@@ -478,6 +475,9 @@
       body.o6-dashboard-mode .o6-command-rail .o6-dock-separator { margin-inline: 1px !important; }
     }
   </style>
+
+  <!-- Orbit desktop appearance loads after the legacy screen-state contract. -->
+  <link rel="stylesheet" href="/raku-orbit-v610.css?v=0320">
 </head>
 <body>
   <div class="app-frame">
@@ -577,9 +577,9 @@
   <script src="/voice-studio.js?v=0290"></script>
   <script src="/analytics-studio.js?v=0290"></script>
 
-  <script src="/raku-orbit-v600.js?v=0290"></script>
-  <script src="/raku-module-shell.js?v=0290"></script>
-  <script src="/bot-profile.js?v=0291"></script>
+  <script src="/raku-orbit-v600.js?v=0320"></script>
+  <script src="/raku-module-shell.js?v=0320"></script>
+  <script src="/bot-profile.js?v=0320"></script>
   <script src="/bot-profile-orbit.js?v=0292"></script>
 </body>
 </html>
