@@ -89,12 +89,15 @@
 
   function railMarkup() {
     const groups = [
-      MODULES.slice(0, 1),
-      MODULES.slice(1, 6),
-      MODULES.slice(6, 8),
-      MODULES.slice(8)
+      ['Server', MODULES.slice(0, 1)],
+      ['Community', MODULES.slice(1, 6)],
+      ['Automation', MODULES.slice(6, 8)],
+      ['System', MODULES.slice(8)]
     ];
-    return groups.map((group, index) => `${index ? '<span class="o6-dock-separator" aria-hidden="true"></span>' : ''}${group.map(item => railItem(...item)).join('')}`).join('');
+    return groups.map(([label, group]) => `
+      <span class="o7-rail-section-label">${escapeHtml(label)}</span>
+      ${group.map(item => railItem(...item)).join('')}
+    `).join('');
   }
 
   function activityMarkup() {
@@ -166,11 +169,17 @@
 
     root.innerHTML = `
       <div class="o7-overview">
-        <header class="o7-page-head">
-          <div>
-            <span class="o7-section-label">Übersicht</span>
-            <h1>${escapeHtml(guild.name || 'Discord')}</h1>
-            <p>Serverstatus, Module und aktuelle Aufgaben.</p>
+        <header class="o7-page-head o7-dashboard-head">
+          <div class="o7-dashboard-title">
+            <div class="o7-dashboard-server-mark">
+              ${guildIcon(guild, 'o7-overview-server-icon')}
+              <span class="o7-dashboard-live-dot" aria-hidden="true"></span>
+            </div>
+            <div>
+              <span class="o7-section-label">Dashboard</span>
+              <h1>${escapeHtml(guild.name || 'Discord')}</h1>
+              <p>Serverstatus, Module und aktuelle Aufgaben.</p>
+            </div>
           </div>
           <div class="o7-page-actions">
             <button type="button" class="o7-text-action" data-o7-open="diagnostics">${moduleIcon('diagnostics')} Diagnose öffnen</button>
