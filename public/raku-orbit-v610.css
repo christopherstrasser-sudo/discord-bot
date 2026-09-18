@@ -2527,3 +2527,583 @@ body.o7-desktop-mode .o7-module-canvas :is(input,select,textarea):focus {
     animation: none !important;
   }
 }
+
+
+/* ========================================================================== */
+/* ORBIT DESKTOP R3 — layout fixes, spacing system, module guides             */
+/* ========================================================================== */
+
+:root {
+  --o7-gap-1: 8px;
+  --o7-gap-2: 12px;
+  --o7-gap-3: 16px;
+  --o7-gap-4: 20px;
+  --o7-gap-5: 24px;
+  --o7-gap-6: 32px;
+  --o7-radius-panel: 12px;
+}
+
+/* Keep every dynamically rendered module inside the desktop content column. */
+body.o7-desktop-mode #guildWorkspace.o6-canvas {
+  box-sizing: border-box !important;
+}
+
+@media (min-width: 781px) {
+  body.o7-desktop-mode #guildWorkspace.o6-canvas {
+    width: calc(100% - 204px) !important;
+    max-width: none !important;
+    margin: 0 0 0 204px !important;
+    padding: 32px clamp(24px,3vw,48px) 72px !important;
+  }
+}
+
+body.o7-desktop-mode #guildWorkspace > * {
+  min-width: 0;
+}
+
+body.o7-desktop-mode .o7-overview,
+body.o7-desktop-mode .o7-module-canvas > :not(.o7-module-guide) {
+  max-width: 1440px;
+}
+
+/* Functional module guide hero */
+.o7-module-guide {
+  width: min(1440px,100%);
+  margin: 0 auto 24px;
+  display: grid;
+  grid-template-columns: minmax(0,1.35fr) minmax(360px,.9fr);
+  grid-template-areas:
+    "main steps"
+    "hint hint";
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #2a2f38;
+  border-radius: 13px;
+  background:
+    linear-gradient(135deg, rgba(141,124,255,.075), transparent 36%),
+    #11141a;
+  box-shadow: 0 18px 42px rgba(0,0,0,.16);
+}
+
+.o7-guide-main {
+  grid-area: main;
+  min-height: 148px;
+  display: grid;
+  grid-template-columns: 54px minmax(0,1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 24px 26px;
+  border-right: 1px solid #252a32;
+}
+
+.o7-guide-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(141,124,255,.26);
+  border-radius: 12px;
+  background: rgba(141,124,255,.075);
+  color: #bcb4ff;
+}
+
+.o7-guide-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.o7-guide-main h1 {
+  margin: 0 !important;
+  color: #f3f4f7;
+  font: 700 clamp(24px,2.4vw,34px)/1.05 var(--o-display) !important;
+  letter-spacing: -.035em !important;
+}
+
+.o7-guide-main p {
+  max-width: 720px;
+  margin: 8px 0 0 !important;
+  color: #9da4af !important;
+  font-size: 11px !important;
+  line-height: 1.65 !important;
+}
+
+.o7-guide-main p b {
+  color: #dfe2e8;
+}
+
+.o7-guide-steps {
+  grid-area: steps;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 20px;
+  background: rgba(255,255,255,.012);
+}
+
+.o7-guide-step {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 24px minmax(0,1fr);
+  align-items: center;
+  gap: 9px;
+  color: #c6cad1;
+}
+
+.o7-guide-step i {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #343a45;
+  border-radius: 7px;
+  background: #15191f;
+  color: #aaa2f7;
+  font: 800 9px var(--o-font);
+}
+
+.o7-guide-step b {
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.o7-guide-hint {
+  grid-area: hint;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 20px minmax(0,1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  border-top: 1px solid #252a32;
+  background: #0f1217;
+}
+
+.o7-guide-hint > span {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #343a45;
+  border-radius: 50%;
+  color: #8e96a3;
+  font: 800 9px var(--o-font);
+}
+
+.o7-guide-hint p {
+  margin: 0 !important;
+  color: #7f8793 !important;
+  font-size: 9px !important;
+  line-height: 1.45 !important;
+}
+
+/* Consistent module spacing */
+body.o7-desktop-mode .o7-module-canvas {
+  display: block !important;
+}
+
+body.o7-desktop-mode .o7-module-canvas > :not(.o7-module-guide) {
+  width: min(1440px,100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.o7-desktop-mode .o7-module-canvas :is(
+  .workspace-split,
+  .diagnostics-grid,
+  .role-studio-body,
+  .flow-studio-body,
+  .ticket-body,
+  .creator-layout,
+  .voice-layout,
+  .analytics-main-grid,
+  .analytics-detail-grid,
+  .cb-setup-grid,
+  .cb-runtime-grid,
+  .bp-grid
+) {
+  gap: 18px !important;
+}
+
+body.o7-desktop-mode .o7-module-canvas :is(
+  .control-panel,
+  .preview-console,
+  .event-matrix,
+  .coming-panel,
+  .diagnostic-readout,
+  .flow-studio-body,
+  .role-studio-body,
+  .role-panel-sidebar,
+  .role-panel-commandbar,
+  .role-editor-column,
+  .role-preview-column,
+  .ticket-panels,
+  .ticket-panelbar,
+  .ticket-left > section,
+  .ticket-workflows,
+  .ticket-sticky,
+  .ticket-onboard,
+  .creator-provider,
+  .creator-runtime-strip,
+  .creator-rules,
+  .creator-editor,
+  .voice-card,
+  .analytics-card,
+  .bp-editor,
+  .bp-discord-card,
+  .cb-card
+) {
+  border-radius: var(--o7-radius-panel) !important;
+}
+
+body.o7-desktop-mode .o7-module-canvas :is(
+  .control-panel,
+  .preview-console,
+  .event-matrix,
+  .coming-panel,
+  .diagnostic-readout,
+  .voice-card,
+  .analytics-card,
+  .bp-editor,
+  .cb-card
+) {
+  padding: 20px !important;
+}
+
+/* Bot profile: bugfix + vertical layout */
+body.o7-desktop-mode .bp-canvas {
+  width: calc(100% - 204px) !important;
+  max-width: none !important;
+  margin-left: 204px !important;
+  padding: 32px clamp(24px,3vw,48px) 72px !important;
+  display: block !important;
+}
+
+body.o7-desktop-mode .bp-canvas .bp-grid {
+  width: min(1280px,100%);
+  margin: 0 auto;
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+}
+
+body.o7-desktop-mode .bp-canvas .bp-preview-wrap {
+  position: static !important;
+  top: auto !important;
+  width: 100%;
+}
+
+body.o7-desktop-mode .bp-canvas .bp-discord-card {
+  max-width: 680px;
+}
+
+body.o7-desktop-mode .bp-canvas .bp-editor {
+  padding: 22px !important;
+}
+
+/* Ticket Studio: stack major boxes vertically so nothing gets crushed. */
+body.o7-desktop-mode .ticket-shell {
+  width: min(1440px,100%);
+  margin: 0 auto;
+}
+
+body.o7-desktop-mode .ticket-head {
+  margin-bottom: 18px !important;
+}
+
+body.o7-desktop-mode .ticket-body {
+  grid-template-columns: 220px minmax(0,1fr) !important;
+  gap: 18px !important;
+}
+
+body.o7-desktop-mode .ticket-panels {
+  top: 82px !important;
+  min-height: 0 !important;
+  padding: 8px !important;
+}
+
+body.o7-desktop-mode .ticket-body > main {
+  min-width: 0;
+}
+
+body.o7-desktop-mode .ticket-panelbar {
+  min-height: 62px !important;
+  grid-template-columns: 150px minmax(260px,1fr) auto !important;
+  gap: 14px !important;
+  margin-bottom: 16px !important;
+  padding: 11px 14px !important;
+}
+
+body.o7-desktop-mode .ticket-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+}
+
+body.o7-desktop-mode .ticket-left {
+  gap: 16px !important;
+}
+
+body.o7-desktop-mode .ticket-left > section,
+body.o7-desktop-mode .ticket-workflows,
+body.o7-desktop-mode .ticket-sticky {
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid #292f38 !important;
+  background: #11141a !important;
+}
+
+body.o7-desktop-mode .ticket-left > section {
+  padding: 18px !important;
+}
+
+body.o7-desktop-mode .ticket-left > section > header {
+  min-height: 34px;
+  align-items: center !important;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #252a32;
+}
+
+body.o7-desktop-mode .ticket-left > section > header > b,
+body.o7-desktop-mode .ticket-workflows > header > div:first-child > b {
+  font-size: 16px !important;
+  letter-spacing: -.015em;
+}
+
+body.o7-desktop-mode .ticket-form-grid {
+  gap: 12px !important;
+}
+
+body.o7-desktop-mode .ticket-form-grid > label {
+  gap: 7px !important;
+}
+
+body.o7-desktop-mode .ticket-form-grid input,
+body.o7-desktop-mode .ticket-form-grid select {
+  min-height: 41px !important;
+}
+
+body.o7-desktop-mode .ticket-form-grid textarea {
+  min-height: 110px !important;
+}
+
+body.o7-desktop-mode .ticket-workflows > header {
+  min-height: 66px;
+  align-items: center !important;
+  padding: 14px 18px !important;
+}
+
+body.o7-desktop-mode .ticket-workflows > header > div:last-child {
+  gap: 7px !important;
+}
+
+body.o7-desktop-mode .ticket-type-wrap {
+  grid-template-columns: 220px minmax(0,1fr) !important;
+  min-height: 0 !important;
+}
+
+body.o7-desktop-mode .ticket-type-wrap > aside {
+  padding: 10px !important;
+}
+
+body.o7-desktop-mode .ticket-type-editor {
+  padding: 20px !important;
+}
+
+body.o7-desktop-mode .ticket-sticky {
+  position: static !important;
+  top: auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+  padding: 18px !important;
+}
+
+body.o7-desktop-mode .ticket-preview-title {
+  margin-bottom: 12px !important;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #252a32;
+}
+
+body.o7-desktop-mode .ticket-preview {
+  max-width: 760px;
+}
+
+body.o7-desktop-mode .ticket-flow {
+  margin-top: 14px !important;
+}
+
+body.o7-desktop-mode .ticket-readiness,
+body.o7-desktop-mode .ticket-publish {
+  margin-top: 14px !important;
+}
+
+body.o7-desktop-mode .ticket-publish {
+  padding: 14px !important;
+  border-radius: 9px;
+}
+
+body.o7-desktop-mode .ticket-q {
+  padding: 12px !important;
+  border-radius: 8px;
+}
+
+/* Other complex editors: prefer vertical breathing room over squeezed columns. */
+@media (max-width: 1600px) {
+  body.o7-desktop-mode .role-builder-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .role-preview-column {
+    border-left: 0 !important;
+    border-top: 1px solid var(--o7-border) !important;
+  }
+
+  body.o7-desktop-mode .voice-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .creator-editor-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .analytics-main-grid,
+  body.o7-desktop-mode .analytics-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .cb-setup-grid,
+  body.o7-desktop-mode .cb-runtime-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .flow-builder-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .flow-palette {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--o7-border) !important;
+  }
+
+  body.o7-desktop-mode .flow-palette-list {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  body.o7-desktop-mode .ticket-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .ticket-panels {
+    position: static !important;
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 6px !important;
+  }
+
+  body.o7-desktop-mode .ticket-panels > header,
+  body.o7-desktop-mode .ticket-new {
+    grid-column: 1 / -1;
+  }
+
+  body.o7-desktop-mode .ticket-panel {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  body.o7-desktop-mode .creator-layout,
+  body.o7-desktop-mode .role-studio-body,
+  body.o7-desktop-mode .flow-studio-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .creator-rules,
+  body.o7-desktop-mode .role-panel-sidebar,
+  body.o7-desktop-mode .flow-command-list {
+    position: static !important;
+    min-height: 0 !important;
+  }
+
+  .o7-module-guide {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "steps"
+      "hint";
+  }
+
+  .o7-guide-main {
+    border-right: 0;
+    border-bottom: 1px solid #252a32;
+  }
+
+  .o7-guide-steps {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  body.o7-desktop-mode .bp-canvas {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding: 26px 16px 86px !important;
+  }
+
+  .o7-module-guide {
+    margin-bottom: 18px;
+  }
+
+  .o7-guide-main {
+    min-height: 0;
+    grid-template-columns: 44px minmax(0,1fr);
+    padding: 18px;
+  }
+
+  .o7-guide-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .o7-guide-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .o7-guide-steps {
+    grid-template-columns: 1fr;
+    padding: 14px 18px;
+  }
+
+  body.o7-desktop-mode .ticket-panelbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .ticket-type-wrap {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .ticket-type-wrap > aside {
+    display: flex !important;
+    overflow-x: auto;
+    border-right: 0 !important;
+    border-bottom: 1px solid #252a32;
+  }
+
+  body.o7-desktop-mode .ticket-type {
+    min-width: 180px;
+  }
+
+  body.o7-desktop-mode .ticket-panels {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.o7-desktop-mode .flow-palette-list {
+    grid-template-columns: 1fr !important;
+  }
+}
