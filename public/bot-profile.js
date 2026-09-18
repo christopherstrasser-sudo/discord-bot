@@ -91,20 +91,13 @@
 
   function profileHero() {
     const name = displayName();
-    return `<section class="o6-module-hero o6-island bp-hero">
-      <div class="o6-module-hero-copy">
-        <span class="o6-module-hero-icon bp-hero-icon">${PROFILE_ICON}</span>
-        <div>
-          <span class="o6-eyebrow">SERVER IDENTITÄT</span>
-          <h1>Der Bot sieht aus, als würde er zu deinem Server gehören.</h1>
-          <p>Gib <b>${safe(name)}</b> auf diesem Discord einen eigenen Namen, Avatar und eine eigene Bio. Die Änderungen gelten nur für diesen Server.</p>
-        </div>
+    return `<section class="o7-module-heading bp-hero">
+      <div>
+        <span class="o7-section-label">Bot-Profil</span>
+        <h1>Bot-Identität</h1>
+        <p>Name, Avatar und Bio von <b>${safe(name)}</b> auf diesem Server.</p>
       </div>
-      <aside class="o6-module-hero-side">
-        <div class="o6-module-hero-status on"><i aria-hidden="true"></i><span>Serverbezogen</span><b>Name · Avatar · Bio</b></div>
-        <p class="o6-module-hero-purpose">Kein Webhook und kein zweiter Bot: Discord speichert dieses Profil direkt für die Bot-Mitgliedschaft auf deinem Server.</p>
-      </aside>
-      <div class="o6-module-hero-flow"><strong>So funktioniert's</strong><span class="o6-module-hero-step"><i>1</i>Name wählen</span><span class="o6-module-hero-step"><i>2</i>Avatar setzen</span><span class="o6-module-hero-step"><i>3</i>Profil speichern</span></div>
+      <span class="o7-inline-status">Serverbezogen</span>
     </section>`;
   }
 
