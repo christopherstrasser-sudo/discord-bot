@@ -579,3 +579,248 @@ body.o7-desktop-mode .creator-switch-field input:checked+i:after{
     grid-template-columns:1fr !important;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Creator Alerts R3 — intentionally vertical, roomy workspace                 */
+/* -------------------------------------------------------------------------- */
+
+body.o7-desktop-mode .creator-shell{
+  width:min(1500px,100%) !important;
+  gap:30px !important;
+}
+
+/* Do not squeeze six provider cards into one row. */
+body.o7-desktop-mode .creator-provider-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:16px !important;
+}
+body.o7-desktop-mode .creator-provider{
+  min-height:170px !important;
+  padding:18px !important;
+}
+body.o7-desktop-mode .creator-provider-top b{
+  font-size:14px !important;
+}
+body.o7-desktop-mode .creator-provider p{
+  min-height:36px !important;
+  font-size:12px !important;
+}
+
+/* The automation navigator is now a full-width section above the editor. */
+body.o7-desktop-mode .creator-layout{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:22px !important;
+}
+body.o7-desktop-mode .creator-rules{
+  min-height:0 !important;
+  width:100% !important;
+}
+body.o7-desktop-mode .creator-rules>header{
+  min-height:58px !important;
+  padding:0 18px !important;
+}
+body.o7-desktop-mode .creator-rules>div{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:10px !important;
+  padding:14px !important;
+}
+body.o7-desktop-mode .creator-rule-item{
+  min-height:76px !important;
+  padding:13px !important;
+}
+body.o7-desktop-mode .creator-rule-item b{
+  font-size:13px !important;
+}
+body.o7-desktop-mode .creator-rule-item small{
+  font-size:11px !important;
+}
+body.o7-desktop-mode .creator-rules>footer{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:8px !important;
+  padding:12px 14px 14px !important;
+}
+body.o7-desktop-mode .creator-rules>footer button{
+  min-height:42px !important;
+  font-size:11px !important;
+}
+
+/* Let the selected automation use the full canvas. */
+body.o7-desktop-mode .creator-workspace{
+  width:100% !important;
+}
+body.o7-desktop-mode .creator-editor-top{
+  min-height:86px !important;
+  padding:15px 18px !important;
+  margin-bottom:18px !important;
+}
+body.o7-desktop-mode .creator-rule-title input{
+  width:min(720px,100%) !important;
+  font-size:21px !important;
+}
+
+/* No three-column editor. Main configuration first, preview afterwards. */
+body.o7-desktop-mode .creator-editor-grid{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:22px !important;
+}
+body.o7-desktop-mode .creator-editor-grid main{
+  gap:20px !important;
+}
+body.o7-desktop-mode .creator-sticky{
+  position:static !important;
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:20px !important;
+}
+
+/* Make every configuration block feel like its own section rather than a row. */
+body.o7-desktop-mode .creator-block>header{
+  min-height:70px !important;
+  padding:14px 20px !important;
+}
+body.o7-desktop-mode .creator-block>header span{
+  font-size:10px !important;
+}
+body.o7-desktop-mode .creator-block>header b{
+  margin-top:2px;
+  font-size:18px !important;
+}
+body.o7-desktop-mode .creator-form-grid{
+  gap:20px 18px !important;
+  padding:22px !important;
+}
+body.o7-desktop-mode .creator-form-grid label{
+  gap:9px !important;
+  font-size:12px !important;
+}
+body.o7-desktop-mode .creator-form-grid label>span{
+  font-size:12px !important;
+}
+body.o7-desktop-mode .creator-form-grid input:not([type="checkbox"]):not([type="color"]),
+body.o7-desktop-mode .creator-form-grid select{
+  min-height:50px !important;
+  padding:0 14px !important;
+  font-size:14px !important;
+}
+body.o7-desktop-mode .creator-form-grid textarea{
+  min-height:165px !important;
+  padding:14px !important;
+  font-size:14px !important;
+  line-height:1.55 !important;
+}
+body.o7-desktop-mode .creator-form-grid small{
+  font-size:11px !important;
+}
+body.o7-desktop-mode .creator-source-actions{
+  grid-template-columns:190px minmax(0,1fr) !important;
+  gap:14px !important;
+  padding:0 22px 22px !important;
+}
+body.o7-desktop-mode .creator-action{
+  min-height:46px !important;
+  font-size:12px !important;
+}
+
+/* Preview and quality control get the same visual weight as normal sections. */
+body.o7-desktop-mode .creator-preview-console,
+body.o7-desktop-mode .creator-tools{
+  width:100% !important;
+}
+body.o7-desktop-mode .creator-preview-bar{
+  min-height:54px !important;
+  padding:0 18px !important;
+  font-size:10px !important;
+}
+body.o7-desktop-mode .creator-discord-msg{
+  min-height:220px;
+  gap:14px !important;
+  padding:24px 20px !important;
+}
+body.o7-desktop-mode .creator-bot-avatar{
+  width:46px !important;
+  height:46px !important;
+}
+body.o7-desktop-mode .creator-message-author b{
+  font-size:14px !important;
+}
+body.o7-desktop-mode .creator-message-author small,
+body.o7-desktop-mode .creator-message-body>p,
+body.o7-desktop-mode .creator-embed-preview p{
+  font-size:12px !important;
+}
+body.o7-desktop-mode .creator-embed-preview{
+  max-width:760px;
+  margin-top:12px !important;
+  padding:16px !important;
+}
+body.o7-desktop-mode .creator-embed-preview>b{
+  font-size:15px !important;
+}
+body.o7-desktop-mode .creator-preview-console>footer{
+  padding:12px 18px !important;
+  font-size:10px !important;
+}
+body.o7-desktop-mode .creator-tools header{
+  min-height:68px !important;
+  padding:14px 18px !important;
+}
+body.o7-desktop-mode .creator-tools header b{
+  font-size:15px !important;
+}
+body.o7-desktop-mode .creator-tools>.creator-check{
+  margin:0 18px !important;
+}
+body.o7-desktop-mode .creator-check{
+  min-height:48px !important;
+  font-size:12px !important;
+}
+body.o7-desktop-mode .creator-tools>.creator-action{
+  width:calc(100% - 36px) !important;
+  margin:18px !important;
+}
+body.o7-desktop-mode .creator-tools>small{
+  padding:0 18px 18px !important;
+  font-size:11px !important;
+}
+
+/* Give the ledger some room too. */
+body.o7-desktop-mode .creator-history>header{
+  min-height:78px !important;
+  padding:15px 20px !important;
+}
+body.o7-desktop-mode .creator-history>div{
+  grid-template-columns:1fr !important;
+  padding:8px 20px 16px !important;
+}
+body.o7-desktop-mode .creator-history-row{
+  min-height:70px !important;
+}
+body.o7-desktop-mode .creator-history-row b{
+  font-size:12px !important;
+}
+body.o7-desktop-mode .creator-history-row p,
+body.o7-desktop-mode .creator-history-row small{
+  font-size:11px !important;
+}
+
+@media (max-width:1200px){
+  body.o7-desktop-mode .creator-provider-grid,
+  body.o7-desktop-mode .creator-rules>div{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+
+@media (max-width:760px){
+  body.o7-desktop-mode .creator-provider-grid,
+  body.o7-desktop-mode .creator-rules>div,
+  body.o7-desktop-mode .creator-rules>footer,
+  body.o7-desktop-mode .creator-form-grid{
+    grid-template-columns:1fr !important;
+  }
+  body.o7-desktop-mode .creator-source-actions{
+    grid-template-columns:1fr !important;
+  }
+}
