@@ -32,14 +32,6 @@ const ACTIVITY_TYPES = {
   competing: ActivityType.Competing
 };
 
-const ACTIVITY_LABELS = Object.freeze({
-  playing: 'Spielt',
-  streaming: 'Streamt',
-  listening: 'Hört',
-  watching: 'Schaut',
-  competing: 'Tritt an in'
-});
-
 function normalizeStreamingUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -66,20 +58,13 @@ function normalizePresence(input = {}) {
 }
 
 function activityDisplayText(presenceInput = {}) {
-  const presence = normalizePresence(presenceInput);
-  if (!presence.activityText) return '';
-  const prefix = ACTIVITY_LABELS[presence.activityType] || ACTIVITY_LABELS.playing;
-  const alreadyPrefixed = presence.activityText.toLocaleLowerCase('de-DE').startsWith(`${prefix.toLocaleLowerCase('de-DE')} `);
-  return (alreadyPrefixed ? presence.activityText : `${prefix} ${presence.activityText}`).slice(0, 128);
+  return normalizePresence(presenceInput).activityText;
 }
 
 function buildActivity(presenceInput = {}) {
   const presence = normalizePresence(presenceInput);
   if (!presence.activityText) return null;
   return {
-    // Discord's current member-list UI may render only the activity name without the
-    // localized type verb. Keep the real type for Discord semantics/status colour,
-    // while making the visible name complete and keeping the raw value in state.
     name: activityDisplayText(presence),
     state: presence.activityText,
     type: ACTIVITY_TYPES[presence.activityType],
