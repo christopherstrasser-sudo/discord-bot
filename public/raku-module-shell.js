@@ -132,6 +132,28 @@
     requestAnimationFrame(() => decorate(tab));
   };
 
+  let guideSyncQueued = false;
+  function queueGuideSync() {
+    if (guideSyncQueued) return;
+    guideSyncQueued = true;
+    requestAnimationFrame(() => {
+      guideSyncQueued = false;
+      if (typeof activeTab === 'undefined' || activeTab === 'overview' || activeTab === 'profile') return;
+      const root = document.querySelector('#guildWorkspace');
+      if (!root || root.querySelector(':scope > .o7-module-guide')) return;
+      decorate(activeTab);
+    });
+  }
+
+  const workspace = document.querySelector('#guildWorkspace');
+  if (workspace && typeof MutationObserver !== 'undefined') {
+    const observer = new MutationObserver(() => {
+      if (typeof activeTab === 'undefined' || activeTab === 'overview' || activeTab === 'profile') return;
+      if (!workspace.querySelector(':scope > .o7-module-guide')) queueGuideSync();
+    });
+    observer.observe(workspace, { childList: true });
+  }
+
   requestAnimationFrame(() => {
     const dashboardVisible = !document.querySelector('#guildDashboard')?.classList.contains('hidden');
     if (dashboardVisible && typeof activeTab !== 'undefined') decorate(activeTab);
