@@ -480,6 +480,7 @@
   <link rel="stylesheet" href="/raku-orbit-v610.css?v=0341">
   <link rel="stylesheet" href="/orbit-desktop-r4.css?v=0400">
   <link rel="stylesheet" href="/creator-alerts-r2.css?v=0403">
+  <link rel="stylesheet" href="/server-hub-r2.css?v=0500">
 </head>
 <body>
   <div class="app-frame">
@@ -535,12 +536,26 @@
         <span class="orbit-server-ring" aria-hidden="true"></span>
 
         <div class="page-head">
-          <div>
-            <span class="overline">SERVER</span>
-            <h1>Deine Discord-Server.</h1>
-            <p>Öffne einen Server, prüfe seinen Status oder verbinde ORBIT mit einem neuen Workspace.</p>
+          <div class="server-hero-copy">
+            <span class="server-hero-kicker">ORBIT Workspace Network</span>
+            <h1>Deine Server.<br>Dein Control Center.</h1>
+            <p>Spring direkt in verbundene Workspaces, prüfe den ORBIT-Status oder bring neue Discord-Server in dein Setup.</p>
+            <div class="server-hero-tags" aria-label="ORBIT Funktionen">
+              <span>Module steuern</span>
+              <span>Creator Alerts</span>
+              <span>Tickets & Rollen</span>
+              <span>Analytics</span>
+            </div>
           </div>
-          <div id="serverStats" class="deck-stats"></div>
+          <div class="server-hero-side" aria-label="Workspace Status">
+            <div class="server-network-visual" aria-hidden="true">
+              <span class="server-network-node a"></span>
+              <span class="server-network-node b"></span>
+              <span class="server-network-node c"></span>
+              <div class="server-network-core"><span><b>ORBIT</b><small>CONTROL NETWORK</small></span></div>
+            </div>
+            <div id="serverStats" class="deck-stats"></div>
+          </div>
         </div>
 
         <div class="server-toolbar">
