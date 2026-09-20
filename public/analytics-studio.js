@@ -125,7 +125,7 @@
 
     return `<div class="analytics-shell">
       <section class="analytics-head raku-module-hero">
-        <div><span>SERVER INTELLIGENCE / ANALYTICS</span><h2>Verstehen statt raten.</h2><p>RAKU misst Server-Aktivität datensparsam als Aggregate und macht daraus Trends, Peaks und konkrete Signale für deinen Serverbetrieb.</p></div>
+        <div><span>SERVER INTELLIGENCE / ANALYTICS</span><h2>Verstehen statt raten.</h2><p>ORBIT misst Server-Aktivität datensparsam als Aggregate und macht daraus Trends, Peaks und konkrete Signale für deinen Serverbetrieb.</p></div>
         <div class="analytics-head-actions">
           <label class="analytics-master"><input type="checkbox" data-a-enabled ${enabled ? 'checked' : ''}><i></i><b>${enabled ? 'TRACKING AKTIV' : 'TRACKING AUS'}</b></label>
           <button type="button" class="button button-ghost" data-a-refresh>Aktualisieren</button>

@@ -489,9 +489,9 @@
 
     return `
       <div class="role-discord-message">
-        <div class="role-preview-avatar">R</div>
+        <div class="role-preview-avatar">O</div>
         <div class="role-preview-message-body">
-          <div class="role-preview-author"><b>RAKU Bot</b><span>APP</span><small>Heute um 09:41</small></div>
+          <div class="role-preview-author"><b>ORBIT</b><span>APP</span><small>Heute um 09:41</small></div>
           <div class="role-preview-embed" style="--role-color:${esc(panel.color || '#5865F2')}">
             <h4>${esc(panel.title || 'Wähle deine Rollen')}</h4>
             ${panel.description ? `<p>${renderMarkdown(panel.description)}</p>` : ''}

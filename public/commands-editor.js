@@ -325,9 +325,9 @@
       <div class="flow-discord-preview">
         ${command.delivery === 'reply' ? '<div class="flow-reply-context">↳ Antwort auf @NeuesMitglied</div>' : ''}
         <div class="flow-preview-message">
-          <div class="flow-preview-avatar">R</div>
+          <div class="flow-preview-avatar">O</div>
           <div class="flow-preview-copy">
-            <div class="flow-preview-author"><b>RAKU Bot</b><span>APP</span><small>Heute um 08:42</small></div>
+            <div class="flow-preview-author"><b>ORBIT</b><span>APP</span><small>Heute um 08:42</small></div>
             ${textParts.length ? `<div class="flow-preview-text">${textParts.map(text => `<p>${text}</p>`).join('')}</div>` : ''}
             ${embeds.join('')}
             ${buttons.length ? `<div class="flow-preview-buttons">${buttons.join('')}</div>` : ''}

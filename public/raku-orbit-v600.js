@@ -24,7 +24,8 @@
     creators: ['Creator Alerts', 'Content-Signale aus deinen Plattformen.'],
     logging: ['Logs', 'Server- und Moderationsereignisse.'],
     analytics: ['Analytics', 'Aktivität und Nutzung im Blick.'],
-    diagnostics: ['Diagnose', 'Dashboard, Bot und Discord testen.']
+    diagnostics: ['Diagnose', 'Dashboard, Bot und Discord testen.'],
+    profile: ['Bot-Profil', 'Name, Avatar und Serverprofil deines Bots.']
   };
 
   const MODULE_ICONS = {
@@ -58,10 +59,10 @@
     if (tab === 'welcome') return Boolean(workingSettings?.welcome?.enabled);
     if (tab === 'autorole') return Boolean(workingSettings?.autorole?.enabled);
     if (tab === 'roles') return Boolean(workingSettings?.rolePanels?.enabled);
-    if (tab === 'tickets') return Boolean(ticketConfig()?.enabled);
-    if (tab === 'voice') return Boolean(workingSettings?.voiceStudio?.enabled || workingSettings?.voice?.enabled);
+    if (tab === 'tickets') return ticketConfig() ? Boolean(ticketConfig().enabled) : null;
+    if (tab === 'voice') return window.RakuVoiceStudio?.s?.cfg ? Boolean(window.RakuVoiceStudio.s.cfg.enabled) : null;
     if (tab === 'commands') return Boolean(workingSettings?.customCommands?.enabled);
-    if (tab === 'creators') return Boolean(creatorConfig()?.enabled);
+    if (tab === 'creators') return creatorConfig() ? Boolean(creatorConfig().enabled) : null;
     if (tab === 'logging') return Boolean(workingSettings?.logging?.enabled);
     if (tab === 'analytics' || tab === 'diagnostics') return true;
     return null;
@@ -73,14 +74,14 @@
     if (tab === 'commands') return `${workingSettings?.customCommands?.commands?.length || 0} Befehle`;
     if (tab === 'creators') return `${(creatorConfig()?.rules || []).filter(rule => rule.enabled).length} Regeln aktiv`;
     if (tab === 'voice') return moduleState(tab) ? 'Aktiv' : 'Bereit';
-    if (tab === 'welcome' || tab === 'autorole' || tab === 'logging') return moduleState(tab) ? 'Aktiv' : 'Aus';
+    if (tab === 'welcome' || tab === 'autorole' || tab === 'logging') return 'Konfigurieren';
     if (tab === 'analytics' || tab === 'diagnostics') return 'Bereit';
     return '';
   }
 
   function railItem(tab, label, iconName) {
     const state = moduleState(tab);
-    return `<button class="deck-nav-item o6-dock-item o7-rail-item${activeTab === tab ? ' active' : ''}" data-tab="${tab}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
+    return `<button class="deck-nav-item o6-dock-item o7-rail-item${activeTab === tab ? ' active' : ''}" data-tab="${tab}" type="button" ${activeTab === tab ? 'aria-current="page"' : ''} aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
       ${moduleIcon(iconName)}
       <span class="o6-dock-label">${escapeHtml(label)}</span>
       ${state === null ? '' : `<i class="o6-dock-state ${state ? 'on' : ''}" aria-hidden="true"></i>`}
@@ -92,7 +93,7 @@
       ['Server', MODULES.slice(0, 1)],
       ['Community', MODULES.slice(1, 6)],
       ['Automation', MODULES.slice(6, 8)],
-      ['System', MODULES.slice(8)]
+      ['System', [...MODULES.slice(8), ['profile', 'Bot-Profil', 'profile']]]
     ];
     return groups.map(([label, group]) => `
       <span class="o7-rail-section-label">${escapeHtml(label)}</span>
@@ -142,20 +143,58 @@
 
   function moduleRow(tab, label, iconName) {
     const state = moduleState(tab);
-    const meta = moduleMeta(tab);
+    const meta = state === null ? '' : moduleMeta(tab);
     const [title, description] = META[tab] || [label, ''];
-    const stateText = state === null ? 'Bereit' : state ? 'Aktiv' : 'Aus';
-    return `<button type="button" class="o7-module-row" data-o7-open="${tab}">
+    const stateText = state === null ? 'Status offen' : state ? 'Aktiv' : 'Inaktiv';
+    return `<button type="button" class="o7-module-row" data-o7-open="${tab}" data-orbit-module="${tab}">
       <span class="o7-module-icon">${moduleIcon(iconName)}</span>
       <span class="o7-module-copy"><b>${escapeHtml(title)}</b><small>${escapeHtml(description)}</small></span>
       <span class="o7-module-meta">${escapeHtml(meta || '—')}</span>
       <span class="o7-module-status ${state ? 'on' : ''}">${escapeHtml(stateText)}</span>
-      <span class="o7-module-arrow">›</span>
+      <span class="o7-module-arrow">↗</span>
     </button>`;
   }
 
   function activeCount() {
     return ['welcome','autorole','roles','tickets','voice','commands','creators','logging'].filter(moduleState).length;
+  }
+
+  let overviewLoad = null;
+  let overviewLoadedGuild = '';
+  function loadOverviewState() {
+    const guildId = activeGuildData?.guild?.id;
+    if (!guildId || overviewLoad || overviewLoadedGuild === guildId) return;
+    overviewLoad = Promise.allSettled([
+      window.RakuTicketStudio?.load?.(),
+      window.RakuCreatorHub?.load?.(),
+      api(`/api/guilds/${guildId}/voice-studio`).then(result => {
+        if (activeGuildData?.guild?.id !== guildId || !window.RakuVoiceStudio?.s) return;
+        if (!window.RakuVoiceStudio.s.dirty) window.RakuVoiceStudio.s.cfg = result.config;
+        window.RakuVoiceStudio.s.meta = result.meta;
+      })
+    ]).then(() => {
+      overviewLoadedGuild = guildId;
+      if (activeGuildData?.guild?.id !== guildId) return;
+      if (activeTab === 'overview') renderOverview();
+      document.querySelectorAll('.o7-rail [data-tab]').forEach(item => {
+        const dot = item.querySelector('.o6-dock-state');
+        if (dot) dot.classList.toggle('on', Boolean(moduleState(item.dataset.tab)));
+      });
+    }).finally(() => { overviewLoad = null; });
+  }
+
+  function orbitMap(guild) {
+    const modules = MODULES.slice(1, 9);
+    return `<div class="orbit-map" aria-label="Dein Server und seine Module">
+      <div class="orbit-map-ring orbit-map-outer" aria-hidden="true"></div><div class="orbit-map-ring orbit-map-inner" aria-hidden="true"></div>
+      <div class="orbit-map-axis axis-x" aria-hidden="true"></div><div class="orbit-map-axis axis-y" aria-hidden="true"></div>
+      <div class="orbit-map-core">${guildIcon(guild, 'orbit-core-icon')}<b>${escapeHtml(guild.name)}</b><small>DEINE COMMUNITY</small></div>
+      ${modules.map(([tab, label, iconName], index) => {
+        const angle = index * Math.PI / 4 - Math.PI / 2;
+        return `<button type="button" class="orbit-map-node ${moduleState(tab) ? 'on' : ''}" style="--x:${(50 + Math.cos(angle) * 40).toFixed(2)}%;--y:${(50 + Math.sin(angle) * 40).toFixed(2)}%" data-o7-open="${tab}" aria-label="${escapeHtml(label)} öffnen" title="${escapeHtml(label)}">${moduleIcon(iconName)}<span>${escapeHtml(label)}</span></button>`;
+      }).join('')}
+      <span class="orbit-map-caption">EIN SERVER. ALLES VERBUNDEN.</span>
+    </div>`;
   }
 
   function renderOverview() {
@@ -164,132 +203,35 @@
     const guild = activeGuildData?.guild || {};
     const count = activeCount();
     const issueCount = issues().length;
-    const channels = activeGuildData?.channels?.length || 0;
-    const roles = activeGuildData?.roles?.length || 0;
-    const members = guild.memberCount ? Number(guild.memberCount).toLocaleString('de-DE') : '—';
-
-    root.innerHTML = `
-      <div class="o7-overview o7-overview-landing">
-        <section class="o7-overview-hero-v2">
-          <div class="o7-overview-hero-main">
-            <div class="o7-overview-hero-server">
-              <div class="o7-overview-hero-icon">
-                ${guildIcon(guild, 'o7-overview-server-icon')}
-                <span class="o7-overview-hero-live" aria-hidden="true"></span>
-              </div>
-              <div class="o7-overview-hero-copy">
-                <span class="o7-overview-hero-kicker">SERVER CONTROL / OVERVIEW</span>
-                <h1>${escapeHtml(guild.name || 'Discord')}</h1>
-                <p>Dein zentraler Einstieg in ORBIT. Starte Module, prüfe offene Punkte und springe direkt zu den wichtigsten Werkzeugen dieses Servers.</p>
-              </div>
-            </div>
-
-            <div class="o7-overview-hero-actions">
-              <button type="button" class="o7-overview-hero-action primary" data-o7-open="tickets">
-                ${moduleIcon('tickets')}<span>Tickets öffnen</span>
-              </button>
-              <button type="button" class="o7-overview-hero-action" data-o7-open="creators">
-                ${moduleIcon('creators')}<span>Creator Alerts</span>
-              </button>
-              <button type="button" class="o7-overview-hero-action" data-o7-open="diagnostics">
-                ${moduleIcon('diagnostics')}<span>Diagnose</span>
-              </button>
-            </div>
-
-            <div class="o7-overview-hero-chips">
-              <span><i class="on"></i> ORBIT VERBUNDEN</span>
-              <span>${count} MODULE AKTIV</span>
-              <span class="${issueCount ? 'attention' : ''}">${issueCount} OFFENE PUNKTE</span>
-            </div>
-          </div>
-
-          <aside class="o7-overview-hero-status">
-            <div class="o7-overview-status-head">
-              <span>SERVER SNAPSHOT</span>
-              <b>Live Übersicht</b>
-            </div>
-            <div class="o7-overview-status-grid">
-              <div><span>Mitglieder</span><b>${members}</b></div>
-              <div><span>Kanäle</span><b>${channels}</b></div>
-              <div><span>Rollen</span><b>${roles}</b></div>
-              <div class="${issueCount ? 'attention' : 'good'}"><span>Status</span><b>${issueCount ? issueCount + ' offen' : 'Sauber'}</b></div>
-            </div>
-            <div class="o7-overview-status-foot">
-              <span class="o7-overview-status-orb"><i></i></span>
-              <div><b>Control Link aktiv</b><small>Dashboard und Bot sind für diesen Server verbunden.</small></div>
-            </div>
-          </aside>
-        </section>
-
-        <section class="o7-overview-launchpad" aria-label="Schnellzugriff">
-          <button type="button" data-o7-open="tickets">
-            <span class="o7-overview-launch-icon">${moduleIcon('tickets')}</span>
-            <span><b>Tickets</b><small>Support & Workflows</small></span><em>›</em>
-          </button>
-          <button type="button" data-o7-open="roles">
-            <span class="o7-overview-launch-icon">${moduleIcon('roles')}</span>
-            <span><b>Rollen</b><small>Self-Service Panels</small></span><em>›</em>
-          </button>
-          <button type="button" data-o7-open="creators">
-            <span class="o7-overview-launch-icon">${moduleIcon('creators')}</span>
-            <span><b>Creator Alerts</b><small>Lives, Uploads & Clips</small></span><em>›</em>
-          </button>
-          <button type="button" data-o7-open="analytics">
-            <span class="o7-overview-launch-icon">${moduleIcon('analytics')}</span>
-            <span><b>Analytics</b><small>Aktivität & Trends</small></span><em>›</em>
-          </button>
-        </section>
-
-        <div class="o7-stat-strip" aria-label="Serverstatus">
-          <div><span>Mitglieder</span><b>${members}</b></div>
-          <div><span>Aktive Module</span><b>${count}<small>/ 8</small></b></div>
-          <div><span>Kanäle</span><b>${channels}</b></div>
-          <div><span>Verwaltbare Rollen</span><b>${roles}</b></div>
-          <div class="${issueCount ? 'attention' : ''}"><span>Offene Punkte</span><b>${issueCount}</b></div>
-        </div>
-
-        <div class="o7-overview-grid">
-          <section class="o7-panel o7-modules-panel">
-            <header class="o7-panel-head"><div><span class="o7-panel-kicker">MODULE CONTROL</span><b>Deine Werkzeuge</b><span>Konfiguration und Status</span></div><small>${count} aktiv</small></header>
-            <div class="o7-module-table">
-              ${MODULES.filter(([tab]) => !['overview','analytics','diagnostics'].includes(tab)).map(item => moduleRow(...item)).join('')}
-              ${moduleRow('analytics', 'Analytics', 'analytics')}
-              ${moduleRow('diagnostics', 'Diagnose', 'diagnostics')}
-              <button type="button" class="o7-module-row" data-o7-open="profile">
-                <span class="o7-module-icon">${moduleIcon('profile')}</span>
-                <span class="o7-module-copy"><b>Bot-Profil</b><small>Name, Avatar und Serverprofil.</small></span>
-                <span class="o7-module-meta">Serverbezogen</span>
-                <span class="o7-module-status">Bereit</span>
-                <span class="o7-module-arrow">›</span>
-              </button>
-            </div>
-          </section>
-
-          <aside class="o7-overview-side">
-            <section class="o7-panel">
-              <header class="o7-panel-head"><div><span class="o7-panel-kicker">SYSTEM HEALTH</span><b>Aufmerksamkeit</b><span>Konfiguration prüfen</span></div><small>${issueCount ? `${issueCount} offen` : 'OK'}</small></header>
-              <div class="o7-health-list">${issuesMarkup()}</div>
-            </section>
-
-            <section class="o7-panel">
-              <header class="o7-panel-head"><div><span class="o7-panel-kicker">RECENT SIGNALS</span><b>Letzte Aktivität</b><span>Echte Ereignisse aus ORBIT</span></div></header>
-              <div class="o7-activity-list">${activityMarkup()}</div>
-            </section>
-
-            <section class="o7-panel o7-quick-panel">
-              <header class="o7-panel-head"><div><span class="o7-panel-kicker">QUICK ACCESS</span><b>Schnellzugriff</b><span>Direkt zum Werkzeug</span></div></header>
-              <div class="o7-quick-list">
-                <button type="button" data-o7-open="tickets">${moduleIcon('tickets')}<span>Tickets</span><em>›</em></button>
-                <button type="button" data-o7-open="roles">${moduleIcon('roles')}<span>Rollen</span><em>›</em></button>
-                <button type="button" data-o7-open="creators">${moduleIcon('creators')}<span>Creator Alerts</span><em>›</em></button>
-                <button type="button" data-o7-open="diagnostics">${moduleIcon('diagnostics')}<span>Diagnose</span><em>›</em></button>
-              </div>
-            </section>
-          </aside>
-        </div>
-      </div>`;
-
+    const modules = MODULES.slice(1, 9);
+    const unknown = modules.some(([tab]) => moduleState(tab) === null);
+    const members = Number.isFinite(Number(guild.memberCount)) ? Number(guild.memberCount).toLocaleString('de-DE') : '—';
+    root.innerHTML = `<div class="o7-overview">
+      <div class="orbit-page-heading"><div><span class="orbit-eyebrow">DEIN CONTROL CENTER</span><h2>Übersicht</h2></div><span class="orbit-page-note">${escapeHtml(guild.name)} <i></i> Serververwaltung</span></div>
+      <section class="orbit-overview-hero">
+        <div class="orbit-hero-copy"><span class="orbit-eyebrow"><i></i> COMMUNITY, UNTER DEINER KONTROLLE</span><h1>Alles in<br><em>deinem Orbit.</em></h1><p>Ein guter Server braucht mehr als einen Bot.<br>Hier bringst du deine Community zusammen.</p>
+          <div class="orbit-hero-actions"><button type="button" class="button button-primary" data-o7-open="creators">Creator Alerts ${icon('arrow')}</button><button type="button" class="button button-ghost" data-o7-open="analytics">Analytics ansehen ${icon('external')}</button></div>
+          <div class="orbit-hero-caption"><span></span> Deine Community. Deine Regeln.</div>
+        </div>${orbitMap(guild)}
+      </section>
+      <div class="orbit-metrics" aria-label="Serverübersicht">
+        <div>${moduleIcon('autorole')}<span><small>Mitglieder</small><b>${members}</b></span><em>Community</em></div>
+        <div>${moduleIcon('welcome')}<span><small>Beschreibbare Kanäle</small><b>${activeGuildData?.channels?.length || 0}</b></span><em>Kommunikation</em></div>
+        <div>${moduleIcon('roles')}<span><small>Verwaltbare Rollen</small><b>${activeGuildData?.roles?.length || 0}</b></span><em>Organisation</em></div>
+        <div>${moduleIcon('overview')}<span><small>Aktive Module</small><b>${count}<small> / 8</small></b></span><em>${unknown ? 'Status teils offen' : 'Dein Setup'}</em></div>
+      </div>
+      <div class="o7-overview-grid">
+        <section class="o7-modules-panel"><header class="orbit-section-head"><div><span class="orbit-eyebrow">DEIN TOOLKIT</span><h2>Raum für deine Ideen.</h2></div><span>08 Module</span></header><div class="o7-module-table">${modules.map(item => moduleRow(...item)).join('')}</div></section>
+        <aside class="o7-overview-side">
+          <section class="o7-panel"><header class="o7-panel-head"><div><span class="orbit-eyebrow">SYSTEMCHECK</span><b>Alles auf Kurs?</b></div><span class="orbit-status-pill ${issueCount ? 'warning' : ''}">${issueCount ? `${issueCount} offen` : 'Geprüft'}</span></header><div class="o7-health-list">${issuesMarkup()}</div><button class="orbit-panel-link" data-o7-open="diagnostics" type="button">Diagnose öffnen ${icon('arrow')}</button></section>
+          <section class="o7-panel"><header class="o7-panel-head"><div><span class="orbit-eyebrow">AUS DEINEM ORBIT</span><b>Letzte Signale</b></div>${moduleIcon('logging')}</header><div class="o7-activity-list">${activityMarkup()}</div><button class="orbit-panel-link" data-o7-open="creators" type="button">Creator Alerts öffnen ${icon('arrow')}</button></section>
+          <button class="orbit-profile-promo" type="button" data-o7-open="profile"><span class="orbit-profile-mark">${moduleIcon('profile')}</span><span><b>Dein Bot. Deine Identität.</b><small>Gib ORBIT deinen eigenen Look.</small></span>${icon('arrow')}</button>
+        </aside>
+      </div>
+      <footer class="orbit-workspace-footer"><span>ORBIT</span><span>Deine Community. Im Mittelpunkt.</span><button type="button" data-o7-open="diagnostics">Verbindung testen ↗</button></footer>
+    </div>`;
     root.querySelectorAll('[data-o7-open]').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.o7Open)));
+    loadOverviewState();
   }
 
   const previousWorkspaceRenderer = renderGuildWorkspace;
@@ -325,47 +267,63 @@
     document.querySelector('#guildDashboardContent').innerHTML = `
       <div class="o6-stage o7-app">
         <header class="o7-topbar">
-          <div class="o7-topbar-left">
-            <a class="o7-brand" href="/" title="Server wechseln" aria-label="Zur Serverauswahl">
-              <img src="/orbit-wordmark.svg?v=0290" alt="ORBIT">
-            </a>
-            <span class="o7-top-divider"></span>
-            <a class="o7-server-context" href="/" title="Server wechseln">
-              ${guildIcon(guild, 'o7-server-icon')}
-              <span><small>Server</small><b>${escapeHtml(guild.name)}</b></span>
-              <em>⌄</em>
-            </a>
-            <span class="o7-breadcrumb">/</span>
-            <div class="o7-page-context">
-              <b id="o6PageTitle">${escapeHtml(title)}</b>
-              <span id="o6PageDescription">${escapeHtml(description)}</span>
-            </div>
-          </div>
-
+          <a class="o7-brand" href="/" aria-label="ORBIT – Zur Serverauswahl"><img src="/orbit-wordmark.svg?v=0290" alt="ORBIT"><span>CONTROL CENTER</span></a>
+          <button type="button" class="orbit-menu-button" aria-label="Navigation öffnen" aria-expanded="false" aria-controls="orbit-navigation"><span></span><span></span><span></span></button>
+          <div class="o7-topbar-left"><span class="orbit-topbar-server">${escapeHtml(guild.name)}</span><span class="o7-breadcrumb">/</span><div class="o7-page-context"><b id="o6PageTitle">${escapeHtml(title)}</b><span id="o6PageDescription">${escapeHtml(description)}</span></div></div>
           <div class="o7-topbar-actions">
-            <span class="o7-connection"><i></i><span>Online</span></span>
-            <a class="o7-icon-button" href="${openDiscord}" target="_blank" rel="noopener" title="Discord öffnen">${icon('external')}</a>
-            <button class="o7-icon-button" type="button" data-jump="diagnostics" title="Diagnose">${moduleIcon('diagnostics')}</button>
-            <button id="saveSettings" class="o7-save-button" type="button" disabled>${icon('save')}<span>Gespeichert</span></button>
-            <button type="button" class="o7-account" data-o6-logout title="Abmelden">${escapeHtml(userName().slice(0,1).toUpperCase())}</button>
+            <button type="button" class="orbit-search-button" data-orbit-search aria-label="Modul suchen"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span>Modul suchen</span><kbd>⌘ K</kbd></button>
+            <a class="o7-icon-button" href="${openDiscord}" target="_blank" rel="noopener" title="Discord öffnen" aria-label="Discord öffnen">${icon('external')}</a>
+            <button id="saveSettings" class="o7-save-button" type="button" disabled>${icon('check')}<span>Gespeichert</span></button>
+            <button type="button" class="o7-account" data-o6-logout title="Abmelden" aria-label="Abmelden">${escapeHtml(userName().slice(0,1).toUpperCase())}</button>
             <span id="unsavedFlag" class="unsaved-flag">Ungespeichert</span>
           </div>
         </header>
-
         <div class="o7-shell">
-          <nav class="deck-nav o6-dock o6-command-rail o7-rail" aria-label="Module">
+          <nav id="orbit-navigation" class="deck-nav o6-dock o6-command-rail o7-rail" aria-label="Module">
+            <a class="orbit-rail-server" href="/" title="Server wechseln">${guildIcon(guild, 'o7-server-icon')}<span><small>DEIN WORKSPACE</small><b>${escapeHtml(guild.name)}</b></span><em>⌄</em></a>
             ${railMarkup()}
+            <div class="orbit-rail-footer"><span class="orbit-rail-symbol" aria-hidden="true">◎</span><span>Deine Community.<br><b>Im Mittelpunkt.</b></span><a href="/" aria-label="Server wechseln" title="Server wechseln">↗</a></div>
           </nav>
-          <main id="guildWorkspace" class="deck-workspace o6-canvas o7-canvas"></main>
+          <button type="button" class="orbit-menu-backdrop" aria-label="Navigation schließen" tabindex="-1"></button>
+          <main id="guildWorkspace" class="deck-workspace o6-canvas o7-canvas" tabindex="-1"></main>
         </div>
+        <dialog class="orbit-command-dialog" aria-label="Modul suchen"><form method="dialog"><label for="orbit-module-search">Wohin möchtest du?</label><button value="close" aria-label="Suche schließen">Esc</button></form><input id="orbit-module-search" type="search" placeholder="Modul suchen …" autocomplete="off"><div class="orbit-command-results"></div><footer>↑ ↓ Auswählen <span>↵ Öffnen</span></footer></dialog>
       </div>`;
 
+    const menu = document.querySelector('.orbit-menu-button');
+    const closeMenu = () => { document.body.classList.remove('orbit-nav-open'); menu.setAttribute('aria-expanded', 'false'); };
+    menu.addEventListener('click', () => {
+      const open = document.body.classList.toggle('orbit-nav-open');
+      menu.setAttribute('aria-expanded', String(open));
+      if (open) document.querySelector('.o7-rail [aria-current="page"]')?.focus();
+    });
+    document.querySelector('.orbit-menu-backdrop').addEventListener('click', closeMenu);
+    document.querySelector('.o6-command-rail').addEventListener('keydown', event => {
+      if (event.key === 'Escape') { closeMenu(); menu.focus(); }
+    });
+    document.querySelector('.o6-command-rail').addEventListener('click', event => { if (event.target.closest('[data-tab]')) closeMenu(); });
+    const dialog = document.querySelector('.orbit-command-dialog');
+    const search = dialog.querySelector('input');
+    const renderResults = () => {
+      const term = search.value.trim().toLocaleLowerCase('de');
+      const items = [...MODULES, ['profile', 'Bot-Profil', 'profile']].filter(([tab, label]) => `${label} ${META[tab]?.[1] || ''}`.toLocaleLowerCase('de').includes(term));
+      dialog.querySelector('.orbit-command-results').innerHTML = items.length ? items.map(([tab,label,ico]) => `<button type="button" data-orbit-go="${tab}">${moduleIcon(ico)}<span><b>${escapeHtml(label)}</b><small>${escapeHtml(META[tab]?.[1] || '')}</small></span><em>↗</em></button>`).join('') : '<p role="status">Kein Modul gefunden.</p>';
+    };
+    document.querySelector('[data-orbit-search]').addEventListener('click', () => { search.value = ''; renderResults(); dialog.showModal(); search.focus(); });
+    search.addEventListener('input', renderResults);
+    dialog.addEventListener('click', event => { const button = event.target.closest('[data-orbit-go]'); if (button) { dialog.close(); switchTab(button.dataset.orbitGo); } });
+    dialog.addEventListener('keydown', event => {
+      const items = [...dialog.querySelectorAll('[data-orbit-go]')];
+      const index = items.indexOf(document.activeElement);
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const next = index === -1 ? (event.key === 'ArrowDown' ? 0 : items.length - 1) : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; items[next]?.focus(); }
+      if (event.key === 'Enter' && document.activeElement === search) { event.preventDefault(); items[0]?.click(); }
+    });
+    if (!/Mac|iPhone|iPad/.test(navigator.platform)) document.querySelector('.orbit-search-button kbd').textContent = 'Ctrl K';
     document.querySelector('.o6-command-rail').addEventListener('click', event => {
       const button = event.target.closest('[data-tab]');
       if (!button) return;
       switchTab(button.dataset.tab);
     });
-    document.querySelector('[data-jump="diagnostics"]').addEventListener('click', () => switchTab('diagnostics'));
     document.querySelector('#saveSettings').addEventListener('click', saveSettings);
     document.querySelector('[data-o6-logout]').addEventListener('click', logout);
     renderGuildWorkspace(activeTab);
@@ -381,8 +339,18 @@
     const descriptionNode = document.querySelector('#o6PageDescription');
     if (titleNode) titleNode.textContent = title;
     if (descriptionNode) descriptionNode.textContent = description;
-    document.querySelectorAll('.o6-command-rail [data-tab]').forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
+    document.querySelectorAll('.o6-command-rail [data-tab]').forEach(item => { item.classList.toggle('active', item.dataset.tab === tab); if (item.dataset.tab === tab) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current'); });
+    document.body.classList.remove('orbit-nav-open');
+    document.querySelector('.orbit-menu-button')?.setAttribute('aria-expanded', 'false');
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
+
+  document.addEventListener('keydown', event => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      const button = document.querySelector('[data-orbit-search]');
+      if (button) { event.preventDefault(); if (!document.querySelector('.orbit-command-dialog')?.open) button.click(); }
+    }
+  });
 
   if (typeof activeGuildData !== 'undefined' && activeGuildData && !document.querySelector('#guildDashboard')?.classList.contains('hidden')) {
     renderGuildShell();

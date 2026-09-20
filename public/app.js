@@ -119,45 +119,21 @@ function updateServerStats(guilds) {
   $('#serverStats').innerHTML = `
     <div><b>${guilds.length}</b><span>Server</span></div>
     <div><b>${connected}</b><span>verbunden</span></div>
-    <div><b>${owned}</b><span>Owner</span></div>`;
+    <div><b>${owned}</b><span>Eigene Server</span></div>`;
 }
 
 function serverCard(guild) {
   const connected = guild.botInstalled;
-  const access = guild.owner ? 'OWNER' : 'MANAGER';
-  const openDiscord = `https://discord.com/channels/${guild.id}`;
-
-  return `
-    <article class="server-card ${connected ? 'connected' : 'disconnected'}" data-name="${escapeHtml(guild.name.toLowerCase())}" data-installed="${connected}">
-      <div class="server-card-topline"><span>${access}</span><b>${connected ? 'CONNECTED' : 'NOT CONNECTED'}</b></div>
-      <div class="server-card-main">
-        <div class="server-icon-wrap">
-          ${guildIcon(guild)}
-          <span class="server-live-dot"></span>
-        </div>
-        <div class="server-card-copy">
-          <h3>${escapeHtml(guild.name)}</h3>
-          <p>${connected ? 'Bot verbunden · Module bereit' : 'Bot noch nicht installiert'}</p>
-        </div>
-      </div>
-
-      <div class="server-card-meter">
-        <span>CONTROL LINK</span>
-        <div><i style="width:${connected ? '100' : '14'}%"></i></div>
-        <b>${connected ? '100%' : 'OFFLINE'}</b>
-      </div>
-
-      <div class="server-card-actions">
-        ${connected ? `
-          <a class="card-action primary" href="${guild.manageUrl}">${icon('grid')}<span>Dashboard</span></a>
-          <a class="card-action" href="${guild.manageUrl}?tab=welcome">${icon('message')}<span>Module</span></a>
-          <a class="card-action" href="${guild.manageUrl}?tab=diagnostics">${icon('pulse')}<span>Test</span></a>
-        ` : `
-          <a class="card-action primary wide" href="${escapeHtml(guild.inviteUrl)}">${icon('userPlus')}<span>Bot hinzufügen</span></a>
-        `}
-        <a class="card-action icon-only" href="${openDiscord}" target="_blank" rel="noopener" title="Discord öffnen">${icon('external')}</a>
-      </div>
-    </article>`;
+  const manageUrl = escapeHtml(guild.manageUrl || `/guild/${guild.id}`);
+  return `<article class="server-card ${connected ? 'connected' : 'disconnected'}" data-name="${escapeHtml(guild.name.toLowerCase())}" data-installed="${connected}">
+    <div class="server-card-topline"><span>${guild.owner ? 'DEIN SERVER' : 'SERVERVERWALTUNG'}</span><b><i></i>${connected ? 'Verbunden' : 'Nicht verbunden'}</b></div>
+    <div class="server-card-main"><div class="server-icon-wrap">${guildIcon(guild)}</div><div class="server-card-copy"><h3>${escapeHtml(guild.name)}</h3><p>${guild.owner ? 'Inhaber' : 'Manager'} <span>·</span> ${connected ? 'Bereit für deine Ideen' : 'Bereit für ORBIT'}</p></div></div>
+    <div class="orbit-server-capabilities"><span>Community</span><span>Automation</span><span>Insights</span></div>
+    <div class="server-card-actions">
+      ${connected ? `<a class="card-action primary" href="${manageUrl}"><span>Workspace öffnen</span>${icon('arrow')}</a>` : `<a class="card-action primary" href="${escapeHtml(guild.inviteUrl)}"><span>ORBIT hinzufügen</span>${icon('userPlus')}</a>`}
+      <a class="card-action icon-only" href="https://discord.com/channels/${guild.id}" target="_blank" rel="noopener" aria-label="${escapeHtml(guild.name)} in Discord öffnen" title="Discord öffnen">${icon('external')}</a>
+    </div>
+  </article>`;
 }
 
 function applyGuildFilter() {
@@ -182,12 +158,13 @@ async function renderServerList() {
   currentGuilds = [...guilds].sort((a, b) => Number(b.botInstalled) - Number(a.botInstalled) || a.name.localeCompare(b.name, 'de'));
   updateServerStats(currentGuilds);
   $('#guildGrid').innerHTML = currentGuilds.map(serverCard).join('');
+  applyGuildFilter();
   $('#guildSearch').addEventListener('input', applyGuildFilter);
   $('#guildFilters').addEventListener('click', event => {
     const button = event.target.closest('[data-filter]');
     if (!button) return;
     currentFilter = button.dataset.filter;
-    $('#guildFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+    $('#guildFilters').querySelectorAll('button').forEach(item => { item.classList.toggle('active', item === button); item.setAttribute('aria-pressed', String(item === button)); });
     applyGuildFilter();
   });
 }
@@ -373,7 +350,7 @@ function welcomeWorkspace() {
       </div>
       <div class="preview-console">
         <div class="preview-console-top"><span>Live-Vorschau</span><b>#${escapeHtml(activeGuildData.channels.find(c => c.id === s.channelId)?.name || 'willkommen')}</b></div>
-        <div class="discord-message"><div class="bot-avatar">R</div><div><div class="message-author"><b>RAKU Bot</b><span>APP</span><small>Heute um 08:12</small></div><p id="welcomePreview">${welcomePreview(s.message)}</p></div></div>
+        <div class="discord-message"><div class="bot-avatar">O</div><div><div class="message-author"><b>ORBIT</b><span>APP</span><small>Heute um 08:12</small></div><p id="welcomePreview">${welcomePreview(s.message)}</p></div></div>
         <div class="preview-console-foot">Nur Vorschau · wird nicht gesendet</div>
       </div>
     </div>`;

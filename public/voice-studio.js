@@ -113,7 +113,7 @@
 
       <section class="voice-flow">
         <article><i>01</i><div><b>JOIN</b><small>User betritt den Creator-Kanal.</small></div></article>
-        <article><i>02</i><div><b>CREATE</b><small>RAKU erzeugt den persönlichen Raum.</small></div></article>
+        <article><i>02</i><div><b>CREATE</b><small>ORBIT erzeugt den persönlichen Raum.</small></div></article>
         <article><i>03</i><div><b>MOVE</b><small>User wird automatisch verschoben.</small></div></article>
         <article><i>04</i><div><b>CLEANUP</b><small>Leerer Raum verschwindet automatisch.</small></div></article>
       </section>

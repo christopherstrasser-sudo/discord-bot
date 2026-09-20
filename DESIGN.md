@@ -1,90 +1,60 @@
 # ORBIT — Product & UI Design Contract
 
-## Brand
+## Current direction: ORBIT Control
 
-The product name is **ORBIT**.
+The September 2026 redesign keeps the existing server picker, labeled sidebar,
+module routes and editor workflows. The user requested a complete new visual
+identity around that structure, without generated images.
 
-Concept: the Discord server is the central core; management and automation modules form the orbit around it. This concept is structural, not decorative: the overview's Module Constellation visualizes the same idea.
+- Deep graphite surfaces, sage / mint accents and warm off-white typography.
+- Locally hosted Inter for working text and Manrope for display typography.
+- Approved `public/orbit-wordmark.svg` in the header and login.
+- The server remains the center of the product; an interactive CSS orbit on the
+  overview opens the corresponding operational modules.
+- Colored module icons support recognition; status is always stated in text too.
+- Login, server picker, overview and every editor share the same design system.
+- Real server icons come from Discord. Rings and interface icons use CSS / SVG.
+  Do not add generated decorative imagery.
 
-Approved brand asset:
+## Canonical ownership
 
-- `public/orbit-wordmark.svg` — canonical ORBIT wordmark used in the header and login
+`public/raku-orbit-v610.css` owns product appearance: tokens, typography, the
+application frame, entry screens, editor surfaces, previews and breakpoints.
+`public/raku-module-shell.css` contains only shared hero structure and the native
+module-toolbar contract. Feature stylesheets continue to provide their editor
+mechanics. Retired global override files must not be reintroduced.
 
-Do not reintroduce RAKU as visible product branding. Legacy internal identifiers may remain temporarily where renaming them would risk runtime compatibility, but they are implementation details only.
+Historical `raku` filenames and globals remain internal compatibility details.
+Visible product branding must always be ORBIT.
 
-## Current architecture
+## Application structure
 
-The product-wide interface uses the Orbit spatial architecture:
+- Desktop: a labeled left navigation, workspace context and actions in the header.
+- Mobile: an explicit menu button opens the same labeled navigation.
+- One shrinkable content canvas; the same outer width for every module.
+- Shared module hero: purpose, three setup steps and a relevant hint.
+- Ctrl+K / Cmd+K opens a searchable module switcher with keyboard navigation.
+- Search, filtering, saving, test and publish actions keep their existing handlers.
+- Login, server picker and guild dashboard remain mutually exclusive. Never
+  override `.hidden` to reveal an inactive application screen.
 
-- no fixed application sidebar
-- floating server capsule top-left
-- floating current-page capsule top-center
-- floating action capsule top-right
-- one free workspace canvas
-- floating labeled top command rail below the capsules
-- every navigation item exposes icon + text on desktop
-- overview centers on a Module Constellation rather than a KPI/card wall
+## Responsive and accessible behavior
 
-The current runtime files still include historical filenames `public/raku-orbit-v610.css`, `public/raku-orbit-v600.js`, `public/raku-module-shell.css` and `public/raku-module-shell.js`. These names are compatibility-only and are not part of the public brand.
+Forms, side lists and previews collapse before their inputs become unusably
+narrow. Dynamic names must wrap or truncate. Fixed navigation becomes a mobile
+menu at 760px. Editor columns stop sticking on small screens. Every action must
+retain a visible keyboard focus indicator and an accessible name. Honor reduced
+motion. Do not hide any module's actual functionality to solve an overflow.
 
-## Orbit Navigator
+## Data and product contracts
 
-The overview places the real Discord server in the illuminated center core with operational modules around it. Inner/outer orbital geometry, connector paths and restrained signal motion reinforce the product model without turning the interface into decorative sci-fi.
+Never invent server telemetry. The overview reads the real settings for Ticket,
+Creator and Voice modules before reporting their status; unavailable status is
+explicitly left open. Server counts represent members, writable channels and
+manageable roles. Preview data belongs in Discord previews or isolated UI tests.
 
-On narrow screens the constellation becomes a normal module grid so the visual metaphor never damages usability.
-
-## Typography and glass
-
-- Manrope for display/headline/navigation typography
-- Inter for working UI text
-- deep dark spatial background
-- translucent glass with restrained edge highlights and controlled shadow
-- violet primary accent and cyan secondary signal accent
-- strong readable contrast
-- ordinary working text normally 10–14px
-- dynamic names/messages must truncate or wrap safely
-- dynamic flex/grid children remain shrinkable with `min-width:0`
-
-## Module layout contract
-
-All feature pages use the same outer width, hero language and vertical rhythm. Feature internals may use editors, side lists and previews when useful, but they must not introduce their own outer page widths.
-
-Specific rules:
-
-- module toolbars wrap rather than overflow
-- Role/Ticket/Creator side lists become non-sticky on narrower layouts
-- desktop sticky editor/preview elements sit below the top command rail
-- Commands progressively collapses from three columns to two to one
-- form grids collapse to one column on narrow screens
-
-## Login
-
-Login is a centered glass portal with the approved ORBIT wordmark and subtle ambient feature chips. Do not restore a conventional split-screen login or fake system console.
-
-## Server picker
-
-The server picker is an asymmetric gallery with real Discord server icons. Desktop uses the established dense 12-column rhythm rather than equal generic cards.
-
-## Screen contract
-
-Login, server picker and guild dashboard are mutually exclusive application states. Visual CSS must never override `.hidden`.
-
-## Bot Profile
-
-The Bot Profile module supports server-specific bot nickname, avatar and bio. It intentionally does not expose activity/presence controls because Discord presence is global to the shared bot connection.
-
-## Retired architecture
-
-Do not restore:
-
-- conventional fixed app sidebar + context bar dashboard
-- bottom primary navigation dock
-- Prism / Glass / Studio v5 generations
-- duplicate global polish/fix/readability stylesheets
-- Bot Profile Activity / `GLOBAL · GESPERRT` block
-- per-guild `setPresence()` / `setActivity()` on the shared bot
-- local-browser Instagram/X social fallback
-
-## Rule
-
-Polish ORBIT in place. If a change hides navigation behind ambiguous icons, rebuilds a generic admin dashboard, moves primary navigation back to the bottom, or requires another global appearance layer, the approach is wrong.
+Keep all provider APIs, OAuth flows, tenant isolation and save / publish semantics
+intact during visual work. Shared Bot Profile supports per-guild nickname, avatar
+and bio; Discord activity/presence remains global to a shared bot. The separate
+Custom Bot module may control its own bot's presence. Never recreate the retired
+local-browser Instagram/X provider fallback.

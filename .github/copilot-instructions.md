@@ -2,12 +2,12 @@
 
 ## Current release
 
-- Version: **0.29.0**
+- Version: **0.31.0**
 - Branch: `main`
 - Product brand: **ORBIT**
 - Brand concept: the Discord server is the center; bot capabilities/modules form the orbit around it
 - Approved wordmark: `public/orbit-wordmark.svg`
-- UI generation: Orbit UI v6.2 + Module Shell
+- UI generation: ORBIT Control + Module Shell
 - Bot Profile module: `public/bot-profile.js` + `public/bot-profile.css`
 
 ## Branding contract
@@ -20,18 +20,15 @@ Some existing runtime filenames and JavaScript globals still contain historical 
 
 ## Critical UI decision
 
-The authenticated application uses the Orbit spatial layout:
+The current design is **ORBIT Control** (September 2026). The user requested a
+complete visual redesign while retaining the existing layout structure. It uses
+labeled desktop navigation on the left, a workspace header, a mobile navigation
+menu, and one consistent content canvas. The overview's interactive CSS orbit
+keeps the Discord server at the center. A module switcher is available with
+Ctrl+K / Cmd+K. Login and server selection use the same visual identity.
 
-- floating server capsule top-left
-- floating page capsule top-center
-- floating action capsule top-right
-- large free content canvas
-- floating labeled top command rail below the capsules
-- unique icon + visible text label for every module
-- Module Constellation overview with the current Discord server in the center
-- Activity, Health and Quick Actions as asymmetric glass islands
-
-Do not restore a conventional fixed application sidebar + context bar + rectangular KPI dashboard. The old bottom dock is retired.
+`public/raku-orbit-v610.css` is the canonical product stylesheet. Do not restore
+retired global polish layers or layer new override files over it. See DESIGN.md.
 
 ## Module shell
 
@@ -86,51 +83,29 @@ For manual `Quelle prüfen`:
 - Manual source-check publishing never role-pings.
 - Provider success stays provider success even if Discord delivery fails; delivery errors are separate.
 
-## Visual direction
+## Visual direction and layout
 
-ORBIT should feel premium, modern and deliberately different from generic admin dashboards:
+- Graphite surfaces, sage / mint accents, strong readable contrast.
+- Locally hosted Inter / Manrope; fonts and OFL licenses live in public/fonts.
+- Approved ORBIT wordmark and real Discord server icons; CSS / SVG orbit geometry.
+- Shared heroes and one outer width for all modules.
+- Labeled navigation on desktop and in the mobile menu.
+- Shrinkable flex/grid children; editors collapse before controls become cramped.
+- Real module state and clear empty / loading / unavailable states.
+- Visible keyboard focus and reduced-motion support.
+- Login, server picker and dashboard remain mutually exclusive; honor `.hidden`.
 
-- deep dark spatial background
-- real translucent glass with restrained edge highlights
-- violet primary accent and cyan secondary signal accent
-- strong readable contrast
-- Manrope/Inter typography hierarchy
-- subtle purposeful motion
-- real Discord server icons
-- no generic AI-admin-template structure
-
-## Known layout rules
-
-- top command rail remains beneath the three floating capsules
-- command rail items keep visible labels on desktop
-- module icons stay visually distinct
-- Bot Profile stays clearly labeled in the command rail
-- desktop sticky Role/Ticket/Creator/Voice/Profile columns sit below the top rail
-- dynamic flex/grid children remain shrinkable with `min-width:0`
-- Orbit Navigator collapses to a normal module grid on narrow screens
-- login, server picker and guild dashboard remain mutually exclusive; never override `.hidden`
-
-## Retired concepts
-
-Do not recreate:
-
-- visible RAKU branding
-- Bot Profile Activity / `GLOBAL · GESPERRT` section
-- per-guild shared-bot presence/activity controls
-- local-browser Instagram/X fallback
-- Orbit bottom navigation dock
-- Studio v5 fixed sidebar/context-bar layout
-- Prism/Glass/old RAKU visual generations
-- duplicate global fix/polish/readability layers
+Do not recreate visible RAKU branding, per-guild shared-bot presence controls,
+local-browser Instagram/X fallbacks or duplicate global design layers.
 
 ## Priorities
 
-1. Preserve ORBIT's distinct spatial architecture.
+1. Keep the current ORBIT Control architecture consistent.
 2. Keep navigation obvious through label + icon.
 3. Keep every feature functional.
 4. Fix bugs at the canonical source, not with stacked override files.
 5. Readability before effects.
-6. Glass adds depth without washing out text.
+6. Use clear surface contrast without washing out text.
 7. Shared-bot tenant isolation is mandatory.
 8. Keep public branding consistently ORBIT.
 
