@@ -7,5 +7,5 @@
 .creator-provider.creator-platform-instagram .creator-platform-mark{color:#ff8fbd;border-color:rgba(225,48,108,.32);background:rgba(225,48,108,.08)}
 .creator-provider.creator-platform-bluesky .creator-platform-mark{color:#70bdff;border-color:rgba(17,133,254,.32);background:rgba(17,133,254,.08)}
 .creator-provider.creator-platform-x .creator-platform-mark{color:#f1f3f5;border-color:rgba(231,233,234,.24);background:rgba(231,233,234,.05)}
-.creator-rules>footer button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.creator-rules>footer button{min-width:0;white-space:normal;overflow-wrap:anywhere}
 .creator-onboard>div{flex-wrap:wrap}

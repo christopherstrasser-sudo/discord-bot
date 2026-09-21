@@ -1,10 +1,10 @@
 /* ORBIT shared module structure. Product appearance lives in raku-orbit-v610.css. */
-.o7-module-guide { display:grid; grid-template-columns:minmax(0,1fr) minmax(260px,.48fr); overflow:hidden; }
-.o7-guide-main { display:grid; grid-template-columns:52px minmax(0,1fr); align-items:start; gap:20px; }
+.o7-module-guide { display:grid; grid-template-columns:minmax(0,1fr); overflow:hidden; }
+.o7-guide-main { display:grid; grid-template-columns:66px minmax(0,1fr); align-items:start; gap:20px; }
 .o7-guide-main > div { min-width:0; }
 .o7-guide-icon { display:grid; place-items:center; }
-.o7-guide-icon svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; }
-.o7-guide-steps { display:grid; align-content:center; gap:14px; }
+.o7-guide-icon svg { width:32px; height:32px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; }
+.o7-guide-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-content:center; gap:24px; }
 .o7-guide-step { display:flex; align-items:center; gap:12px; }
 .o7-guide-step i { display:grid; place-items:center; flex:none; font-style:normal; }
 .o7-guide-hint { grid-column:1/-1; display:flex; align-items:center; gap:10px; }
@@ -13,5 +13,3 @@
 .o7-native-toolbar.o6-native-toolbar-empty { display:none !important; }
 .o7-native-toolbar > :is(.role-studio-title,.flow-studio-title,.voice-head-copy),
 .o7-native-toolbar:is(.workspace-head,.creator-head,.analytics-head) > div:first-child { display:none !important; }
-@media(max-width:1000px) { .o7-module-guide { grid-template-columns:1fr; } .o7-guide-steps { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-@media(max-width:600px) { .o7-guide-steps { grid-template-columns:1fr; } }

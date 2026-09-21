@@ -7,7 +7,7 @@
 - Product brand: **ORBIT**
 - Brand concept: the Discord server is the center; bot capabilities/modules form the orbit around it
 - Approved wordmark: `public/orbit-wordmark.svg`
-- UI generation: ORBIT Control + Module Shell
+- UI generation: ORBIT Spectrum + Module Shell
 - Bot Profile module: `public/bot-profile.js` + `public/bot-profile.css`
 
 ## Branding contract
@@ -20,7 +20,7 @@ Some existing runtime filenames and JavaScript globals still contain historical 
 
 ## Critical UI decision
 
-The current design is **ORBIT Control** (September 2026). The user requested a
+The current design is **ORBIT Spectrum** (September 2026). The user requested a
 complete visual redesign while retaining the existing layout structure. It uses
 labeled desktop navigation on the left, a workspace header, a mobile navigation
 menu, and one consistent content canvas. The overview's interactive CSS orbit
@@ -85,12 +85,15 @@ For manual `Quelle prüfen`:
 
 ## Visual direction and layout
 
-- Graphite surfaces, sage / mint accents, strong readable contrast.
+- Navy surfaces, violet / cyan highlights, strong readable contrast.
 - Locally hosted Inter / Manrope; fonts and OFL licenses live in public/fonts.
 - Approved ORBIT wordmark and real Discord server icons; CSS / SVG orbit geometry.
 - Shared heroes and one outer width for all modules.
 - Labeled navigation on desktop and in the mobile menu.
-- Shrinkable flex/grid children; editors collapse before controls become cramped.
+- Full-width panel / rule selectors with wrapping names.
+- Container queries preserve a 620px working column and 380px preview or stack them.
+- Ticket workflows must stay in the working column, never the narrow preview column.
+- Inputs 16px, form labels 14px, navigation 15px; never shrink type to fit columns.
 - Real module state and clear empty / loading / unavailable states.
 - Visible keyboard focus and reduced-motion support.
 - Login, server picker and dashboard remain mutually exclusive; honor `.hidden`.
@@ -100,7 +103,7 @@ local-browser Instagram/X fallbacks or duplicate global design layers.
 
 ## Priorities
 
-1. Keep the current ORBIT Control architecture consistent.
+1. Keep the current ORBIT Spectrum architecture consistent.
 2. Keep navigation obvious through label + icon.
 3. Keep every feature functional.
 4. Fix bugs at the canonical source, not with stacked override files.
