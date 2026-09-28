@@ -91,13 +91,21 @@ function observation(rule, snapshot, eventKey = '') {
   };
 }
 
+function eventKind(rule) {
+  return rule?.event === 'upload' ? 'upload' : 'post';
+}
+
+function contentLabel(rule) {
+  return eventKind(rule) === 'upload' ? 'Upload' : 'Post';
+}
+
 function logHistory(guildId, rule, status, message, snapshot = null) {
   appendCreatorHistory(guildId, {
     ruleId: rule.id,
     ruleName: rule.name,
     platform: rule.platform,
     source: sourceOf(rule),
-    event: 'post',
+    event: eventKind(rule),
     status,
     message: String(message || '').slice(0, 500),
     title: String(snapshot?.title || '').slice(0, 200),
@@ -145,7 +153,9 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
   }
 
   if (!snapshot?.id) return;
-  const key = `${rule.platform}:${sourceOf(rule)}:post:${snapshot.id}`;
+  const kind = eventKind(rule);
+  const noun = contentLabel(rule);
+  const key = `${rule.platform}:${sourceOf(rule)}:${kind}:${snapshot.id}`;
   const firstObservation = !state.initialized;
   const isNew = key !== state.lastEventKey;
   const next = observation(rule, snapshot, key);
@@ -157,13 +167,13 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
 
   if (firstObservation && !rule.announceFirstMatch) {
     setCreatorRuleState(guildId, rule.id, next);
-    logHistory(guildId, rule, 'baseline', 'Aktueller Post als Baseline übernommen – keine rückwirkende Benachrichtigung.', snapshot);
+    logHistory(guildId, rule, 'baseline', `Aktueller ${noun} als Baseline übernommen – keine rückwirkende Benachrichtigung.`, snapshot);
     return;
   }
 
   if (!matchesFilters(rule, snapshot)) {
     setCreatorRuleState(guildId, rule.id, next);
-    logHistory(guildId, rule, 'filtered', 'Neuer Post erkannt, aber durch den Textfilter verworfen.', snapshot);
+    logHistory(guildId, rule, 'filtered', `Neuer ${noun} erkannt, aber durch den Textfilter verworfen.`, snapshot);
     return;
   }
 
@@ -171,14 +181,14 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
   const lastSent = state.lastSentAt ? Date.parse(state.lastSentAt) : 0;
   if (cooldownMs && lastSent && Date.now() - lastSent < cooldownMs) {
     setCreatorRuleState(guildId, rule.id, next);
-    logHistory(guildId, rule, 'suppressed', 'Post wegen Cooldown unterdrückt.', snapshot);
+    logHistory(guildId, rule, 'suppressed', `${noun} wegen Cooldown unterdrückt.`, snapshot);
     return;
   }
 
   const quiet = inQuietHours(rule, config.timezone);
   if (quiet && rule.quietHours?.mode === 'suppress') {
     setCreatorRuleState(guildId, rule.id, next);
-    logHistory(guildId, rule, 'suppressed', 'Post innerhalb der Quiet Hours unterdrückt.', snapshot);
+    logHistory(guildId, rule, 'suppressed', `${noun} innerhalb der Quiet Hours unterdrückt.`, snapshot);
     return;
   }
 
@@ -192,7 +202,7 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
       lastSentMessageId: result.message.id,
       lastSentChannelId: result.message.channelId
     });
-    logHistory(guildId, rule, 'sent', quiet && !result.pinged ? 'Post-Benachrichtigung ohne Ping gesendet.' : 'Post-Benachrichtigung gesendet.', snapshot);
+    logHistory(guildId, rule, 'sent', quiet && !result.pinged ? `${noun}-Benachrichtigung ohne Ping gesendet.` : `${noun}-Benachrichtigung gesendet.`, snapshot);
   } catch (error) {
     setCreatorRuleState(guildId, rule.id, next);
     logHistory(guildId, rule, 'error', `Discord-Ausgabe fehlgeschlagen: ${error.message}`, snapshot);
@@ -254,7 +264,8 @@ function sampleSocialSnapshot(rule) {
   const defaults = {
     instagram: ['Instagram', 'https://www.instagram.com/', 'Neuer Post: Heute gibt es etwas Neues aus der Community ✨'],
     bluesky: ['Bluesky', 'https://bsky.app/', 'Neuer Post: Kleines Update direkt aus Bluesky.'],
-    x: ['X', 'https://x.com/', 'Neuer Post: Das ist ein Beispiel für einen neuen Beitrag auf X.']
+    x: ['X', 'https://x.com/', 'Neuer Post: Das ist ein Beispiel für einen neuen Beitrag auf X.'],
+    soundcloud: ['SoundCloud', 'https://soundcloud.com/', 'Neuer Track ist auf SoundCloud online.']
   };
   const [platformName, url, title] = defaults[rule.platform] || ['Social', 'https://example.com/', 'Neuer Social Post'];
   return {
@@ -264,7 +275,7 @@ function sampleSocialSnapshot(rule) {
     exists: true,
     live: false,
     id: 'demo-post',
-    eventKey: `demo:${rule.platform}:post`,
+    eventKey: `demo:${rule.platform}:${eventKind(rule)}`,
     title,
     game: '',
     url,
