@@ -9,7 +9,7 @@
   const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X', soundcloud: 'SC' };
   const SUBTITLES = {
     twitch: 'HELIX LIVE + CLIPS', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
-    instagram: 'SESSION FEED', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY', soundcloud: 'TRACK UPLOADS'
+    instagram: 'ANONYMOUS WEB', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY', soundcloud: 'TRACK UPLOADS'
   };
 
   const originalPlatform = C.platform;
@@ -82,13 +82,12 @@
     if (!health.configured) {
       if (platform === 'twitch') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'Twitch App-Zugangsdaten hinterlegen.' };
       if (platform === 'tiktok') return { cls: 'missing', label: 'ADAPTER FEHLT', copy: 'Kein zuverlässiger TikTok-Provider verbunden.' };
-      if (platform === 'instagram') return { cls: 'missing', label: 'SESSION FEHLT', copy: 'Einmalig die Session eines kostenlosen Instagram-Leseaccounts serverseitig hinterlegen.' };
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
     }
 
     if (health.lastError && !health.ok) return { cls: 'bad', label: 'DEGRADED', copy: health.lastError };
     if (!health.lastCheckedAt) {
-      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Persistente Instagram-Lesesession · kein externer Dienst und kein kostenpflichtiges Abo nötig.' };
+      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Anonymer Public-Web-Abruf · kein Login, keine Session, kein API-Key und kein externer Dienst nötig.' };
       if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
       if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Serverseitiger X-Read-Relay · kein X-Login oder API-Key nötig.' };
       if (platform === 'soundcloud') return { cls: 'ready', label: 'READY', copy: 'Keyless Public Web + RSS-Fallback · kein Pro-Account, Login oder eigener API-Key nötig.' };
@@ -142,7 +141,7 @@
     const data = {
       instagram: {
         title: 'Instagram Handle', placeholder: 'rakulein',
-        help: 'Öffentliches Profil. ORBIT nutzt eine zentrale kostenlose Lesesession; Server-Nutzer müssen weder Instagram verbinden noch einen API-Key hinterlegen.'
+        help: 'Öffentliches Profil. ORBIT ruft den neuesten öffentlichen Post anonym ab; kein Instagram-Login, keine Session und kein API-Key nötig.'
       },
       bluesky: {
         title: 'Bluesky Handle', placeholder: 'rakulein.bsky.social',
