@@ -82,7 +82,6 @@
     if (!health.configured) {
       if (platform === 'twitch') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'Twitch App-Zugangsdaten hinterlegen.' };
       if (platform === 'tiktok') return { cls: 'missing', label: 'ADAPTER FEHLT', copy: 'Kein zuverlässiger TikTok-Provider verbunden.' };
-      if (platform === 'soundcloud') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'SoundCloud App-Credentials einmal serverseitig für ORBIT hinterlegen.' };
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
     }
 
@@ -99,7 +98,7 @@
       if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher Server-Relay mit direkten Fallbacks · kein lokaler Browser, Instagram-Login oder eigener API-Key nötig.' };
       if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
       if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Serverseitiger X-Read-Relay · kein X-Login oder API-Key nötig.' };
-      if (platform === 'soundcloud') return { cls: 'ready', label: 'READY', copy: 'Offizielle SoundCloud API · Künstler brauchen keinen Login und keine eigenen Zugangsdaten.' };
+      if (platform === 'soundcloud') return { cls: 'ready', label: 'READY', copy: 'Keyless Public Web + RSS-Fallback · kein Pro-Account, Login oder eigener API-Key nötig.' };
     }
     if (health.ok) return {
       cls: 'ok', label: 'HEALTHY',
@@ -162,7 +161,7 @@
       },
       soundcloud: {
         title: 'SoundCloud Künstlerprofil', placeholder: 'soundcloud.com/artist oder artist',
-        help: 'SoundCloud-Profilname oder Profil-URL. ORBIT überwacht nur echte Uploads des Profils, keine Likes oder Reposts.'
+        help: 'SoundCloud-Profilname oder Profil-URL. Kein Pro-Account oder API-Key nötig; ORBIT überwacht nur eigene Uploads des Profils, keine Likes oder Reposts.'
       }
     }[rule.platform];
     if (title) title.textContent = data.title;
