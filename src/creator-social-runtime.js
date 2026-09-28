@@ -378,5 +378,11 @@ module.exports = {
   checkSocialRule,
   sendSocialTest,
   getSocialRuntimeStatus,
-  sampleSocialSnapshot
+  sampleSocialSnapshot,
+  __dedupe: {
+    snapshotPublishedMs,
+    eventMemory,
+    eventAlreadyHandled,
+    activePending
+  }
 };
