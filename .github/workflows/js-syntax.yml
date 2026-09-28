@@ -102,14 +102,13 @@ jobs:
           if (!launcher.includes('ORBIT DISCORD CONTROL')) throw new Error('Launcher is not branded ORBIT');
 
           const env = fs.readFileSync('.env.example', 'utf8');
-          for (const token of ['ORBIT_SOCIAL_RELAY_URL=', 'ORBIT_SOCIAL_RELAY_TOKEN=']) {
-            if (!env.includes(token)) throw new Error(`Orbit relay config missing: ${token}`);
+          for (const token of ['ORBIT_SOCIAL_RELAY_URL=', 'ORBIT_SOCIAL_RELAY_TOKEN=', 'HIKERAPI_KEY=', 'SCRAPECREATORS_API_KEY=', 'CREATOR_INSTAGRAM_MIN_FETCH_SECONDS=']) {
+            if (!env.includes(token)) throw new Error(`Orbit creator provider config missing: ${token}`);
           }
 
           for (const file of [
             'src/creator-social-providers.js',
-            'src/creator-instagram-keyless.js',
-            'src/creator-instagram-imginn.js',
+            'src/creator-instagram-provider.js',
             'src/creator-social-provider-router.js',
             'src/creator-social-runtime.js',
             'src/creator-twitch-clips.js',
@@ -128,10 +127,18 @@ jobs:
           if (fs.existsSync('src/creator-social-browser.js')) throw new Error('Local browser social fallback must stay retired');
 
           const router = fs.readFileSync('src/creator-social-provider-router.js', 'utf8');
-          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-imginn')", "require('./creator-instagram-keyless')", 'imginn-relay', 'SCRAPECREATORS_API_KEY', 'ORBIT_SOCIAL_RELAY_URL', 'Orbit-Discord-Control/0.29', 'orbit-relay']) {
+          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-provider')", 'fetchInstagramManaged', 'Orbit-Discord-Control/0.31']) {
             if (!router.includes(token)) throw new Error(`Provider router token missing: ${token}`);
           }
-          if (/puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use a local browser');
+          if (/creator-instagram-(?:keyless|imginn)|puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use retired Instagram scraping or a local browser');
+
+          const instagramProvider = fs.readFileSync('src/creator-instagram-provider.js', 'utf8');
+          for (const token of ['HIKERAPI_KEY', 'SCRAPECREATORS_API_KEY', '/v1/user/medias/chunk', '/v2/instagram/user/posts', 'providerMediaId', 'eventKey: `instagram:${source}:post:${shortcode}`', 'directInstagramRequests: false']) {
+            if (!instagramProvider.includes(token)) throw new Error(`Instagram provider token missing: ${token}`);
+          }
+          if (/www\.instagram\.com\/api\/|web_profile_info|feed\/user\/.*username|imginn\.com|picnob\.com/i.test(instagramProvider)) {
+            throw new Error('Managed Instagram provider must never scrape Instagram or viewer sites directly');
+          }
 
           const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
           for (const token of ["'instagram'", "'bluesky'", "'x'", "'clip'", 'shouldPublishCheckedRule', 'publishCheckedSnapshot', 'publishError', 'allowPing: false', 'seenClipIds']) {
@@ -220,7 +227,6 @@ jobs:
             if (!profileOrbit.includes(token)) throw new Error(`Custom Bot asset loader missing: ${token}`);
           }
 
-          if (!pkg.dependencies?.impit) throw new Error('impit dependency missing');
           console.log('ORBIT v0.31.0 replacement bot contract verified');
           NODE
 
@@ -234,8 +240,7 @@ jobs:
           DISCORD_BOT_TOKEN: 'ci-bot-token'
           SESSION_SECRET: 'ci-session-secret-for-module-load'
         run: |
-          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-keyless'); require('./src/creator-instagram-imginn'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); require('./src/custom-bot-store'); require('./src/custom-bot-manager'); require('./src/custom-bot-api'); require('./src/guild-client-router'); console.log('Core modules loaded')"
-          node -e "import('impit').then(m => { if (!m.Impit) process.exit(1); console.log('impit transport loaded') })"
+          node -e "require('./src/creator-social-providers'); require('./src/creator-instagram-provider'); require('./src/creator-social-provider-router'); require('./src/creator-social-runtime'); require('./src/creator-twitch-clips'); require('./src/bot-profile-utils'); require('./src/custom-bot-store'); require('./src/custom-bot-manager'); require('./src/custom-bot-api'); require('./src/guild-client-router'); console.log('Core modules loaded')"
 
       - name: Run automated tests
         run: node --test tests/*.test.js
