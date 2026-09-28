@@ -4,12 +4,12 @@
   const S = C.s;
   const E = C.esc;
 
-  const SOCIAL = ['instagram', 'bluesky', 'x'];
-  const PLATFORM_NAMES = { instagram: 'Instagram', bluesky: 'Bluesky', x: 'X' };
-  const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X' };
+  const SOCIAL = ['instagram', 'bluesky', 'x', 'soundcloud'];
+  const PLATFORM_NAMES = { instagram: 'Instagram', bluesky: 'Bluesky', x: 'X', soundcloud: 'SoundCloud' };
+  const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X', soundcloud: 'SC' };
   const SUBTITLES = {
     twitch: 'HELIX LIVE + CLIPS', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
-    instagram: 'PUBLIC RELAY', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY'
+    instagram: 'PUBLIC RELAY', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY', soundcloud: 'TRACK UPLOADS'
   };
 
   const originalPlatform = C.platform;
@@ -35,6 +35,7 @@
         ['category_change', 'Kategorie / Spiel geändert']
       ];
     }
+    if (platform === 'soundcloud') return [['upload', 'Neuer Upload']];
     return SOCIAL.includes(platform) ? [['post', 'Neuer Post']] : originalEvents(platform);
   };
 
@@ -55,6 +56,10 @@
       event: 'post', color: '#E7E9EA', buttonLabel: 'Post ansehen', message: '{creator} hat einen neuen Post auf X veröffentlicht!',
       embedTitle: '✦ Neuer Post von {creator}', embedDescription: '**{title}**\n\nJetzt auf X ansehen.'
     };
+    if (platform === 'soundcloud') return {
+      event: 'upload', color: '#FF5500', buttonLabel: 'Auf SoundCloud anhören', message: '{creator} hat einen neuen Track auf SoundCloud veröffentlicht!',
+      embedTitle: '🎧 Neuer SoundCloud-Upload von {creator}', embedDescription: '**{title}**\n\nJetzt auf SoundCloud anhören.'
+    };
     return originalDefaults(platform, event);
   };
 
@@ -66,6 +71,7 @@
     if (rule.platform === 'instagram') Object.assign(vars, { title: 'Heute gibt es etwas Neues aus der Community ✨', game: '', viewers: '0', platform: 'Instagram' });
     if (rule.platform === 'bluesky') Object.assign(vars, { title: 'Kleines Update direkt aus Bluesky – schaut mal rein.', game: '', viewers: '0', platform: 'Bluesky' });
     if (rule.platform === 'x') Object.assign(vars, { title: 'Ein neuer Post ist gerade auf X erschienen.', game: '', viewers: '0', platform: 'X' });
+    if (rule.platform === 'soundcloud') Object.assign(vars, { title: 'Neuer Track – jetzt auf SoundCloud anhören 🎧', game: '', viewers: '0', platform: 'SoundCloud' });
     return vars;
   };
 
@@ -76,6 +82,7 @@
     if (!health.configured) {
       if (platform === 'twitch') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'Twitch App-Zugangsdaten hinterlegen.' };
       if (platform === 'tiktok') return { cls: 'missing', label: 'ADAPTER FEHLT', copy: 'Kein zuverlässiger TikTok-Provider verbunden.' };
+      if (platform === 'soundcloud') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'SoundCloud App-Credentials einmal serverseitig für ORBIT hinterlegen.' };
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
     }
 
@@ -92,6 +99,7 @@
       if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher Server-Relay mit direkten Fallbacks · kein lokaler Browser, Instagram-Login oder eigener API-Key nötig.' };
       if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
       if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Serverseitiger X-Read-Relay · kein X-Login oder API-Key nötig.' };
+      if (platform === 'soundcloud') return { cls: 'ready', label: 'READY', copy: 'Offizielle SoundCloud API · Künstler brauchen keinen Login und keine eigenen Zugangsdaten.' };
     }
     if (health.ok) return {
       cls: 'ok', label: 'HEALTHY',
@@ -151,6 +159,10 @@
       x: {
         title: 'X Handle', placeholder: 'rakulein',
         help: 'Öffentliches Profil. @Handle oder x.com/handle URL. Der Abruf läuft serverseitig; kein X-Login oder eigener API-Key nötig.'
+      },
+      soundcloud: {
+        title: 'SoundCloud Künstlerprofil', placeholder: 'soundcloud.com/artist oder artist',
+        help: 'SoundCloud-Profilname oder Profil-URL. ORBIT überwacht nur echte Uploads des Profils, keine Likes oder Reposts.'
       }
     }[rule.platform];
     if (title) title.textContent = data.title;
@@ -188,7 +200,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.crSocialAdd = platform;
-        button.textContent = `${C.platform(platform)} Post`;
+        button.textContent = platform === 'soundcloud' ? 'SoundCloud Upload' : `${C.platform(platform)} Post`;
         button.addEventListener('click', () => addRule(platform));
         onboard.appendChild(button);
       }
