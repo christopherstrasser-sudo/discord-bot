@@ -4,7 +4,10 @@ const {
   listCreatorGuildIds,
   getCreatorRuleState,
   setCreatorRuleState,
-  appendCreatorHistory
+  appendCreatorHistory,
+  claimCreatorEvent,
+  confirmCreatorEvent,
+  releaseCreatorEventClaim
 } = require('./creator-store');
 const { buildNotificationPayload } = require('./creator-runtime');
 const {
@@ -233,6 +236,13 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
     return;
   }
 
+  const claimed = claimCreatorEvent(guildId, key, rule.channelId, rule.id);
+  if (!claimed) {
+    setCreatorRuleState(guildId, rule.id, remembered);
+    logHistory(guildId, rule, 'suppressed', `${noun} wurde bereits für diesen Discord-Kanal verarbeitet.`, snapshot);
+    return;
+  }
+
   const pendingAt = new Date().toISOString();
   setCreatorRuleState(guildId, rule.id, {
     pendingEventKey: key,
@@ -244,6 +254,7 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
     const result = await sendNotification(client, guildId, rule, snapshot, {
       allowPing: !(quiet && rule.quietHours?.mode === 'no_ping')
     });
+    confirmCreatorEvent(guildId, key, result.message.channelId || rule.channelId, result.message.id, rule.id);
     const sentState = getCreatorRuleState(guildId, rule.id);
     setCreatorRuleState(guildId, rule.id, {
       ...observation(rule, snapshot, key),
@@ -256,6 +267,7 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
     });
     logHistory(guildId, rule, 'sent', quiet && !result.pinged ? `${noun}-Benachrichtigung ohne Ping gesendet.` : `${noun}-Benachrichtigung gesendet.`, snapshot);
   } catch (error) {
+    releaseCreatorEventClaim(guildId, key, rule.channelId);
     setCreatorRuleState(guildId, rule.id, {
       ...observation(rule, snapshot, ''),
       pendingEventKey: '',
