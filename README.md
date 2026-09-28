@@ -39,7 +39,7 @@ Provider strategy:
 - TikTok: built-in local provider.
 - Bluesky: public ATProto AppView.
 - X: server-side public read relay; no customer X API key required.
-- Instagram: one persistent session of a free Instagram read account; ORBIT resolves the creator once and monitors the numeric user feed with caching/backoff. No paid API or external read service is required, and dashboard users only enter the public handle.
+- Instagram: fully anonymous public web profile lookup. ORBIT uses one request per profile refresh, aggressive per-profile caching and exponential backoff; no login, session ID, API key, paid API or external read service is required.
 - SoundCloud: keyless public profile/web-client discovery with embedded-data and RSS fallbacks; no Pro account, login or API key is required, and ORBIT watches the artist's own track uploads (not likes or reposts).
 
 Manual `Quelle prüfen` publishes the latest real post/upload for supported content sources without a role ping. Twitch and TikTok Live remain validation-only because there is no static latest post to publish.
