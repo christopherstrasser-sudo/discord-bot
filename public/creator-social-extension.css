@@ -9,3 +9,7 @@
 .creator-provider.creator-platform-x .creator-platform-mark{color:#f1f3f5;border-color:rgba(231,233,234,.24);background:rgba(231,233,234,.05)}
 .creator-rules>footer button{min-width:0;white-space:normal;overflow-wrap:anywhere}
 .creator-onboard>div{flex-wrap:wrap}
+
+.creator-platform-soundcloud::before{background:#ff5500}
+.creator-source-icon.creator-platform-soundcloud{color:#ff7a33}
+.creator-provider.creator-platform-soundcloud .creator-platform-mark{color:#ff8a4c;border-color:rgba(255,85,0,.34);background:rgba(255,85,0,.08)}
