@@ -1,6 +1,6 @@
 const base = require('./creator-social-providers');
 const {
-  fetchInstagramPost,
+  fetchInstagramManaged,
   getInstagramProviderHealth
 } = require('./creator-instagram-provider');
 const {
@@ -155,7 +155,7 @@ function normalizeSocialHandle(platform, value) {
 }
 
 async function fetchSocialPost(platform, source) {
-  if (platform === 'instagram') return fetchInstagramPost(source);
+  if (platform === 'instagram') return fetchInstagramManaged(source);
   if (platform === 'soundcloud') return fetchSoundCloudUpload(source);
   if (platform === 'x') return fetchXMdPost(source);
   return base.fetchSocialPost(platform, source);
