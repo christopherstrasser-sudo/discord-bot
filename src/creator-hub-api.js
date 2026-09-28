@@ -5,6 +5,7 @@ const {
   getCreatorConfig,
   setCreatorConfig,
   getCreatorHistory,
+  getCreatorRuleState,
   setCreatorRuleState,
   appendCreatorHistory,
   pruneCreatorRuleState
@@ -286,50 +287,82 @@ async function resolveCheckedPublishChannel(guild, rule) {
   return channel;
 }
 
+function checkedEventMemory(state, eventKey, snapshot) {
+  const previous = Array.isArray(state?.seenEventKeys) ? state.seenEventKeys : [];
+  const seenEventKeys = [eventKey, ...previous.filter(item => item && item !== eventKey)].slice(0, 40);
+  const currentMs = Date.parse(String(snapshot?.publishedAt || snapshot?.startedAt || '')) || 0;
+  const previousMs = Date.parse(String(state?.lastPublishedAt || '')) || 0;
+  const maxMs = Math.max(currentMs, previousMs);
+  return {
+    seenEventKeys,
+    ...(maxMs ? { lastPublishedAt: new Date(maxMs).toISOString() } : {})
+  };
+}
+
 async function publishCheckedSnapshot(guild, rule, snapshot) {
   if (!snapshot?.id) throw new Error('Die Quelle wurde gefunden, hat aber keinen veröffentlichbaren aktuellen Inhalt geliefert.');
   const channel = await resolveCheckedPublishChannel(guild, rule);
   const payload = buildNotificationPayload(rule, snapshot, { allowPing: false });
-  const message = await channel.send(payload);
-  const now = new Date().toISOString();
   const eventKey = checkedEventKey(rule, snapshot);
-  const statePatch = {
-    initialized: true,
-    lastObservedAt: now,
-    lastProviderError: '',
-    lastProviderErrorAt: null,
-    lastTitle: snapshot.title || '',
-    lastGame: snapshot.game || '',
-    lastLiveId: '',
-    lastEventKey: eventKey,
-    lastSentAt: now,
-    lastSentMessageId: message.id,
-    lastSentChannelId: message.channelId,
-    lastSnapshot: {
-      creator: snapshot.creator || '',
-      live: false,
-      id: snapshot.id || '',
-      title: snapshot.title || '',
-      game: snapshot.game || '',
-      url: snapshot.url || '',
-      viewers: Number(snapshot.viewers || 0),
-      startedAt: snapshot.startedAt || snapshot.publishedAt || ''
-    }
-  };
-  if (rule.platform === 'twitch' && rule.event === 'clip') statePatch.seenClipIds = [snapshot.id];
-  setCreatorRuleState(guild.id, rule.id, statePatch);
-  appendCreatorHistory(guild.id, {
-    ruleId: rule.id,
-    ruleName: rule.name,
-    platform: rule.platform,
-    source: String(rule.source || ''),
-    event: rule.event,
-    status: 'sent',
-    message: 'Aktuellsten Inhalt nach manueller Quellenprüfung gesendet – ohne Rollen-Ping.',
-    title: String(snapshot.title || '').slice(0, 200),
-    url: String(snapshot.url || '').slice(0, 500)
+  const pendingAt = new Date().toISOString();
+
+  setCreatorRuleState(guild.id, rule.id, {
+    pendingEventKey: eventKey,
+    pendingEventAt: pendingAt,
+    lastObservedAt: pendingAt
   });
-  return { messageId: message.id, channelId: message.channelId, eventKey };
+
+  try {
+    const message = await channel.send(payload);
+    const now = new Date().toISOString();
+    const currentState = getCreatorRuleState(guild.id, rule.id);
+    const statePatch = {
+      initialized: true,
+      lastObservedAt: now,
+      lastProviderError: '',
+      lastProviderErrorAt: null,
+      lastTitle: snapshot.title || '',
+      lastGame: snapshot.game || '',
+      lastLiveId: '',
+      lastEventKey: eventKey,
+      ...checkedEventMemory(currentState, eventKey, snapshot),
+      pendingEventKey: '',
+      pendingEventAt: null,
+      lastSentAt: now,
+      lastSentMessageId: message.id,
+      lastSentChannelId: message.channelId,
+      lastSnapshot: {
+        creator: snapshot.creator || '',
+        live: false,
+        id: snapshot.id || '',
+        title: snapshot.title || '',
+        game: snapshot.game || '',
+        url: snapshot.url || '',
+        viewers: Number(snapshot.viewers || 0),
+        startedAt: snapshot.startedAt || snapshot.publishedAt || ''
+      }
+    };
+    if (rule.platform === 'twitch' && rule.event === 'clip') statePatch.seenClipIds = [snapshot.id];
+    setCreatorRuleState(guild.id, rule.id, statePatch);
+    appendCreatorHistory(guild.id, {
+      ruleId: rule.id,
+      ruleName: rule.name,
+      platform: rule.platform,
+      source: String(rule.source || ''),
+      event: rule.event,
+      status: 'sent',
+      message: 'Aktuellsten Inhalt nach manueller Quellenprüfung gesendet – ohne Rollen-Ping.',
+      title: String(snapshot.title || '').slice(0, 200),
+      url: String(snapshot.url || '').slice(0, 500)
+    });
+    return { messageId: message.id, channelId: message.channelId, eventKey };
+  } catch (error) {
+    setCreatorRuleState(guild.id, rule.id, {
+      pendingEventKey: '',
+      pendingEventAt: null
+    });
+    throw error;
+  }
 }
 
 function logCheckedPublishError(guild, rule, snapshot, error) {
