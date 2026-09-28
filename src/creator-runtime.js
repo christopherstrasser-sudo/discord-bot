@@ -52,7 +52,7 @@ function sourceKey(rule) {
 }
 
 function platformLabel(platform) {
-  return { twitch: 'Twitch', youtube: 'YouTube', tiktok: 'TikTok' }[platform] || platform;
+  return { twitch: 'Twitch', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', bluesky: 'Bluesky', x: 'X', soundcloud: 'SoundCloud' }[platform] || platform;
 }
 
 function eventLabel(event) {
@@ -148,10 +148,11 @@ function renderTemplate(template, variables) {
 
 function normalizeColor(value, platform) {
   if (/^#[0-9A-F]{6}$/i.test(String(value || ''))) return String(value).toUpperCase();
-  return { twitch: '#9146FF', youtube: '#FF0000', tiktok: '#FE2C55' }[platform] || '#5865F2';
+  return { twitch: '#9146FF', youtube: '#FF0000', tiktok: '#FE2C55', soundcloud: '#FF5500' }[platform] || '#5865F2';
 }
 
 function defaultEmbedTitle(rule) {
+  if (rule.platform === 'soundcloud') return '🎧 Neuer SoundCloud-Upload von {creator}';
   if (rule.platform === 'youtube') return '🎬 {creator} hat ein neues Video';
   if (rule.platform === 'tiktok' && rule.event === 'upload') return '🎵 Neues TikTok von {creator}';
   if (rule.platform === 'twitch' && rule.event === 'clip') return '✂️ Neuer Clip von {creator}';
@@ -161,6 +162,7 @@ function defaultEmbedTitle(rule) {
 }
 
 function defaultEmbedDescription(rule) {
+  if (rule.platform === 'soundcloud') return '**{title}**\n\nJetzt auf SoundCloud anhören.';
   if (rule.platform === 'youtube') return '**{title}**\n\nJetzt auf YouTube ansehen.';
   if (rule.platform === 'tiktok' && rule.event === 'upload') return '**{title}**\n\nJetzt auf TikTok ansehen.';
   if (rule.platform === 'twitch' && rule.event === 'clip') return '**{title}**\n\nClip erstellt von **{clipper}**.';
@@ -170,6 +172,7 @@ function defaultEmbedDescription(rule) {
 }
 
 function defaultButtonLabel(rule) {
+  if (rule.platform === 'soundcloud') return 'Auf SoundCloud anhören';
   if (rule.platform === 'youtube') return 'Video ansehen';
   if (rule.platform === 'tiktok') return rule.event === 'upload' ? 'TikTok ansehen' : 'TikTok öffnen';
   if (rule.platform === 'twitch' && rule.event === 'clip') return 'Clip ansehen';
