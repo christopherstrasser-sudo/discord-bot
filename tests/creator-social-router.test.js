@@ -42,11 +42,15 @@ test('normalizes newest original x.md profile post into creator snapshot', () =>
   assert.equal(snapshot.eventKey, 'x:rakulein:post:101');
 });
 
-test('x provider requires no customer credentials and Instagram exposes backend provider state', () => {
+test('x provider requires no customer credentials and Instagram exposes managed provider setup state', () => {
   const health = getSocialProviderHealth();
   assert.equal(health.x.configured, true);
   assert.equal(health.x.userCredentialsRequired, false);
-  assert.equal(health.instagram.configured, true);
   assert.equal(health.instagram.userCredentialsRequired, false);
-  assert.equal(typeof health.instagram.serverProviderConfigured, 'boolean');
+  assert.equal(health.instagram.managedProvider, true);
+  assert.equal(health.instagram.directInstagramRequests, false);
+  assert.equal(typeof health.instagram.configured, 'boolean');
+  assert.equal(typeof health.instagram.hikerConfigured, 'boolean');
+  assert.equal(typeof health.instagram.scrapeCreatorsConfigured, 'boolean');
+  assert.equal(typeof health.instagram.relayConfigured, 'boolean');
 });
