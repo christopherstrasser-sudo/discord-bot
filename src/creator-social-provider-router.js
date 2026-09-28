@@ -1,6 +1,13 @@
 const base = require('./creator-social-providers');
 const { fetchInstagramKeyless } = require('./creator-instagram-keyless');
 const { fetchInstagramImginn } = require('./creator-instagram-imginn');
+const {
+  fetchSoundCloudUpload,
+  getSoundCloudProviderHealth,
+  normalizeSoundCloudSource
+} = require('./creator-soundcloud-provider');
+
+const SOCIAL_PLATFORMS = new Set([...base.SOCIAL_PLATFORMS, 'soundcloud']);
 
 const providerHealth = {
   x: { ok: true, mode: 'x-md', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
@@ -231,7 +238,13 @@ async function fetchInstagramPost(value) {
   throw new Error(message);
 }
 
+function normalizeSocialHandle(platform, value) {
+  if (platform === 'soundcloud') return normalizeSoundCloudSource(value);
+  return base.normalizeSocialHandle(platform, value);
+}
+
 async function fetchSocialPost(platform, source) {
+  if (platform === 'soundcloud') return fetchSoundCloudUpload(source);
   if (platform === 'x') return fetchXMdPost(source);
   if (platform === 'instagram') return fetchInstagramPost(source);
   return base.fetchSocialPost(platform, source);
@@ -255,11 +268,14 @@ function getSocialProviderHealth() {
     keylessProfileFeed: true,
     serverProviderConfigured: Boolean(optionalEnv('ORBIT_SOCIAL_RELAY_URL') || optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
   };
+  health.soundcloud = getSoundCloudProviderHealth();
   return health;
 }
 
 module.exports = {
   ...base,
+  SOCIAL_PLATFORMS,
+  normalizeSocialHandle,
   fetchSocialPost,
   getSocialProviderHealth,
   xMdSnapshot
