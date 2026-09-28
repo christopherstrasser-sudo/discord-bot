@@ -8,7 +8,8 @@ const {
   getCreatorRuleState,
   setCreatorRuleState,
   appendCreatorHistory,
-  pruneCreatorRuleState
+  pruneCreatorRuleState,
+  recordCreatorEventSent
 } = require('./creator-store');
 const {
   checkCreatorRule,
@@ -314,6 +315,7 @@ async function publishCheckedSnapshot(guild, rule, snapshot) {
 
   try {
     const message = await channel.send(payload);
+    recordCreatorEventSent(guild.id, eventKey, message.channelId || rule.channelId, message.id, rule.id);
     const now = new Date().toISOString();
     const currentState = getCreatorRuleState(guild.id, rule.id);
     const statePatch = {
