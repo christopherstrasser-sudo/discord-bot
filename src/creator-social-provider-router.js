@@ -1,6 +1,8 @@
 const base = require('./creator-social-providers');
-const { fetchInstagramKeyless } = require('./creator-instagram-keyless');
-const { fetchInstagramImginn } = require('./creator-instagram-imginn');
+const {
+  fetchInstagramManaged,
+  getInstagramProviderHealth
+} = require('./creator-instagram-provider');
 const {
   fetchSoundCloudUpload,
   getSoundCloudProviderHealth,
@@ -10,8 +12,7 @@ const {
 const SOCIAL_PLATFORMS = new Set([...base.SOCIAL_PLATFORMS, 'soundcloud']);
 
 const providerHealth = {
-  x: { ok: true, mode: 'x-md', lastCheckedAt: null, lastSuccessAt: null, lastError: '' },
-  instagram: { ok: true, mode: 'imginn-relay', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
+  x: { ok: true, mode: 'x-md', lastCheckedAt: null, lastSuccessAt: null, lastError: '' }
 };
 
 const cache = new Map();
@@ -19,10 +20,6 @@ const inflight = new Map();
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function optionalEnv(name) {
-  return String(process.env[name] || '').trim();
 }
 
 function updateHealth(platform, ok, mode, error = '') {
@@ -51,7 +48,7 @@ async function fetchJson(url, options = {}) {
       ...options,
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'Orbit-Discord-Control/0.29',
+        'User-Agent': 'Orbit-Discord-Control/0.31',
         ...(options.headers || {})
       },
       signal: controller.signal
@@ -152,92 +149,6 @@ async function fetchXMdPost(value) {
   });
 }
 
-async function fetchInstagramImginnPost(value) {
-  const source = base.normalizeSocialHandle('instagram', value);
-  return cached('instagram-imginn', source, 8 * 60 * 1000, async () => {
-    const snapshot = await fetchInstagramImginn(source, { maxDetails: 6, timeoutMs: 18000 });
-    updateHealth('instagram', true, 'imginn-relay');
-    return snapshot;
-  }).catch(error => {
-    throw new Error(`Imginn Relay: ${compactError(error)}`);
-  });
-}
-
-async function fetchInstagramScrapeCreators(value) {
-  const source = base.normalizeSocialHandle('instagram', value);
-  const apiKey = optionalEnv('SCRAPECREATORS_API_KEY');
-  if (!apiKey) throw new Error('Orbit Instagram Provider ist serverseitig noch nicht konfiguriert.');
-
-  return cached('instagram-provider', source, 5 * 60 * 1000, async () => {
-    const params = new URLSearchParams({ handle: source, trim: 'false' });
-    const data = await fetchJson(`https://api.scrapecreators.com/v2/instagram/user/posts?${params.toString()}`, {
-      timeoutMs: 20000,
-      headers: { 'x-api-key': apiKey }
-    });
-    const snapshot = base.parseInstagramFeedPayload(data, source);
-    updateHealth('instagram', true, 'server-provider');
-    return snapshot;
-  }).catch(error => {
-    updateHealth('instagram', false, 'server-provider', error);
-    throw error;
-  });
-}
-
-async function fetchInstagramRelay(source, relayUrl, relayToken) {
-  return cached('instagram-relay', source, 5 * 60 * 1000, async () => {
-    const data = await fetchJson(`${relayUrl}/v1/instagram/latest?handle=${encodeURIComponent(source)}`, {
-      timeoutMs: 20000,
-      headers: relayToken ? { Authorization: `Bearer ${relayToken}` } : {}
-    });
-    const snapshot = data?.snapshot || data;
-    if (!snapshot?.id || !snapshot?.url) throw new Error('Orbit Social Relay lieferte keinen gültigen Instagram-Post.');
-    updateHealth('instagram', true, 'orbit-relay');
-    return { ...snapshot, platform: 'instagram', source };
-  });
-}
-
-async function fetchInstagramPost(value) {
-  const source = base.normalizeSocialHandle('instagram', value);
-  const relayUrl = (optionalEnv('ORBIT_SOCIAL_RELAY_URL') || optionalEnv('RAKU_SOCIAL_RELAY_URL')).replace(/\/+$/, '');
-  const relayToken = optionalEnv('ORBIT_SOCIAL_RELAY_TOKEN') || optionalEnv('RAKU_SOCIAL_RELAY_TOKEN');
-  const errors = [];
-
-  // Stable server-side providers take priority. Dashboard users still only enter a handle.
-  if (relayUrl) {
-    try {
-      return await fetchInstagramRelay(source, relayUrl, relayToken);
-    } catch (error) {
-      errors.push(`Orbit Relay: ${compactError(error)}`);
-    }
-  }
-
-  if (optionalEnv('SCRAPECREATORS_API_KEY')) {
-    try {
-      return await fetchInstagramScrapeCreators(source);
-    } catch (error) {
-      errors.push(`Provider: ${compactError(error)}`);
-    }
-  }
-
-  try {
-    return await fetchInstagramImginnPost(source);
-  } catch (error) {
-    errors.push(compactError(error));
-  }
-
-  try {
-    const result = await fetchInstagramKeyless(source);
-    updateHealth('instagram', true, result.mode || 'keyless-web');
-    return result.snapshot;
-  } catch (error) {
-    errors.push(`Instagram direkt: ${compactError(error)}`);
-  }
-
-  const message = `Instagram aktuell nicht abrufbar (${errors.join(' | ').slice(0, 760)}).`;
-  updateHealth('instagram', false, 'imginn-relay', message);
-  throw new Error(message);
-}
-
 function normalizeSocialHandle(platform, value) {
   if (platform === 'soundcloud') return normalizeSoundCloudSource(value);
   return base.normalizeSocialHandle(platform, value);
@@ -245,8 +156,8 @@ function normalizeSocialHandle(platform, value) {
 
 async function fetchSocialPost(platform, source) {
   if (platform === 'soundcloud') return fetchSoundCloudUpload(source);
+  if (platform === 'instagram') return fetchInstagramManaged(source);
   if (platform === 'x') return fetchXMdPost(source);
-  if (platform === 'instagram') return fetchInstagramPost(source);
   return base.fetchSocialPost(platform, source);
 }
 
@@ -258,16 +169,7 @@ function getSocialProviderHealth() {
     configured: true,
     userCredentialsRequired: false
   };
-  health.instagram = {
-    ...(health.instagram || {}),
-    ...providerHealth.instagram,
-    configured: true,
-    userCredentialsRequired: false,
-    browserRequired: false,
-    publicRelayAvailable: true,
-    keylessProfileFeed: true,
-    serverProviderConfigured: Boolean(optionalEnv('ORBIT_SOCIAL_RELAY_URL') || optionalEnv('RAKU_SOCIAL_RELAY_URL') || optionalEnv('SCRAPECREATORS_API_KEY'))
-  };
+  health.instagram = getInstagramProviderHealth();
   health.soundcloud = getSoundCloudProviderHealth();
   return health;
 }
