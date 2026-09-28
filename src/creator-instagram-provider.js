@@ -1,22 +1,23 @@
 const base = require('./creator-social-providers');
 
-let impitPromise = null;
-const identityCache = new Map();
-const snapshotCache = new Map();
+const HIKER_BASE = 'https://api.hikerapi.com';
+const SCRAPECREATORS_BASE = 'https://api.scrapecreators.com';
+
+const cache = new Map();
 const inflight = new Map();
-const backoff = new Map();
+const userIdCache = new Map();
 
 const health = {
-  configured: true,
+  configured: false,
   ok: true,
-  mode: 'browser-tls',
-  authenticated: false,
+  mode: 'managed-provider',
   lastCheckedAt: null,
   lastSuccessAt: null,
-  lastError: ''
+  lastError: '',
+  provider: ''
 };
 
-function optionalEnv(name) {
+function env(name) {
   return String(process.env[name] || '').trim();
 }
 
@@ -25,13 +26,38 @@ function nowIso() {
 }
 
 function compactError(error) {
-  return String(error?.message || error || 'Unbekannter Fehler').replace(/\s+/g, ' ').trim().slice(0, 260);
+  return String(error?.message || error || 'Unbekannter Fehler').replace(/\s+/g, ' ').trim().slice(0, 320);
 }
 
-function updateHealth(ok, mode, error) {
+function providerConfig() {
+  const relayUrl = (env('ORBIT_SOCIAL_RELAY_URL') || env('RAKU_SOCIAL_RELAY_URL')).replace(/\/+$/, '');
+  const relayToken = env('ORBIT_SOCIAL_RELAY_TOKEN') || env('RAKU_SOCIAL_RELAY_TOKEN');
+  const hikerKey = env('HIKERAPI_KEY');
+  const scrapeCreatorsKey = env('SCRAPECREATORS_API_KEY');
+  return { relayUrl, relayToken, hikerKey, scrapeCreatorsKey };
+}
+
+function getInstagramProviderHealth() {
+  const cfg = providerConfig();
+  const configured = Boolean(cfg.relayUrl || cfg.hikerKey || cfg.scrapeCreatorsKey);
+  return {
+    ...health,
+    configured,
+    userCredentialsRequired: false,
+    browserRequired: false,
+    directInstagramRequests: false,
+    managedProvider: true,
+    hikerConfigured: Boolean(cfg.hikerKey),
+    scrapeCreatorsConfigured: Boolean(cfg.scrapeCreatorsKey),
+    relayConfigured: Boolean(cfg.relayUrl)
+  };
+}
+
+function updateHealth(ok, provider, error = '') {
+  health.configured = true;
   health.ok = ok;
-  health.mode = mode || health.mode;
-  health.authenticated = Boolean(optionalEnv('INSTAGRAM_SESSION_ID'));
+  health.provider = provider || health.provider || '';
+  health.mode = provider || 'managed-provider';
   health.lastCheckedAt = nowIso();
   if (ok) {
     health.lastSuccessAt = nowIso();
@@ -41,272 +67,318 @@ function updateHealth(ok, mode, error) {
   }
 }
 
-function getInstagramProviderHealth() {
-  return {
-    ...health,
-    configured: true,
-    userCredentialsRequired: false,
-    backendCredentialsRequired: false,
-    browserRequired: false,
-    tlsImpersonation: true,
-    sessionConfigured: Boolean(optionalEnv('INSTAGRAM_SESSION_ID'))
-  };
+function ttlMs() {
+  const raw = Number(env('CREATOR_INSTAGRAM_MIN_FETCH_SECONDS') || 300);
+  const seconds = Number.isFinite(raw) ? Math.max(120, Math.min(Math.floor(raw), 1800)) : 300;
+  return seconds * 1000;
 }
 
-async function getImpit() {
-  if (!impitPromise) {
-    impitPromise = import('impit').then(mod => {
-      if (!mod?.Impit) throw new Error('Impit HTTP transport konnte nicht geladen werden.');
-      return new mod.Impit({ browser: 'chrome' });
-    }).catch(error => {
-      impitPromise = null;
-      throw error;
-    });
-  }
-  return impitPromise;
-}
-
-function cookieHeader() {
-  const parts = [];
-  const session = optionalEnv('INSTAGRAM_SESSION_ID');
-  const csrf = optionalEnv('INSTAGRAM_CSRF_TOKEN');
-  const dsUserId = optionalEnv('INSTAGRAM_DS_USER_ID');
-  if (session) parts.push('sessionid=' + session);
-  if (csrf) parts.push('csrftoken=' + csrf);
-  if (dsUserId) parts.push('ds_user_id=' + dsUserId);
-  return parts.join('; ');
-}
-
-function instagramHeaders(source, json = true) {
-  const headers = {
-    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-    'X-IG-App-ID': optionalEnv('INSTAGRAM_PUBLIC_APP_ID') || '936619743392459',
-    'X-ASBD-ID': optionalEnv('INSTAGRAM_PUBLIC_ASBD_ID') || '198387',
-    'X-Requested-With': 'XMLHttpRequest',
-    Referer: 'https://www.instagram.com/' + source + '/'
-  };
-  if (json) headers.Accept = 'application/json, text/plain, */*';
-  const cookie = cookieHeader();
-  if (cookie) headers.Cookie = cookie;
-  const csrf = optionalEnv('INSTAGRAM_CSRF_TOKEN');
-  if (csrf) headers['X-CSRFToken'] = csrf;
-  return headers;
-}
-
-async function request(client, url, options) {
-  const response = await client.fetch(url, {
-    ...(options || {}),
-    headers: {
-      ...(options?.headers || {})
-    },
-    redirect: 'follow'
-  });
-  const text = await response.text();
-  const finalUrl = String(response.url || url);
-  if (!response.ok) {
-    const error = new Error('HTTP ' + response.status + (text ? ': ' + text.replace(/\s+/g, ' ').slice(0, 220) : ''));
-    error.status = response.status;
-    throw error;
-  }
-  return { text, finalUrl, headers: response.headers };
-}
-
-async function requestJson(client, url, options) {
-  const result = await request(client, url, options);
-  const content = result.text.trim();
-  if (!content.startsWith('{') && !content.startsWith('[')) {
-    throw new Error('Instagram lieferte HTML statt JSON' + (result.finalUrl ? ' (' + result.finalUrl + ')' : '') + '.');
-  }
+async function requestJson(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Number(options.timeoutMs || 20000));
   try {
-    return { data: JSON.parse(content), finalUrl: result.finalUrl };
-  } catch {
-    throw new Error('Instagram lieferte ungültiges JSON.');
-  }
-}
-
-function identityFromSearch(data, source) {
-  for (const row of data?.users || []) {
-    const user = row?.user || {};
-    if (String(user.username || '').toLowerCase() !== source) continue;
-    const id = String(user.pk || user.pk_id || user.id || '');
-    if (!/^\d+$/.test(id)) continue;
-    return {
-      id,
-      username: source,
-      full_name: String(user.full_name || source),
-      profile_pic_url: String(user.profile_pic_url || '')
-    };
-  }
-  return null;
-}
-
-function identityFromHtml(html, source) {
-  const text = String(html || '');
-  const scripts = [...text.matchAll(/<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi)];
-  const walk = (value, visit, depth = 0) => {
-    if (!value || depth > 20) return;
-    if (Array.isArray(value)) {
-      for (const item of value) walk(item, visit, depth + 1);
-      return;
-    }
-    if (typeof value !== 'object') return;
-    visit(value);
-    for (const child of Object.values(value)) walk(child, visit, depth + 1);
-  };
-  for (const match of scripts) {
-    try {
-      let found = null;
-      walk(JSON.parse(match[1]), node => {
-        if (found || String(node?.username || '').toLowerCase() !== source) return;
-        const id = String(node.pk || node.pk_id || node.id || node.profile_id || '');
-        if (!/^\d+$/.test(id)) return;
-        found = {
-          id,
-          username: source,
-          full_name: String(node.full_name || node.name || source),
-          profile_pic_url: String(node.profile_pic_url || node.profile_pic_url_hd || '')
-        };
-      });
-      if (found) return found;
-    } catch {}
-  }
-  const match = text.match(/profilePage_(\d+)/i) || text.match(/["']profile_id["']\s*:\s*["']?(\d+)/i);
-  return match ? { id: match[1], username: source, full_name: source, profile_pic_url: '' } : null;
-}
-
-async function resolveIdentity(client, source, force) {
-  const cached = identityCache.get(source);
-  if (!force && cached && cached.expiresAt > Date.now()) return cached.identity;
-
-  const errors = [];
-  try {
-    const params = new URLSearchParams({ context: 'blended', query: source, include_reel: 'false' });
-    const result = await requestJson(client, 'https://www.instagram.com/web/search/topsearch/?' + params.toString(), {
-      headers: instagramHeaders(source)
-    });
-    const identity = identityFromSearch(result.data, source);
-    if (identity) {
-      identityCache.set(source, { identity, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
-      return identity;
-    }
-    errors.push('Search: Handle nicht gefunden');
-  } catch (error) {
-    errors.push('Search: ' + compactError(error));
-  }
-
-  try {
-    const result = await request(client, 'https://www.instagram.com/' + encodeURIComponent(source) + '/', {
+    const response = await fetch(url, {
+      method: options.method || 'GET',
       headers: {
-        ...instagramHeaders(source, false),
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
+        Accept: 'application/json',
+        'User-Agent': 'Orbit-Discord-Control/0.31',
+        ...(options.headers || {})
+      },
+      body: options.body,
+      redirect: 'follow',
+      signal: controller.signal
     });
-    const identity = identityFromHtml(result.text, source);
-    if (identity) {
-      identityCache.set(source, { identity, expiresAt: Date.now() + 6 * 60 * 60 * 1000 });
-      return identity;
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch {}
+    if (!response.ok) {
+      const detail = data?.message || data?.detail || data?.error || text || `HTTP ${response.status}`;
+      const error = new Error(`HTTP ${response.status}: ${String(detail).replace(/\s+/g, ' ').slice(0, 260)}`);
+      error.status = response.status;
+      throw error;
     }
-    errors.push('HTML: keine User-ID');
-  } catch (error) {
-    errors.push('HTML: ' + compactError(error));
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function cached(source, loader) {
+  const hit = cache.get(source);
+  if (hit && Date.now() - hit.at < ttlMs()) return Promise.resolve(hit.value);
+  if (inflight.has(source)) return inflight.get(source);
+  const request = Promise.resolve()
+    .then(loader)
+    .then(value => {
+      cache.set(source, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => inflight.delete(source));
+  inflight.set(source, request);
+  return request;
+}
+
+function timestampMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value > 1e12 ? value : value * 1000;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric > 1e12 ? numeric : numeric * 1000;
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function shortcodeFromUrl(value) {
+  const match = String(value || '').match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i);
+  return String(match?.[1] || '');
+}
+
+function mediaShortcode(media) {
+  return String(
+    media?.code ||
+    media?.shortcode ||
+    media?.xdt_shortcode ||
+    shortcodeFromUrl(media?.permalink) ||
+    shortcodeFromUrl(media?.url) ||
+    shortcodeFromUrl(media?.link) ||
+    ''
+  ).trim();
+}
+
+function mediaOwner(media) {
+  return String(
+    media?.user?.username ||
+    media?.owner?.username ||
+    media?.username ||
+    media?.author?.username ||
+    ''
+  ).replace(/^@/, '').toLowerCase();
+}
+
+function mediaCaption(media) {
+  return String(
+    media?.caption_text ||
+    media?.caption?.text ||
+    media?.caption ||
+    media?.text ||
+    media?.title ||
+    ''
+  ).replace(/\s+/g, ' ').trim();
+}
+
+function mediaImage(media) {
+  const candidates = [
+    media?.thumbnail_url,
+    media?.display_url,
+    media?.media_url,
+    media?.image_versions2?.candidates?.[0]?.url,
+    media?.carousel_media?.[0]?.image_versions2?.candidates?.[0]?.url,
+    media?.image?.url
+  ];
+  return String(candidates.find(Boolean) || '');
+}
+
+function mediaPublishedMs(media) {
+  return timestampMs(
+    media?.taken_at ??
+    media?.taken_at_timestamp ??
+    media?.created_at ??
+    media?.created_at_utc ??
+    media?.timestamp ??
+    media?.caption?.created_at_utc ??
+    media?.caption?.created_at
+  );
+}
+
+function isReel(media) {
+  const type = String(media?.product_type || media?.media_type || media?.type || '').toLowerCase();
+  return type === 'clips' || type === 'reel' || type === 'video' || type === '2' || Boolean(media?.video_url || media?.video_versions?.length);
+}
+
+function collectMediaItems(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) {
+    if (Array.isArray(data[0])) return data[0];
+    return data.filter(item => item && typeof item === 'object');
+  }
+  const candidates = [
+    data.items,
+    data.medias,
+    data.media,
+    data.posts,
+    data.data?.items,
+    data.data?.medias,
+    data.data?.posts,
+    data.response?.items
+  ];
+  for (const value of candidates) {
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+}
+
+function normalizeInstagramSnapshot(source, profile, media) {
+  const shortcode = mediaShortcode(media);
+  if (!shortcode) throw new Error('Instagram Provider lieferte einen Post ohne Shortcode.');
+  const owner = mediaOwner(media);
+  if (owner && owner !== source) throw new Error(`Instagram Provider lieferte fremden Content von @${owner}.`);
+
+  const publishedMs = mediaPublishedMs(media);
+  if (!publishedMs) throw new Error('Instagram Provider lieferte einen Post ohne Veröffentlichungszeit.');
+  const creator = String(profile?.full_name || profile?.name || profile?.username || owner || source);
+  const publishedAt = new Date(publishedMs).toISOString();
+  const reel = isReel(media);
+  const url = String(media?.permalink || media?.url || media?.link || `https://www.instagram.com/${reel ? 'reel' : 'p'}/${encodeURIComponent(shortcode)}/`);
+  return {
+    platform: 'instagram',
+    source,
+    creator,
+    exists: true,
+    live: false,
+    id: shortcode,
+    providerMediaId: String(media?.pk || media?.id || ''),
+    eventKey: `instagram:${source}:post:${shortcode}`,
+    title: mediaCaption(media) || `${creator} hat einen neuen Instagram-Post veröffentlicht.`,
+    game: '',
+    url,
+    thumbnail: mediaImage(media),
+    avatar: String(profile?.profile_pic_url_hd || profile?.profile_picture_url || profile?.profile_pic_url || ''),
+    publishedAt,
+    startedAt: publishedAt,
+    viewers: 0
+  };
+}
+
+function latestOwnSnapshot(source, profile, medias) {
+  const candidates = medias
+    .map(media => {
+      try {
+        return normalizeInstagramSnapshot(source, profile, media);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+  if (!candidates.length) throw new Error('Instagram Provider lieferte keine auswertbaren eigenen Posts.');
+  return candidates[0];
+}
+
+async function fetchViaRelay(source, cfg) {
+  const data = await requestJson(`${cfg.relayUrl}/v1/instagram/latest?handle=${encodeURIComponent(source)}`, {
+    headers: cfg.relayToken ? { Authorization: `Bearer ${cfg.relayToken}` } : {}
+  });
+  const raw = data?.snapshot || data;
+  if (!raw) throw new Error('ORBIT Social Relay lieferte keine Daten.');
+  const shortcode = mediaShortcode(raw) || String(raw.id || '');
+  if (!shortcode) throw new Error('ORBIT Social Relay lieferte keinen Shortcode.');
+  const publishedMs = timestampMs(raw.publishedAt || raw.startedAt || raw.created_at || raw.taken_at);
+  if (!publishedMs) throw new Error('ORBIT Social Relay lieferte keine Veröffentlichungszeit.');
+  const publishedAt = new Date(publishedMs).toISOString();
+  const creator = String(raw.creator || raw.username || source);
+  return {
+    platform: 'instagram',
+    source,
+    creator,
+    exists: true,
+    live: false,
+    id: shortcode,
+    providerMediaId: String(raw.providerMediaId || ''),
+    eventKey: `instagram:${source}:post:${shortcode}`,
+    title: String(raw.title || `${creator} hat einen neuen Instagram-Post veröffentlicht.`),
+    game: '',
+    url: String(raw.url || `https://www.instagram.com/p/${encodeURIComponent(shortcode)}/`),
+    thumbnail: String(raw.thumbnail || ''),
+    avatar: String(raw.avatar || ''),
+    publishedAt,
+    startedAt: publishedAt,
+    viewers: 0
+  };
+}
+
+async function hikerUser(source, key) {
+  const hit = userIdCache.get(source);
+  if (hit && hit.expiresAt > Date.now()) return hit.user;
+  const params = new URLSearchParams({ username: source });
+  const user = await requestJson(`${HIKER_BASE}/v1/user/by/username?${params.toString()}`, {
+    headers: { 'x-access-key': key }
+  });
+  if (!user || (!user.pk && !user.id)) throw new Error('HikerAPI konnte das Instagram-Profil nicht auflösen.');
+  if (user.is_private) throw new Error('Instagram Profil ist privat.');
+  const normalized = { ...user, pk: String(user.pk || user.id) };
+  userIdCache.set(source, { user: normalized, expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+  return normalized;
+}
+
+async function fetchViaHiker(source, key) {
+  const user = await hikerUser(source, key);
+  const params = new URLSearchParams({ user_id: String(user.pk) });
+  const data = await requestJson(`${HIKER_BASE}/v1/user/medias/chunk?${params.toString()}`, {
+    headers: { 'x-access-key': key }
+  });
+  return latestOwnSnapshot(source, user, collectMediaItems(data));
+}
+
+async function fetchViaScrapeCreators(source, key) {
+  const params = new URLSearchParams({ handle: source, trim: 'false' });
+  const data = await requestJson(`${SCRAPECREATORS_BASE}/v2/instagram/user/posts?${params.toString()}`, {
+    headers: { 'x-api-key': key }
+  });
+  const profile = data?.user || data?.profile || data?.items?.[0]?.user || {};
+  if (profile?.is_private) throw new Error('Instagram Profil ist privat.');
+  return latestOwnSnapshot(source, profile, collectMediaItems(data));
+}
+
+async function fetchInstagramManaged(value) {
+  const source = base.normalizeSocialHandle('instagram', value);
+  const cfg = providerConfig();
+  if (!cfg.relayUrl && !cfg.hikerKey && !cfg.scrapeCreatorsKey) {
+    updateHealth(false, 'setup-required', 'Kein Instagram Read-Provider konfiguriert. HIKERAPI_KEY oder SCRAPECREATORS_API_KEY serverseitig hinterlegen.');
+    throw new Error('Instagram Read-Provider fehlt: HIKERAPI_KEY oder SCRAPECREATORS_API_KEY serverseitig hinterlegen.');
   }
 
-  throw new Error('Instagram User-ID konnte nicht aufgelöst werden (' + errors.join(' | ').slice(0, 600) + ').');
-}
-
-async function fetchTimelineById(client, source, identity) {
-  const url = 'https://www.instagram.com/api/v1/feed/user/' + encodeURIComponent(identity.id) + '/?count=12';
-  const result = await requestJson(client, url, { headers: instagramHeaders(source) });
-  return base.parseInstagramFeedPayload(result.data, source, result.data?.user || identity);
-}
-
-async function fetchTimelineByUsername(client, source) {
-  const url = 'https://www.instagram.com/api/v1/feed/user/' + encodeURIComponent(source) + '/username/?count=12';
-  const result = await requestJson(client, url, { headers: instagramHeaders(source) });
-  return base.parseInstagramFeedPayload(result.data, source, result.data?.user || result.data?.items?.[0]?.user || {});
-}
-
-function snapshotCacheSeconds() {
-  const raw = Number(optionalEnv('CREATOR_INSTAGRAM_MIN_FETCH_SECONDS') || 300);
-  return Number.isFinite(raw) ? Math.max(120, Math.min(Math.floor(raw), 1800)) : 300;
-}
-
-function backoffSeconds(source) {
-  const item = backoff.get(source);
-  if (!item || item.until <= Date.now()) return 0;
-  return Math.max(1, Math.ceil((item.until - Date.now()) / 1000));
-}
-
-function noteFailure(source) {
-  const previous = backoff.get(source)?.failures || 0;
-  const failures = Math.min(previous + 1, 6);
-  const seconds = Math.min(15 * Math.pow(2, failures), 15 * 60);
-  backoff.set(source, { failures, until: Date.now() + seconds * 1000 });
-}
-
-function noteSuccess(source) {
-  backoff.delete(source);
-}
-
-async function fetchInstagramPost(value) {
-  const source = base.normalizeSocialHandle('instagram', value);
-  const cached = snapshotCache.get(source);
-  if (cached && Date.now() - cached.at < snapshotCacheSeconds() * 1000) return cached.snapshot;
-  const wait = backoffSeconds(source);
-  if (wait) throw new Error('Instagram Provider pausiert nach Rate-Limit noch ca. ' + wait + 's.');
-  if (inflight.has(source)) return inflight.get(source);
-
-  const promise = (async () => {
-    const client = await getImpit();
+  return cached(source, async () => {
     const errors = [];
-    try {
-      let identity = null;
-      try {
-        identity = await resolveIdentity(client, source, false);
-      } catch (error) {
-        errors.push(compactError(error));
-      }
 
-      if (identity?.id) {
-        try {
-          const snapshot = await fetchTimelineById(client, source, identity);
-          snapshotCache.set(source, { at: Date.now(), snapshot });
-          noteSuccess(source);
-          updateHealth(true, optionalEnv('INSTAGRAM_SESSION_ID') ? 'session-id-feed' : 'public-id-feed');
-          return snapshot;
-        } catch (error) {
-          errors.push('ID-Feed: ' + compactError(error));
-          if ([400, 401, 403, 429].includes(error?.status)) identityCache.delete(source);
-        }
-      }
-
+    if (cfg.relayUrl) {
       try {
-        const snapshot = await fetchTimelineByUsername(client, source);
-        snapshotCache.set(source, { at: Date.now(), snapshot });
-        noteSuccess(source);
-        updateHealth(true, 'username-feed');
+        const snapshot = await fetchViaRelay(source, cfg);
+        updateHealth(true, 'orbit-relay');
         return snapshot;
       } catch (error) {
-        errors.push('Username-Feed: ' + compactError(error));
+        errors.push(`Relay: ${compactError(error)}`);
       }
-
-      throw new Error('Instagram aktuell nicht abrufbar (' + errors.join(' | ').slice(0, 700) + ').');
-    } catch (error) {
-      noteFailure(source);
-      updateHealth(false, 'browser-tls', error);
-      throw error;
-    } finally {
-      inflight.delete(source);
     }
-  })();
 
-  inflight.set(source, promise);
-  return promise;
+    if (cfg.hikerKey) {
+      try {
+        const snapshot = await fetchViaHiker(source, cfg.hikerKey);
+        updateHealth(true, 'hikerapi');
+        return snapshot;
+      } catch (error) {
+        errors.push(`HikerAPI: ${compactError(error)}`);
+      }
+    }
+
+    if (cfg.scrapeCreatorsKey) {
+      try {
+        const snapshot = await fetchViaScrapeCreators(source, cfg.scrapeCreatorsKey);
+        updateHealth(true, 'scrapecreators');
+        return snapshot;
+      } catch (error) {
+        errors.push(`ScrapeCreators: ${compactError(error)}`);
+      }
+    }
+
+    const message = `Instagram Provider aktuell nicht abrufbar (${errors.join(' | ').slice(0, 700)}).`;
+    updateHealth(false, 'managed-provider', message);
+    throw new Error(message);
+  });
 }
 
 module.exports = {
-  fetchInstagramPost,
-  getInstagramProviderHealth,
-  identityFromSearch,
-  identityFromHtml
+  collectMediaItems,
+  mediaShortcode,
+  normalizeInstagramSnapshot,
+  latestOwnSnapshot,
+  fetchInstagramManaged,
+  getInstagramProviderHealth
 };
