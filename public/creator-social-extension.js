@@ -9,7 +9,7 @@
   const MARKS = { twitch: 'TW', youtube: 'YT', tiktok: 'TT', instagram: 'IG', bluesky: 'BS', x: 'X', soundcloud: 'SC' };
   const SUBTITLES = {
     twitch: 'HELIX LIVE + CLIPS', youtube: 'UPLOAD FEED', tiktok: 'LIVE / UPLOAD',
-    instagram: 'PUBLIC RELAY', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY', soundcloud: 'TRACK UPLOADS'
+    instagram: 'MANAGED READ API', bluesky: 'ATPROTO FEED', x: 'X.MD RELAY', soundcloud: 'TRACK UPLOADS'
   };
 
   const originalPlatform = C.platform;
@@ -82,20 +82,13 @@
     if (!health.configured) {
       if (platform === 'twitch') return { cls: 'missing', label: 'CREDENTIALS FEHLEN', copy: 'Twitch App-Zugangsdaten hinterlegen.' };
       if (platform === 'tiktok') return { cls: 'missing', label: 'ADAPTER FEHLT', copy: 'Kein zuverlässiger TikTok-Provider verbunden.' };
+      if (platform === 'instagram') return { cls: 'missing', label: 'READ PROVIDER FEHLT', copy: 'Für Instagram einmal HikerAPI oder ScrapeCreators serverseitig verbinden. Nutzer tragen weiterhin nur den Handle ein.' };
       return { cls: 'missing', label: 'NICHT KONFIGURIERT', copy: 'Provider-Zugangsdaten fehlen.' };
-    }
-
-    if (platform === 'instagram' && health.publicRelayAvailable !== true && health.serverProviderConfigured === false) {
-      return {
-        cls: 'missing',
-        label: 'BACKEND PROVIDER FEHLT',
-        copy: 'Der Instagram-Read-Provider ist nicht verfügbar. Nutzer brauchen trotzdem nur den Handle – keine eigenen API-Keys.'
-      };
     }
 
     if (health.lastError && !health.ok) return { cls: 'bad', label: 'DEGRADED', copy: health.lastError };
     if (!health.lastCheckedAt) {
-      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Öffentlicher Server-Relay mit direkten Fallbacks · kein lokaler Browser, Instagram-Login oder eigener API-Key nötig.' };
+      if (platform === 'instagram') return { cls: 'ready', label: 'READY', copy: 'Managed Instagram Read API · ORBIT selbst verbindet den Provider, Nutzer brauchen nur den Handle.' };
       if (platform === 'bluesky') return { cls: 'ready', label: 'READY', copy: 'Public AppView · kein API-Key nötig.' };
       if (platform === 'x') return { cls: 'ready', label: 'READY', copy: 'Serverseitiger X-Read-Relay · kein X-Login oder API-Key nötig.' };
       if (platform === 'soundcloud') return { cls: 'ready', label: 'READY', copy: 'Keyless Public Web + RSS-Fallback · kein Pro-Account, Login oder eigener API-Key nötig.' };
@@ -149,7 +142,7 @@
     const data = {
       instagram: {
         title: 'Instagram Handle', placeholder: 'rakulein',
-        help: 'Öffentliches Profil. Der Abruf läuft serverseitig über einen öffentlichen Read-Relay mit direkten Fallbacks; kein lokaler Browser, Instagram-Login oder eigener API-Key nötig.'
+        help: 'Öffentliches Profil. ORBIT nutzt einen serverseitigen Managed Read Provider; kein Instagram-Login oder eigener API-Key pro Nutzer nötig.'
       },
       bluesky: {
         title: 'Bluesky Handle', placeholder: 'rakulein.bsky.social',
