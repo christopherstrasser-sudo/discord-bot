@@ -1,6 +1,6 @@
 const base = require('./creator-social-providers');
 const {
-  fetchInstagramManaged,
+  fetchInstagramPost,
   getInstagramProviderHealth
 } = require('./creator-instagram-provider');
 const {
@@ -33,7 +33,7 @@ function updateHealth(platform, ok, mode, error = '') {
 }
 
 function sourceKey(platform, source) {
-  return `${platform}:${String(source || '').replace(/^@/, '').trim().toLowerCase()}`;
+  return platform + ':' + String(source || '').replace(/^@/, '').trim().toLowerCase();
 }
 
 function compactError(error) {
@@ -55,7 +55,7 @@ async function fetchJson(url, options = {}) {
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      const error = new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, 220)}` : ''}`);
+      const error = new Error('HTTP ' + response.status + (body ? ': ' + body.slice(0, 220) : ''));
       error.status = response.status;
       throw error;
     }
@@ -124,10 +124,10 @@ function xMdSnapshot(data, source) {
     exists: true,
     live: false,
     id,
-    eventKey: `x:${source}:post:${id}`,
-    title: String(post.text || '').replace(/\s+/g, ' ').trim() || `${handle} hat einen neuen Post auf X veröffentlicht.`,
+    eventKey: 'x:' + source + ':post:' + id,
+    title: String(post.text || '').replace(/\s+/g, ' ').trim() || handle + ' hat einen neuen Post auf X veröffentlicht.',
     game: '',
-    url: String(post.url || `https://x.com/${encodeURIComponent(handle)}/status/${encodeURIComponent(id)}`),
+    url: String(post.url || 'https://x.com/' + encodeURIComponent(handle) + '/status/' + encodeURIComponent(id)),
     thumbnail: xMedia(post),
     avatar: String(author.avatar_url || profile.avatar_url || ''),
     publishedAt,
@@ -139,13 +139,13 @@ function xMdSnapshot(data, source) {
 async function fetchXMdPost(value) {
   const source = base.normalizeSocialHandle('x', value);
   return cached('x', source, 3 * 60 * 1000, async () => {
-    const data = await fetchJson(`https://x.pcstyle.dev/api/v1/profiles/${encodeURIComponent(source)}?format=json&limit=10`, { timeoutMs: 18000 });
+    const data = await fetchJson('https://x.pcstyle.dev/api/v1/profiles/' + encodeURIComponent(source) + '?format=json&limit=10', { timeoutMs: 18000 });
     const snapshot = xMdSnapshot(data, source);
     updateHealth('x', true, 'x-md');
     return snapshot;
   }).catch(error => {
     updateHealth('x', false, 'x-md', error);
-    throw new Error(`X Provider aktuell nicht abrufbar (${compactError(error)}).`);
+    throw new Error('X Provider aktuell nicht abrufbar (' + compactError(error) + ').');
   });
 }
 
@@ -155,21 +155,21 @@ function normalizeSocialHandle(platform, value) {
 }
 
 async function fetchSocialPost(platform, source) {
+  if (platform === 'instagram') return fetchInstagramPost(source);
   if (platform === 'soundcloud') return fetchSoundCloudUpload(source);
-  if (platform === 'instagram') return fetchInstagramManaged(source);
   if (platform === 'x') return fetchXMdPost(source);
   return base.fetchSocialPost(platform, source);
 }
 
 function getSocialProviderHealth() {
   const health = base.getSocialProviderHealth();
+  health.instagram = getInstagramProviderHealth();
   health.x = {
     ...(health.x || {}),
     ...providerHealth.x,
     configured: true,
     userCredentialsRequired: false
   };
-  health.instagram = getInstagramProviderHealth();
   health.soundcloud = getSoundCloudProviderHealth();
   return health;
 }
