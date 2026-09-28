@@ -42,15 +42,13 @@ test('normalizes newest original x.md profile post into creator snapshot', () =>
   assert.equal(snapshot.eventKey, 'x:rakulein:post:101');
 });
 
-test('x provider requires no customer credentials and Instagram exposes managed provider setup state', () => {
+test('x provider is keyless and Instagram uses a free persistent server session', () => {
   const health = getSocialProviderHealth();
   assert.equal(health.x.configured, true);
   assert.equal(health.x.userCredentialsRequired, false);
   assert.equal(health.instagram.userCredentialsRequired, false);
-  assert.equal(health.instagram.managedProvider, true);
-  assert.equal(health.instagram.directInstagramRequests, false);
+  assert.equal(health.instagram.externalServiceRequired, false);
+  assert.equal(health.instagram.browserRequired, false);
   assert.equal(typeof health.instagram.configured, 'boolean');
-  assert.equal(typeof health.instagram.hikerConfigured, 'boolean');
-  assert.equal(typeof health.instagram.scrapeCreatorsConfigured, 'boolean');
-  assert.equal(typeof health.instagram.relayConfigured, 'boolean');
+  assert.equal(typeof health.instagram.sessionConfigured, 'boolean');
 });
