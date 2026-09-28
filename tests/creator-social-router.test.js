@@ -42,13 +42,13 @@ test('normalizes newest original x.md profile post into creator snapshot', () =>
   assert.equal(snapshot.eventKey, 'x:rakulein:post:101');
 });
 
-test('x provider is keyless and Instagram uses a free persistent server session', () => {
+test('x provider is keyless and Instagram is fully anonymous', () => {
   const health = getSocialProviderHealth();
   assert.equal(health.x.configured, true);
   assert.equal(health.x.userCredentialsRequired, false);
+  assert.equal(health.instagram.configured, true);
   assert.equal(health.instagram.userCredentialsRequired, false);
+  assert.equal(health.instagram.backendCredentialsRequired, false);
   assert.equal(health.instagram.externalServiceRequired, false);
-  assert.equal(health.instagram.browserRequired, false);
-  assert.equal(typeof health.instagram.configured, 'boolean');
-  assert.equal(typeof health.instagram.sessionConfigured, 'boolean');
+  assert.equal(health.instagram.manualSetupRequired, false);
 });
