@@ -68,6 +68,33 @@ function matchesFilters(rule, snapshot) {
   return !needle || String(snapshot?.title || '').toLowerCase().includes(needle);
 }
 
+function snapshotPublishedMs(snapshot) {
+  const parsed = Date.parse(String(snapshot?.publishedAt || snapshot?.startedAt || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function eventMemory(state, key, snapshot) {
+  const previous = Array.isArray(state?.seenEventKeys) ? state.seenEventKeys : [];
+  const seenEventKeys = [key, ...previous.filter(item => item && item !== key)].slice(0, 40);
+  const currentMs = snapshotPublishedMs(snapshot);
+  const previousMs = Date.parse(String(state?.lastPublishedAt || '')) || 0;
+  const maxMs = Math.max(currentMs, previousMs);
+  return {
+    seenEventKeys,
+    ...(maxMs ? { lastPublishedAt: new Date(maxMs).toISOString() } : {})
+  };
+}
+
+function eventAlreadyHandled(state, key) {
+  return state?.lastEventKey === key || (Array.isArray(state?.seenEventKeys) && state.seenEventKeys.includes(key));
+}
+
+function activePending(state, key) {
+  if (state?.pendingEventKey !== key) return false;
+  const at = Date.parse(String(state?.pendingEventAt || '')) || 0;
+  return at > 0 && Date.now() - at < 2 * 60 * 1000;
+}
+
 function observation(rule, snapshot, eventKey = '') {
   return {
     initialized: true,
@@ -155,24 +182,29 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
   if (!snapshot?.id) return;
   const kind = eventKind(rule);
   const noun = contentLabel(rule);
-  const key = `${rule.platform}:${sourceOf(rule)}:${kind}:${snapshot.id}`;
+  const key = String(snapshot.eventKey || `${rule.platform}:${sourceOf(rule)}:${kind}:${snapshot.id}`);
   const firstObservation = !state.initialized;
-  const isNew = key !== state.lastEventKey;
+  const currentMs = snapshotPublishedMs(snapshot);
+  const watermarkMs = Date.parse(String(state.lastPublishedAt || '')) || 0;
+  const alreadyHandled = eventAlreadyHandled(state, key);
+  const stale = !alreadyHandled && watermarkMs > 0 && currentMs > 0 && currentMs <= watermarkMs;
   const next = observation(rule, snapshot, key);
+  const remembered = { ...next, ...eventMemory(state, key, snapshot), pendingEventKey: '', pendingEventAt: null };
 
-  if (!isNew) {
-    setCreatorRuleState(guildId, rule.id, next);
+  if (alreadyHandled || stale) {
+    setCreatorRuleState(guildId, rule.id, remembered);
+    if (stale) logHistory(guildId, rule, 'baseline', `${noun} ist älter als der zuletzt bekannte Inhalt und wurde ignoriert.`, snapshot);
     return;
   }
 
   if (firstObservation && !rule.announceFirstMatch) {
-    setCreatorRuleState(guildId, rule.id, next);
+    setCreatorRuleState(guildId, rule.id, remembered);
     logHistory(guildId, rule, 'baseline', `Aktueller ${noun} als Baseline übernommen – keine rückwirkende Benachrichtigung.`, snapshot);
     return;
   }
 
   if (!matchesFilters(rule, snapshot)) {
-    setCreatorRuleState(guildId, rule.id, next);
+    setCreatorRuleState(guildId, rule.id, remembered);
     logHistory(guildId, rule, 'filtered', `Neuer ${noun} erkannt, aber durch den Textfilter verworfen.`, snapshot);
     return;
   }
@@ -180,31 +212,55 @@ async function processSocialRule(client, guildId, config, rule, snapshot) {
   const cooldownMs = Math.max(0, Number(rule.cooldownMinutes || 0)) * 60 * 1000;
   const lastSent = state.lastSentAt ? Date.parse(state.lastSentAt) : 0;
   if (cooldownMs && lastSent && Date.now() - lastSent < cooldownMs) {
-    setCreatorRuleState(guildId, rule.id, next);
+    setCreatorRuleState(guildId, rule.id, remembered);
     logHistory(guildId, rule, 'suppressed', `${noun} wegen Cooldown unterdrückt.`, snapshot);
     return;
   }
 
   const quiet = inQuietHours(rule, config.timezone);
   if (quiet && rule.quietHours?.mode === 'suppress') {
-    setCreatorRuleState(guildId, rule.id, next);
+    setCreatorRuleState(guildId, rule.id, remembered);
     logHistory(guildId, rule, 'suppressed', `${noun} innerhalb der Quiet Hours unterdrückt.`, snapshot);
     return;
   }
+
+  const freshState = getCreatorRuleState(guildId, rule.id);
+  if (eventAlreadyHandled(freshState, key) || activePending(freshState, key)) {
+    setCreatorRuleState(guildId, rule.id, {
+      ...observation(rule, snapshot, key),
+      ...eventMemory(freshState, key, snapshot)
+    });
+    return;
+  }
+
+  const pendingAt = new Date().toISOString();
+  setCreatorRuleState(guildId, rule.id, {
+    pendingEventKey: key,
+    pendingEventAt: pendingAt,
+    lastObservedAt: pendingAt
+  });
 
   try {
     const result = await sendNotification(client, guildId, rule, snapshot, {
       allowPing: !(quiet && rule.quietHours?.mode === 'no_ping')
     });
+    const sentState = getCreatorRuleState(guildId, rule.id);
     setCreatorRuleState(guildId, rule.id, {
-      ...next,
+      ...observation(rule, snapshot, key),
+      ...eventMemory(sentState, key, snapshot),
+      pendingEventKey: '',
+      pendingEventAt: null,
       lastSentAt: new Date().toISOString(),
       lastSentMessageId: result.message.id,
       lastSentChannelId: result.message.channelId
     });
     logHistory(guildId, rule, 'sent', quiet && !result.pinged ? `${noun}-Benachrichtigung ohne Ping gesendet.` : `${noun}-Benachrichtigung gesendet.`, snapshot);
   } catch (error) {
-    setCreatorRuleState(guildId, rule.id, next);
+    setCreatorRuleState(guildId, rule.id, {
+      ...observation(rule, snapshot, ''),
+      pendingEventKey: '',
+      pendingEventAt: null
+    });
     logHistory(guildId, rule, 'error', `Discord-Ausgabe fehlgeschlagen: ${error.message}`, snapshot);
   }
 }
