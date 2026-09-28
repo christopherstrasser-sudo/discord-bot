@@ -324,7 +324,7 @@ async function pollCreatorSocial(client) {
 
 async function checkSocialRule(rule) {
   if (!SOCIAL_PLATFORMS.has(rule.platform)) throw new Error('Unbekannter Social Provider.');
-  return fetchSocialPost(rule.platform, rule.source);
+  return fetchSocialPost(rule.platform, rule.source, { force: true });
 }
 
 function sampleSocialSnapshot(rule) {
