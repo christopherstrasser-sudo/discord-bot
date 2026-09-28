@@ -23,7 +23,7 @@ ORBIT is a multi-server Discord management platform with a web dashboard. The Di
 - Ticket Studio with forms, private channels, claiming, archive flow and transcripts
 - Voice Studio for temporary rooms and lobby automation
 - Commands / Flow Builder
-- Creator Alerts: Twitch, YouTube, TikTok, Instagram, Bluesky and X
+- Creator Alerts: Twitch, YouTube, TikTok, Instagram, Bluesky, X and SoundCloud
 - Server Logs
 - Analytics
 - Diagnostics
@@ -40,6 +40,7 @@ Provider strategy:
 - Bluesky: public ATProto AppView.
 - X: server-side public read relay; no customer X API key required.
 - Instagram: relay/provider chain with browserless fallbacks; no customer Instagram login or API key required.
+- SoundCloud: official public API via one backend Client-Credentials app; server admins only enter the artist profile, and ORBIT watches real track uploads (not likes or reposts).
 
 Manual `Quelle prüfen` publishes the latest real post/upload for supported content sources without a role ping. Twitch and TikTok Live remain validation-only because there is no static latest post to publish.
 
