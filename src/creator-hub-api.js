@@ -20,17 +20,18 @@ const {
   sendSocialTest,
   getSocialRuntimeStatus
 } = require('./creator-social-runtime');
-const { SOCIAL_PLATFORMS, normalizeSocialHandle } = require('./creator-social-providers');
+const { SOCIAL_PLATFORMS, normalizeSocialHandle } = require('./creator-social-provider-router');
 
 const MAX_RULES = 30;
-const PLATFORMS = new Set(['twitch', 'youtube', 'tiktok', 'instagram', 'bluesky', 'x']);
+const PLATFORMS = new Set(['twitch', 'youtube', 'tiktok', 'instagram', 'bluesky', 'x', 'soundcloud']);
 const EVENTS = {
   twitch: new Set(['live', 'clip', 'title_change', 'category_change']),
   youtube: new Set(['upload']),
   tiktok: new Set(['live', 'upload']),
   instagram: new Set(['post']),
   bluesky: new Set(['post']),
-  x: new Set(['post'])
+  x: new Set(['post']),
+  soundcloud: new Set(['upload'])
 };
 
 function access(req, res, next) {
@@ -263,9 +264,11 @@ function shouldPublishCheckedRule(rule) {
 }
 
 function checkedEventKey(rule, snapshot) {
-  const kind = SOCIAL_PLATFORMS.has(rule.platform)
-    ? 'post'
-    : (rule.platform === 'twitch' && rule.event === 'clip' ? 'clip' : 'upload');
+  const kind = rule.platform === 'soundcloud'
+    ? 'upload'
+    : (SOCIAL_PLATFORMS.has(rule.platform)
+      ? 'post'
+      : (rule.platform === 'twitch' && rule.event === 'clip' ? 'clip' : 'upload'));
   return `${rule.platform}:${String(rule.source || '').replace(/^@/, '').toLowerCase()}:${kind}:${snapshot.id}`;
 }
 
