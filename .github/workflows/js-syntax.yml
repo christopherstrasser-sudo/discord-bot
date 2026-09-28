@@ -102,7 +102,7 @@ jobs:
           if (!launcher.includes('ORBIT DISCORD CONTROL')) throw new Error('Launcher is not branded ORBIT');
 
           const env = fs.readFileSync('.env.example', 'utf8');
-          for (const token of ['ORBIT_SOCIAL_RELAY_URL=', 'ORBIT_SOCIAL_RELAY_TOKEN=', 'HIKERAPI_KEY=', 'SCRAPECREATORS_API_KEY=', 'CREATOR_INSTAGRAM_MIN_FETCH_SECONDS=']) {
+          for (const token of ['INSTAGRAM_SESSION_ID=', 'INSTAGRAM_CSRF_TOKEN=', 'INSTAGRAM_DS_USER_ID=', 'CREATOR_INSTAGRAM_MIN_FETCH_SECONDS=']) {
             if (!env.includes(token)) throw new Error(`Orbit creator provider config missing: ${token}`);
           }
 
@@ -127,17 +127,17 @@ jobs:
           if (fs.existsSync('src/creator-social-browser.js')) throw new Error('Local browser social fallback must stay retired');
 
           const router = fs.readFileSync('src/creator-social-provider-router.js', 'utf8');
-          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-provider')", 'fetchInstagramManaged', 'Orbit-Discord-Control/0.31']) {
+          for (const token of ['x.pcstyle.dev/api/v1/profiles/', "require('./creator-instagram-provider')", 'fetchInstagramSession', 'Orbit-Discord-Control/0.31']) {
             if (!router.includes(token)) throw new Error(`Provider router token missing: ${token}`);
           }
           if (/creator-instagram-(?:keyless|imginn)|puppeteer|findBrowserExecutable|creator-social-browser/i.test(router)) throw new Error('Provider router must not use retired Instagram scraping or a local browser');
 
           const instagramProvider = fs.readFileSync('src/creator-instagram-provider.js', 'utf8');
-          for (const token of ['HIKERAPI_KEY', 'SCRAPECREATORS_API_KEY', '/v1/user/medias/chunk', '/v2/instagram/user/posts', 'providerMediaId', 'eventKey: `instagram:${source}:post:${shortcode}`', 'directInstagramRequests: false']) {
+          for (const token of ['INSTAGRAM_SESSION_ID', 'web_profile_info', '/api/v1/feed/user/', 'identityFromProfile', 'identityFromSearch', 'externalServiceRequired: false']) {
             if (!instagramProvider.includes(token)) throw new Error(`Instagram provider token missing: ${token}`);
           }
-          if (/www\.instagram\.com\/api\/|web_profile_info|feed\/user\/.*username|imginn\.com|picnob\.com/i.test(instagramProvider)) {
-            throw new Error('Managed Instagram provider must never scrape Instagram or viewer sites directly');
+          if (/HIKERAPI_KEY|SCRAPECREATORS_API_KEY|imginn\.com|picnob\.com/i.test(instagramProvider)) {
+            throw new Error('Instagram provider must not depend on paid external read services or viewer sites');
           }
 
           const api = fs.readFileSync('src/creator-hub-api.js', 'utf8');
