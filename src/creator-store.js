@@ -87,9 +87,10 @@ function readStateStore() {
 }
 
 function ensureGuildState(store, guildId) {
-  store.guilds[guildId] ||= { rules: {}, history: [] };
+  store.guilds[guildId] ||= { rules: {}, history: [], eventLedger: {} };
   store.guilds[guildId].rules ||= {};
   store.guilds[guildId].history ||= [];
+  store.guilds[guildId].eventLedger ||= {};
   return store.guilds[guildId];
 }
 
@@ -109,6 +110,80 @@ function setCreatorRuleState(guildId, ruleId, patch) {
   };
   writeJson(stateFile, store);
   return clone(guild.rules[ruleId]);
+}
+
+
+function eventLedgerKey(eventKey, channelId) {
+  return String(channelId || '') + '|' + String(eventKey || '');
+}
+
+function pruneEventLedger(guild) {
+  const entries = Object.entries(guild.eventLedger || {});
+  if (entries.length <= 500) return;
+  entries.sort((a, b) => Date.parse(b[1]?.updatedAt || b[1]?.sentAt || 0) - Date.parse(a[1]?.updatedAt || a[1]?.sentAt || 0));
+  guild.eventLedger = Object.fromEntries(entries.slice(0, 400));
+}
+
+function claimCreatorEvent(guildId, eventKey, channelId, ruleId) {
+  if (!eventKey || !channelId) return true;
+  const store = readStateStore();
+  const guild = ensureGuildState(store, guildId);
+  const key = eventLedgerKey(eventKey, channelId);
+  const existing = guild.eventLedger[key] || null;
+  const now = Date.now();
+
+  if (existing?.status === 'sent') return false;
+  if (existing?.status === 'pending') {
+    const claimedAt = Date.parse(existing.claimedAt || 0);
+    if (claimedAt && now - claimedAt < 2 * 60 * 1000) return false;
+  }
+
+  guild.eventLedger[key] = {
+    eventKey: String(eventKey),
+    channelId: String(channelId),
+    ruleId: String(ruleId || ''),
+    status: 'pending',
+    claimedAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString()
+  };
+  pruneEventLedger(guild);
+  writeJson(stateFile, store);
+  return true;
+}
+
+function confirmCreatorEvent(guildId, eventKey, channelId, messageId, ruleId) {
+  if (!eventKey || !channelId) return;
+  const store = readStateStore();
+  const guild = ensureGuildState(store, guildId);
+  const key = eventLedgerKey(eventKey, channelId);
+  const now = new Date().toISOString();
+  guild.eventLedger[key] = {
+    ...(guild.eventLedger[key] || {}),
+    eventKey: String(eventKey),
+    channelId: String(channelId),
+    ruleId: String(ruleId || guild.eventLedger[key]?.ruleId || ''),
+    messageId: String(messageId || ''),
+    status: 'sent',
+    sentAt: now,
+    updatedAt: now
+  };
+  pruneEventLedger(guild);
+  writeJson(stateFile, store);
+}
+
+function releaseCreatorEventClaim(guildId, eventKey, channelId) {
+  if (!eventKey || !channelId) return;
+  const store = readStateStore();
+  const guild = ensureGuildState(store, guildId);
+  const key = eventLedgerKey(eventKey, channelId);
+  if (guild.eventLedger[key]?.status === 'pending') {
+    delete guild.eventLedger[key];
+    writeJson(stateFile, store);
+  }
+}
+
+function recordCreatorEventSent(guildId, eventKey, channelId, messageId, ruleId) {
+  confirmCreatorEvent(guildId, eventKey, channelId, messageId, ruleId);
 }
 
 function appendCreatorHistory(guildId, item) {
@@ -154,5 +229,9 @@ module.exports = {
   setCreatorRuleState,
   appendCreatorHistory,
   getCreatorHistory,
-  pruneCreatorRuleState
+  pruneCreatorRuleState,
+  claimCreatorEvent,
+  confirmCreatorEvent,
+  releaseCreatorEventClaim,
+  recordCreatorEventSent
 };
