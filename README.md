@@ -73,3 +73,22 @@ Default development URL:
 Discord callback:
 
 `http://31.70.115.79:3000/auth/discord/callback`
+
+## Linux / Plesk / Docker
+
+ORBIT can run in a single Docker container (Discord gateway, dashboard and Creator Alerts). On Plesk, use HTTPS in front of the locally bound container port. The deployment files are `Dockerfile`, `compose.yaml`, `.dockerignore` and `deploy/README-plesk.md`.
+
+**Migration from Windows:** Do not start both instances with the same Discord bot credentials. Before cutover, stop the Windows bot and back up the entire `data/` folder plus the original `.env`, preserving `SESSION_SECRET` so encrypted custom-bot credentials remain readable. The Compose volume `./data:/app/data` retains guild settings, Creator Alerts history/ledger, tickets, analytics and custom-bot state across rebuilds. Make sure the host data directory is writable by container UID 1000.
+
+Quick start after copying the Windows data/configuration and updating `PUBLIC_BASE_URL=https://orbit.raku.systems`:
+
+```bash
+cd /opt/orbit
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 orbit
+```
+
+Dashboard is reachable to the Plesk host only at `http://127.0.0.1:3100`. In Plesk, create a Docker Proxy Rule (or an nginx reverse proxy) from `orbit.raku.systems` to this port and issue an SSL certificate. Add the exact `https://orbit.raku.systems/auth/discord/callback` redirect URI in the Discord Developer Portal.
+
+See [Plesk migration walkthrough](deploy/README-plesk.md) for cutover, backup and rollback steps.

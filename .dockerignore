@@ -1,0 +1,16 @@
+.git
+.github
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules
+data
+logs
+*.log
+npm-debug.log*
+tests
+start.cmd
+DESIGN.md
+README.md
+deploy
