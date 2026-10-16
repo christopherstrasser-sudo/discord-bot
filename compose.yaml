@@ -1,0 +1,22 @@
+name: orbit
+
+services:
+  orbit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: orbit-local:latest
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    ports:
+      # Only Plesk on this server may reach the dashboard directly.
+      - "127.0.0.1:3100:3000"
+    volumes:
+      # Persist every JSON datastore and browser-collector cache.
+      - ./data:/app/data
+      - ./logs:/app/logs
+    shm_size: "512mb"
+    security_opt:
+      - no-new-privileges:true

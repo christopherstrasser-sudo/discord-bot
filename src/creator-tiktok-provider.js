@@ -359,7 +359,11 @@ async function getBrowser() {
       `--lang=${language()}-${region()}`,
       '--window-size=1280,900'
     ];
-    if (typeof process.getuid === 'function' && process.getuid() === 0) args.push('--no-sandbox');
+    if (process.env.ORBIT_DOCKER === '1' || (typeof process.getuid === 'function' && process.getuid() === 0)) {
+      // Docker's default seccomp profile often prevents Chromium's user namespace sandbox.
+      // ORBIT runs as an unprivileged container user; the container is isolated by Docker.
+      args.push('--no-sandbox', '--disable-setuid-sandbox');
+    }
     return puppeteer.launch({ executablePath, headless: true, args });
   }).then(browser => {
     browser.on('disconnected', () => { browserPromise = null; });

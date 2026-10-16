@@ -131,7 +131,10 @@ async function launchSlot(index, deps) {
     `--lang=${deps.language()}-${deps.region()}`,
     '--window-size=1280,900'
   ];
-  if (typeof process.getuid === 'function' && process.getuid() === 0) args.push('--no-sandbox');
+  if (process.env.ORBIT_DOCKER === '1' || (typeof process.getuid === 'function' && process.getuid() === 0)) {
+    // Chromium's namespace sandbox may be unavailable with Docker's default seccomp profile.
+    args.push('--no-sandbox', '--disable-setuid-sandbox');
+  }
 
   const browser = await puppeteer.launch({
     executablePath,
